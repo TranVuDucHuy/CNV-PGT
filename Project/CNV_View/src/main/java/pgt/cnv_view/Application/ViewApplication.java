@@ -4,15 +4,18 @@ import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 
 import java.io.IOException;
 
-public class HelloApplication extends Application {
+public class ViewApplication extends Application {
     @Override
     public void start(Stage stage) throws IOException {
-        FXMLLoader fxmlLoader = new FXMLLoader(HelloApplication.class.getResource("/pgt/cnv_view/FXML/hello-view.fxml"));
-        Scene scene = new Scene(fxmlLoader.load(), 320, 240);
-        stage.setTitle("Hello!");
+        FXMLLoader fxmlLoader = new FXMLLoader(ViewApplication.class.getResource("/pgt/cnv_view/FXML/Dashboard.fxml"));
+        Scene scene = new Scene(fxmlLoader.load(), 1280, 720);
+
+        stage.setTitle("CNV View");
+        stage.setResizable(true);
         stage.setScene(scene);
         stage.show();
     }

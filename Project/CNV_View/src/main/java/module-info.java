@@ -10,6 +10,7 @@ module pgt.cnv_view {
     requires org.kordamp.bootstrapfx.core;
     requires eu.hansolo.tilesfx;
     requires com.almasb.fxgl.all;
+    requires java.logging;
 
 // opens pgt.cnv_view to javafx.fxml;
 // exports pgt.cnv_view;
