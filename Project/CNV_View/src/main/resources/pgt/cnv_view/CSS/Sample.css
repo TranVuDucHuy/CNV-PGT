@@ -1,0 +1,10 @@
+/* Màu nền khi hover */
+.sample:hover {
+    -fx-background-color: lightblue;
+}
+
+/* Màu nền khi được chọn */
+.sample.selected {
+    -fx-background-color: #4891e5;
+    -fx-text-fill: white; /* Đổi màu chữ để dễ nhìn */
+}

@@ -18,6 +18,9 @@ public class ViewApplication extends Application {
         stage.setResizable(true);
         stage.setScene(scene);
         stage.show();
+
+        String css = getClass().getResource("/pgt/cnv_view/CSS/Sample.css").toExternalForm();
+        scene.getStylesheets().add(css);
     }
 
     public static void main(String[] args) {

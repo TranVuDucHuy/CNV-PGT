@@ -1,20 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.control.CheckBox?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.control.Menu?>
-<?import javafx.scene.control.MenuBar?>
-<?import javafx.scene.control.MenuItem?>
-<?import javafx.scene.control.ScrollPane?>
-<?import javafx.scene.control.Spinner?>
-<?import javafx.scene.control.SplitPane?>
-<?import javafx.scene.control.TitledPane?>
-<?import javafx.scene.layout.AnchorPane?>
-<?import javafx.scene.layout.BorderPane?>
-<?import javafx.scene.layout.StackPane?>
-<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
 
-<BorderPane prefHeight="720.0" prefWidth="1280.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="pgt.cnv_view.Controller.ViewController">
+<BorderPane prefHeight="720.0" prefWidth="1280.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="pgt.cnv_view.Controller.ViewController">
    <center>
       <AnchorPane BorderPane.alignment="CENTER">
          <children>
@@ -34,9 +23,9 @@
                                                    <children>
                                                       <VBox prefHeight="400.0" prefWidth="240.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                                                          <children>
-                                                            <Label onMouseClicked="#page1" text="Page 1" />
-                                                            <Label onMouseClicked="#page2" text="Page 2" />
-                                                            <Label onMouseClicked="#page3" text="Page 3" />
+                                                            <Label fx:id="sample1" prefWidth="220.0" styleClass="sample" text="Sample 1" />
+                                                            <Label fx:id="sample2" prefWidth="220.0" styleClass="sample" text="Sample 2" />
+                                                            <Label fx:id="sample3" prefWidth="220.0" styleClass="sample" text="Sample 3" />
                                                          </children>
                                                       </VBox>
                                                    </children>
@@ -53,10 +42,10 @@
                                        <children>
                                           <VBox prefHeight="200.0" prefWidth="100.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                                              <children>
-                                                <CheckBox mnemonicParsing="false" prefHeight="25.0" prefWidth="220.0" text="Baseline" />
-                                                <CheckBox mnemonicParsing="false" prefHeight="25.0" prefWidth="220.0" text="Bic-seq2" />
-                                                <CheckBox mnemonicParsing="false" prefHeight="25.0" prefWidth="220.0" text="WisecondorX" />
-                                                <CheckBox mnemonicParsing="false" prefHeight="25.0" prefWidth="220.0" text="BlueFuse" />
+                                                <CheckBox fx:id="baseline" mnemonicParsing="false" prefHeight="25.0" prefWidth="220.0" text="Baseline" />
+                                                <CheckBox fx:id="bicSeq2" mnemonicParsing="false" prefHeight="25.0" prefWidth="220.0" text="Bic-seq2" />
+                                                <CheckBox fx:id="wisecondorX" mnemonicParsing="false" prefHeight="25.0" prefWidth="220.0" text="WisecondorX" />
+                                                <CheckBox fx:id="blueFuse" mnemonicParsing="false" prefHeight="25.0" prefWidth="220.0" text="BlueFuse" />
                                              </children>
                                           </VBox>
                                        </children></AnchorPane>
@@ -68,10 +57,10 @@
                                        <children>
                                           <VBox prefHeight="200.0" prefWidth="100.0" AnchorPane.bottomAnchor="-0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                                              <children>
-                                                <CheckBox mnemonicParsing="false" onAction="#scatterChart" prefHeight="25.0" prefWidth="220.0" text="Scatter Chart" />
-                                                <CheckBox mnemonicParsing="false" prefHeight="25.0" prefWidth="220.0" text="Box Plot" />
-                                                <CheckBox mnemonicParsing="false" onAction="#dataTable" prefHeight="25.0" prefWidth="220.0" text="Data Table" />
-                                                <CheckBox mnemonicParsing="false" prefHeight="25.0" prefWidth="220.0" text="Report" />
+                                                <CheckBox fx:id="scatterChart" mnemonicParsing="false" onAction="#scatterChart" prefHeight="25.0" prefWidth="220.0" text="Scatter Chart" />
+                                                <CheckBox fx:id="boxPlot" mnemonicParsing="false" prefHeight="25.0" prefWidth="220.0" text="Box Plot" />
+                                                <CheckBox fx:id="dataTable" mnemonicParsing="false" onAction="#dataTable" prefHeight="25.0" prefWidth="220.0" text="Data Table" />
+                                                <CheckBox fx:id="report" mnemonicParsing="false" prefHeight="25.0" prefWidth="220.0" text="Report" />
                                              </children>
                                           </VBox>
                                        </children></AnchorPane>
