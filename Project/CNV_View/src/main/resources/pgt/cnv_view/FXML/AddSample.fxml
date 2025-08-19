@@ -10,14 +10,14 @@
             <Label text="Result File Path:" />
             <TextField />
             <Label text="Algorithm:" />
-            <MenuButton mnemonicParsing="false" text="Algorithm">
-              <items>
-                <MenuItem mnemonicParsing="false" text="Baseline" />
-                <MenuItem mnemonicParsing="false" text="Bic-seq2" />
-                  <MenuItem mnemonicParsing="false" text="WisecondorX" />
-                  <MenuItem mnemonicParsing="false" text="BlueFuse" />
-              </items>
-            </MenuButton>
+                  <MenuButton fx:id="algorithmMenu" mnemonicParsing="false" text="Algorithm">
+                     <items>
+                        <MenuItem mnemonicParsing="false" text="Baseline" onAction="#onAlgorithmSelect" />
+                        <MenuItem mnemonicParsing="false" text="Bic-seq2" onAction="#onAlgorithmSelect" />
+                        <MenuItem mnemonicParsing="false" text="WisecondorX" onAction="#onAlgorithmSelect" />
+                        <MenuItem mnemonicParsing="false" text="BlueFuse" onAction="#onAlgorithmSelect" />
+                     </items>
+                  </MenuButton>
             <Separator prefHeight="0.0" prefWidth="600.0" />
             <Button mnemonicParsing="false" text="Add" />
          </children>

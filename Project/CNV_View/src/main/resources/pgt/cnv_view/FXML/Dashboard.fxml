@@ -23,9 +23,9 @@
                                                    <children>
                                                       <VBox prefHeight="400.0" prefWidth="240.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                                                          <children>
-                                                            <Label fx:id="sample1" prefWidth="220.0" styleClass="sample" text="Sample 1" />
-                                                            <Label fx:id="sample2" prefWidth="220.0" styleClass="sample" text="Sample 2" />
-                                                            <Label fx:id="sample3" prefWidth="220.0" styleClass="sample" text="Sample 3" />
+                                                            <CheckBox fx:id="sample1" prefWidth="220.0" text="Sample 1" styleClass="sample" />
+                                                            <CheckBox fx:id="sample2" prefWidth="220.0" text="Sample 2" styleClass="sample" />
+                                                            <CheckBox fx:id="sample3" prefWidth="220.0" text="Sample 3" styleClass="sample" />
                                                          </children>
                                                       </VBox>
                                                    </children>
