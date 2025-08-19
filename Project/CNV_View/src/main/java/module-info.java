@@ -2,6 +2,7 @@ module pgt.cnv_view {
     requires javafx.controls;
     requires javafx.fxml;
     requires javafx.web;
+    requires transitive javafx.base;
 
     requires org.controlsfx.controls;
     requires com.dlsc.formsfx;
