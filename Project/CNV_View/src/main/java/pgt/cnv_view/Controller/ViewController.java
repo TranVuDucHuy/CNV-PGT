@@ -6,6 +6,7 @@ import javafx.fxml.Initializable;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.CheckBox;
+import javafx.scene.layout.VBox;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 
@@ -15,6 +16,7 @@ import java.net.URL;
 import java.util.ResourceBundle;
 import java.util.LinkedList;
 import java.util.List;
+import java.nio.file.*;
 
 import javafx.event.ActionEvent;
 
@@ -23,7 +25,7 @@ public class ViewController implements Initializable {
     private StackPane contentArea;
 
     @FXML
-    private CheckBox sample1, sample2, sample3;
+    private VBox sampleContainer;
 
     // Store up to 2 selected sample checkboxes (FIFO behavior)
     private final List<CheckBox> selectedSamples = new LinkedList<>();
@@ -37,13 +39,10 @@ public class ViewController implements Initializable {
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         disableCheckBoxes(true);
-
-    setupSampleSelection(sample1);
-    setupSampleSelection(sample2);
-    setupSampleSelection(sample3);
-
+    // ControllerRegistry no longer needed after refactor
         addSelectionListeners();
     addViewGroupMutualExclusion();
+    loadExistingSamples();
     }
 
     public void scatterChart(ActionEvent actionEvent) throws IOException {
@@ -53,22 +52,43 @@ public class ViewController implements Initializable {
     }
 
     public void dataTable(ActionEvent actionEvent) throws IOException {
-        Parent fxml = FXMLLoader.load(getClass().getResource("/pgt/cnv_view/FXML/DataTable.fxml"));
-        contentArea.getChildren().removeAll();
-        contentArea.getChildren().setAll(fxml);
+        // Determine first selected sample + primary algorithm -> build bins file path
+        if (selectedSamples.isEmpty() || selectedAlgorithms.isEmpty()) {
+            return; // nothing to show
+        }
+        String sample = selectedSamples.get(0).getText();
+        String algoToken = getPrimaryAlgorithmToken();
+        if (algoToken == null) return;
+        Path binsFile = resolveDataRoot()
+                .resolve(sample)
+                .resolve(algoToken)
+                .resolve(sample + "_" + algoToken + "_bins.tsv");
+
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("/pgt/cnv_view/FXML/DataTable.fxml"));
+        Parent root = loader.load();
+        DataTable ctrl = loader.getController();
+        if (ctrl != null) {
+            ctrl.loadBinsFile(binsFile);
+        }
+        contentArea.getChildren().setAll(root);
     }
 
     public void addSample(ActionEvent actionEvent) throws IOException {
-        Parent fxml = FXMLLoader.load(getClass().getResource("/pgt/cnv_view/FXML/AddSample.fxml"));
-
-        Scene scene = new Scene(fxml);
-        Stage primaryStage = new Stage();
-        primaryStage.setTitle("Add Sample");
-        primaryStage.setScene(scene);
-        primaryStage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
-        primaryStage.initOwner(contentArea.getScene().getWindow());
-        primaryStage.show();
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("/pgt/cnv_view/FXML/AddSample.fxml"));
+        Parent root = loader.load();
+        AddSample addSampleController = loader.getController();
+        if (addSampleController != null) {
+            addSampleController.setParentController(this);
+        }
+        Scene scene = new Scene(root);
+        Stage stage = new Stage();
+        stage.setTitle("Add Sample");
+        stage.setScene(scene);
+        stage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+        stage.initOwner(contentArea.getScene().getWindow());
+        stage.show();
     }
+
 
     private void setupSampleSelection(CheckBox sample) {
         sample.selectedProperty().addListener((obs, oldVal, newVal) -> {
@@ -99,6 +119,7 @@ public class ViewController implements Initializable {
                     resetCheckBoxes();
                 }
                 disableCheckBoxes(false);
+                updateAlgorithmAvailability();
                 checkFirstGroupSelection();
             }
 
@@ -156,6 +177,8 @@ public class ViewController implements Initializable {
             checkFirstGroupSelection();
             // Re-apply limit in case samples changed after this selection
             enforceAlgorithmLimit();
+            // Recompute availability (in case deselect changed intersection)
+            updateAlgorithmAvailability();
         });
     }
 
@@ -200,5 +223,123 @@ public class ViewController implements Initializable {
                 }
             }
         });
+    }
+
+    // Update which algorithms are selectable: an algorithm is enabled only if ALL selected samples have result files for it
+    private void updateAlgorithmAvailability() {
+        if (selectedSamples.isEmpty()) {
+            // already handled elsewhere by disableCheckBoxes(true)
+            return;
+        }
+        // Map algorithm checkbox to its token (must match normalization used when saving files)
+        Object[][] algos = new Object[][]{
+                {baseline, "baseline"},
+                {bicSeq2, "bic-seq2"},
+                {wisecondorX, "wisecondorx"},
+                {blueFuse, "bluefuse"}
+        };
+        List<String> sampleNames = selectedSamples.stream().map(CheckBox::getText).toList();
+        for (Object[] entry : algos) {
+            CheckBox cb = (CheckBox) entry[0];
+            String token = (String) entry[1];
+            boolean available = samplesHaveAlgorithm(sampleNames, token);
+            cb.setDisable(!available);
+            if (!available && cb.isSelected()) {
+                cb.setSelected(false);
+            }
+        }
+        // After possible deselections re-evaluate view group access
+        checkFirstGroupSelection();
+        enforceAlgorithmLimit();
+    }
+
+    private boolean samplesHaveAlgorithm(List<String> sampleNames, String algoToken) {
+        for (String sample : sampleNames) {
+            if (!sampleHasAlgorithm(sample, algoToken)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean sampleHasAlgorithm(String sampleName, String algoToken) {
+        try {
+            Path dataRoot = resolveDataRoot();
+            Path dir = dataRoot.resolve(sampleName).resolve(algoToken);
+            if (!Files.isDirectory(dir)) return false;
+            Path bins = dir.resolve(sampleName + "_" + algoToken + "_bins.tsv");
+            Path segs = dir.resolve(sampleName + "_" + algoToken + "_segments.tsv");
+            return Files.exists(bins) && Files.exists(segs);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    // Scan data root to preload existing samples dynamically
+    private void loadExistingSamples() {
+        try {
+            Path dataRoot = resolveDataRoot();
+            if (!Files.exists(dataRoot) || !Files.isDirectory(dataRoot)) return;
+            Files.list(dataRoot)
+                    .filter(Files::isDirectory)
+                    .map(p -> p.getFileName().toString())
+                    .filter(this::sampleDirectoryHasAnyAlgorithm)
+                    .sorted()
+                    .forEach(this::addSampleCheckbox);
+        } catch (Exception ignored) {}
+    }
+
+    private boolean sampleDirectoryHasAnyAlgorithm(String sampleName) {
+        String[] algos = {"baseline", "bic-seq2", "wisecondorx", "bluefuse"};
+        for (String algo : algos) {
+            if (sampleHasAlgorithm(sampleName, algo)) return true;
+        }
+        return false;
+    }
+
+    private Path resolveDataRoot() {
+        Path projectData = Paths.get("src", "main", "resources", "pgt", "cnv_view", "Data");
+        if (Files.exists(projectData)) return projectData;
+        return Paths.get(System.getProperty("user.dir"), "data");
+    }
+
+    // Accessors for DataTable
+    public List<String> getSelectedSampleNames() {
+        return selectedSamples.stream().map(CheckBox::getText).toList();
+    }
+
+    public String getPrimaryAlgorithmToken() {
+        if (selectedAlgorithms.isEmpty()) return null;
+        CheckBox cb = selectedAlgorithms.get(0);
+        String text = cb.getText().toLowerCase().replaceAll("\\s+", "");
+        // unify mapping for bic-seq2 vs formatting
+        if (text.contains("bic")) return "bic-seq2";
+        return text;
+    }
+
+    // Called by AddSample controller after successful addition or detection of existing sample
+    public void registerSample(String sampleName) {
+        // Avoid duplicates
+        for (CheckBox cb : getAllSampleCheckBoxes()) {
+            if (cb.getText().equals(sampleName)) { updateAlgorithmAvailability(); return; }
+        }
+        addSampleCheckbox(sampleName);
+        updateAlgorithmAvailability();
+    }
+
+    private void addSampleCheckbox(String sampleName) {
+        CheckBox cb = new CheckBox(sampleName);
+        cb.setPrefWidth(220);
+        cb.getStyleClass().add("sample");
+        sampleContainer.getChildren().add(cb);
+        setupSampleSelection(cb);
+    }
+
+    private List<CheckBox> getAllSampleCheckBoxes() {
+        List<CheckBox> list = new LinkedList<>();
+        for (javafx.scene.Node n : sampleContainer.getChildren()) {
+            if (n instanceof CheckBox c) list.add(c);
+        }
+        return list;
     }
 }

@@ -30,13 +30,7 @@
                                             <content>
                                               <AnchorPane prefWidth="240.0">
                                                    <children>
-                                                      <VBox prefHeight="400.0" prefWidth="240.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="10.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="10.0">
-                                                         <children>
-                                                            <CheckBox fx:id="sample1" prefHeight="25.0" prefWidth="220.0" styleClass="sample" text="Sample 1" />
-                                                            <CheckBox fx:id="sample2" prefHeight="25.0" prefWidth="220.0" styleClass="sample" text="Sample 2" />
-                                                            <CheckBox fx:id="sample3" prefHeight="25.0" prefWidth="220.0" styleClass="sample" text="Sample 3" />
-                                                         </children>
-                                                      </VBox>
+                                                      <VBox fx:id="sampleContainer" prefHeight="400.0" prefWidth="240.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="10.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="10.0" />
                                                    </children>
                                                 </AnchorPane>
                                             </content>
