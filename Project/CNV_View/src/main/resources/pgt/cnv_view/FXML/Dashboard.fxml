@@ -26,15 +26,11 @@
                                 <content>
                                   <AnchorPane minHeight="0.0" minWidth="0.0">
                                        <children>
-                                          <ScrollPane prefHeight="180.0" prefWidth="130.0" AnchorPane.bottomAnchor="-10.0" AnchorPane.leftAnchor="-10.0" AnchorPane.rightAnchor="-10.0" AnchorPane.topAnchor="-10.0">
-                                            <content>
-                                              <AnchorPane prefWidth="240.0">
-                                                   <children>
-                                                      <VBox fx:id="sampleContainer" prefHeight="400.0" prefWidth="240.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="10.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="10.0" />
-                                                   </children>
-                                                </AnchorPane>
-                                            </content>
-                                          </ScrollPane>
+                                                               <ScrollPane fitToWidth="false" hbarPolicy="AS_NEEDED" vbarPolicy="ALWAYS" prefHeight="200.0" prefWidth="230.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+                                                                  <content>
+                                                                        <VBox fx:id="sampleContainer" spacing="4.0" style="-fx-padding:8;" />
+                                                                  </content>
+                                                               </ScrollPane>
                                        </children>
                                     </AnchorPane>
                                 </content>

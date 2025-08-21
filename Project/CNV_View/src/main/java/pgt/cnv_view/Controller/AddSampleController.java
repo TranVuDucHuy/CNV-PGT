@@ -12,7 +12,7 @@ import java.util.ResourceBundle;
 import java.nio.file.*;
 import java.io.IOException;
 
-public class AddSample implements Initializable {
+public class AddSampleController implements Initializable {
 
 	@FXML
 	private MenuButton algorithmMenu; // MenuButton hiển thị algorithm đã chọn

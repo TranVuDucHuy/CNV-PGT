@@ -6,6 +6,8 @@ import javafx.fxml.Initializable;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.Tooltip;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
@@ -39,10 +41,11 @@ public class ViewController implements Initializable {
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         disableCheckBoxes(true);
-    // ControllerRegistry no longer needed after refactor
         addSelectionListeners();
     addViewGroupMutualExclusion();
     loadExistingSamples();
+    // expose this instance for scatter chart
+    try { ViewControllerStaticRef.set(this); } catch (NoClassDefFoundError ignored) {}
     }
 
     public void scatterChart(ActionEvent actionEvent) throws IOException {
@@ -66,7 +69,7 @@ public class ViewController implements Initializable {
 
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/pgt/cnv_view/FXML/DataTable.fxml"));
         Parent root = loader.load();
-        DataTable ctrl = loader.getController();
+        DataTableController ctrl = loader.getController();
         if (ctrl != null) {
             ctrl.loadBinsFile(binsFile);
         }
@@ -76,7 +79,7 @@ public class ViewController implements Initializable {
     public void addSample(ActionEvent actionEvent) throws IOException {
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/pgt/cnv_view/FXML/AddSample.fxml"));
         Parent root = loader.load();
-        AddSample addSampleController = loader.getController();
+        AddSampleController addSampleController = loader.getController();
         if (addSampleController != null) {
             addSampleController.setParentController(this);
         }
@@ -234,7 +237,7 @@ public class ViewController implements Initializable {
         // Map algorithm checkbox to its token (must match normalization used when saving files)
         Object[][] algos = new Object[][]{
                 {baseline, "baseline"},
-                {bicSeq2, "bic-seq2"},
+                {bicSeq2, "bicseq2"},
                 {wisecondorX, "wisecondorx"},
                 {blueFuse, "bluefuse"}
         };
@@ -290,7 +293,7 @@ public class ViewController implements Initializable {
     }
 
     private boolean sampleDirectoryHasAnyAlgorithm(String sampleName) {
-        String[] algos = {"baseline", "bic-seq2", "wisecondorx", "bluefuse"};
+        String[] algos = {"baseline", "bicseq2", "wisecondorx", "bluefuse"};
         for (String algo : algos) {
             if (sampleHasAlgorithm(sampleName, algo)) return true;
         }
@@ -313,7 +316,7 @@ public class ViewController implements Initializable {
         CheckBox cb = selectedAlgorithms.get(0);
         String text = cb.getText().toLowerCase().replaceAll("\\s+", "");
         // unify mapping for bic-seq2 vs formatting
-        if (text.contains("bic")) return "bic-seq2";
+        if (text.contains("bic")) return "bicseq2";
         return text;
     }
 
@@ -329,7 +332,12 @@ public class ViewController implements Initializable {
 
     private void addSampleCheckbox(String sampleName) {
         CheckBox cb = new CheckBox(sampleName);
-        cb.setPrefWidth(220);
+        // Let width expand to content; enables horizontal scrollbar instead of wrapping
+        cb.setPrefWidth(Region.USE_COMPUTED_SIZE);
+        cb.setMinWidth(Region.USE_PREF_SIZE);
+        cb.setMaxWidth(Region.USE_COMPUTED_SIZE);
+        cb.setWrapText(false);
+        cb.setTooltip(new Tooltip(sampleName)); // hover shows full name anyway
         cb.getStyleClass().add("sample");
         sampleContainer.getChildren().add(cb);
         setupSampleSelection(cb);

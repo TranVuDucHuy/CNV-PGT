@@ -15,7 +15,7 @@ import java.io.IOException;
 import java.util.ResourceBundle;
 import java.util.stream.Stream;
 
-public class DataTable implements Initializable {
+public class DataTableController implements Initializable {
 	@FXML private javafx.scene.layout.BorderPane root;
 
 	@FXML private TableView<BinRow> table;

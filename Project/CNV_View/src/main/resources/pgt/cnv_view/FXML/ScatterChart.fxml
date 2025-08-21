@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.NumberAxis?>
 <?import javafx.scene.chart.NumberAxis?>
 <?import javafx.scene.chart.ScatterChart?>
 <?import javafx.scene.control.ButtonBar?>
@@ -12,7 +12,7 @@
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.VBox?>
 
-<BorderPane prefWidth="1040.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="pgt.cnv_view.Controller.ScatterChart">
+<BorderPane prefWidth="1040.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="pgt.cnv_view.Controller.ScatterChartController">
    <top>
       <AnchorPane prefHeight="25.0" style="-fx-background-color: #ced1f5;" BorderPane.alignment="CENTER">
          <children>
@@ -69,14 +69,14 @@
               <content>
                 <AnchorPane>
                      <children>
-                        <ScatterChart prefHeight="650.0" prefWidth="1030.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
-                          <xAxis>
-                            <CategoryAxis side="BOTTOM" />
-                          </xAxis>
-                          <yAxis>
-                            <NumberAxis side="LEFT" />
-                          </yAxis>
-                        </ScatterChart>
+                                    <ScatterChart fx:id="chart" prefHeight="650.0" prefWidth="1030.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+                                       <xAxis>
+                                          <NumberAxis side="BOTTOM" label="Position" />
+                                       </xAxis>
+                                       <yAxis>
+                                          <NumberAxis side="LEFT" label="Copy number" />
+                                       </yAxis>
+                                    </ScatterChart>
                      </children>
                   </AnchorPane>
               </content>
