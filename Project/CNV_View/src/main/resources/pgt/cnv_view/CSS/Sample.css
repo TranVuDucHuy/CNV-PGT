@@ -8,3 +8,32 @@
     -fx-background-color: #4891e5;
     -fx-text-fill: white; /* Đổi màu chữ để dễ nhìn */
 }
+
+/* Scatter chart optimizations */
+.chart-series-area-fill {
+    -fx-fill: transparent;
+}
+
+.chart-series-area-line {
+    -fx-stroke: transparent;
+}
+
+.chart-symbol {
+    -fx-background-color: #038003, #038003;
+    -fx-background-radius: 1px;
+    -fx-padding: 1px;
+    -fx-background-insets: 0;
+}
+
+.scatter-chart .chart-plot-background {
+    -fx-background-color: white;
+}
+
+/* Disable animations for better performance */
+.chart {
+    -fx-animated: false;
+}
+
+.chart-series-line {
+    -fx-stroke-width: 0;
+}
