@@ -49,9 +49,10 @@ public class ViewController implements Initializable {
     }
 
     public void scatterChart(ActionEvent actionEvent) throws IOException {
-        Parent fxml = FXMLLoader.load(getClass().getResource("/pgt/cnv_view/FXML/ScatterChart.fxml"));
-        contentArea.getChildren().removeAll();
-        contentArea.getChildren().setAll(fxml);
+    // Always load MultiScatterChart.fxml; controller will decide to render
+    // one or multiple charts based on current selections.
+    Parent fxml = FXMLLoader.load(getClass().getResource("/pgt/cnv_view/FXML/MultiScatterChart.fxml"));
+    contentArea.getChildren().setAll(fxml);
     }
 
     public void dataTable(ActionEvent actionEvent) throws IOException {
@@ -318,6 +319,16 @@ public class ViewController implements Initializable {
         // unify mapping for bic-seq2 vs formatting
         if (text.contains("bic")) return "bicseq2";
         return text;
+    }
+
+    public List<String> getSelectedAlgorithmTokens() {
+        List<String> tokens = new LinkedList<>();
+        for (CheckBox cb : selectedAlgorithms) {
+            String text = cb.getText().toLowerCase().replaceAll("\\s+", "");
+            if (text.contains("bic")) text = "bicseq2";
+            tokens.add(text);
+        }
+        return tokens;
     }
 
     // Called by AddSample controller after successful addition or detection of existing sample

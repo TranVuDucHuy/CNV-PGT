@@ -1,86 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.scene.chart.NumberAxis?>
-<?import javafx.scene.chart.NumberAxis?>
 <?import javafx.scene.chart.ScatterChart?>
-<?import javafx.scene.control.ButtonBar?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.control.MenuButton?>
-<?import javafx.scene.control.MenuItem?>
-<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.BorderPane?>
-<?import javafx.scene.layout.VBox?>
 
-<BorderPane prefWidth="1040.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="pgt.cnv_view.Controller.ScatterChartController">
-   <top>
-      <AnchorPane prefHeight="25.0" style="-fx-background-color: #ced1f5;" BorderPane.alignment="CENTER">
-         <children>
-            <VBox>
-               <children>
-                  <Label text="Scatter Chart" />
-                  <ButtonBar>
-                    <buttons>
-                                    <MenuButton fx:id="dataMenu" mnemonicParsing="false" prefWidth="120.0" text="Data">
-                                       <items>
-                                          <MenuItem mnemonicParsing="false" text="Copy number" onAction="#onDataSelect" />
-                                          <MenuItem mnemonicParsing="false" text="Raw count" onAction="#onDataSelect" />
-                                       </items>
-                                    </MenuButton>
-                                    <MenuButton fx:id="chromosomeMenu" mnemonicParsing="false" text="Chromosome">
-                                       <items>
-                                          <MenuItem mnemonicParsing="false" text="Chromosome 1" onAction="#onChromosomeSelect" />
-                                          <MenuItem mnemonicParsing="false" text="Chromosome 2" onAction="#onChromosomeSelect" />
-                                             <MenuItem mnemonicParsing="false" text="Chromosome 3" onAction="#onChromosomeSelect" />
-                                             <MenuItem mnemonicParsing="false" text="Chromosome 4" onAction="#onChromosomeSelect" />
-                                             <MenuItem mnemonicParsing="false" text="Chromosome 5" onAction="#onChromosomeSelect" />
-                                             <MenuItem mnemonicParsing="false" text="Chromosome 6" onAction="#onChromosomeSelect" />
-                                             <MenuItem mnemonicParsing="false" text="Chromosome 7" onAction="#onChromosomeSelect" />
-                                             <MenuItem mnemonicParsing="false" text="Chromosome 8" onAction="#onChromosomeSelect" />
-                                             <MenuItem mnemonicParsing="false" text="Chromosome 9" onAction="#onChromosomeSelect" />
-                                             <MenuItem mnemonicParsing="false" text="Chromosome 10" onAction="#onChromosomeSelect" />
-                                             <MenuItem mnemonicParsing="false" text="Chromosome 11" onAction="#onChromosomeSelect" />
-                                             <MenuItem mnemonicParsing="false" text="Chromosome 12" onAction="#onChromosomeSelect" />
-                                             <MenuItem mnemonicParsing="false" text="Chromosome 13" onAction="#onChromosomeSelect" />
-                                             <MenuItem mnemonicParsing="false" text="Chromosome 14" onAction="#onChromosomeSelect" />
-                                             <MenuItem mnemonicParsing="false" text="Chromosome 15" onAction="#onChromosomeSelect" />
-                                             <MenuItem mnemonicParsing="false" text="Chromosome 16" onAction="#onChromosomeSelect" />
-                                             <MenuItem mnemonicParsing="false" text="Chromosome 17" onAction="#onChromosomeSelect" />
-                                             <MenuItem mnemonicParsing="false" text="Chromosome 18" onAction="#onChromosomeSelect" />
-                                             <MenuItem mnemonicParsing="false" text="Chromosome 19" onAction="#onChromosomeSelect" />
-                                             <MenuItem mnemonicParsing="false" text="Chromosome 20" onAction="#onChromosomeSelect" />
-                                             <MenuItem mnemonicParsing="false" text="Chromosome 21" onAction="#onChromosomeSelect" />
-                                             <MenuItem mnemonicParsing="false" text="Chromosome 22" onAction="#onChromosomeSelect" />
-                                             <MenuItem mnemonicParsing="false" text="Chromosome X" onAction="#onChromosomeSelect" />
-                                             <MenuItem mnemonicParsing="false" text="Chromosome Y" onAction="#onChromosomeSelect" />
-                                       </items>
-                                    </MenuButton>
-                    </buttons>
-                  </ButtonBar>
-               </children>
-            </VBox>
-         </children>
-      </AnchorPane>
-   </top>
+<BorderPane prefWidth="1040.0" stylesheets="@../CSS/Sample.css" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="pgt.cnv_view.Controller.ScatterChartController">
    <center>
-      <AnchorPane BorderPane.alignment="CENTER">
+      <AnchorPane BorderPane.alignment="CENTER" minWidth="800.0" minHeight="200.0" prefWidth="1200.0" prefHeight="400.0">
          <children>
-            <ScrollPane AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="14.0" AnchorPane.topAnchor="0.0">
-              <content>
-                <AnchorPane>
-                     <children>
-                                    <ScatterChart fx:id="chart" prefHeight="650.0" prefWidth="1030.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
-                                       <xAxis>
-                                          <NumberAxis side="BOTTOM" label="Position" />
-                                       </xAxis>
-                                       <yAxis>
-                                          <NumberAxis side="LEFT" label="Copy number" />
-                                       </yAxis>
-                                    </ScatterChart>
-                     </children>
-                  </AnchorPane>
-              </content>
-            </ScrollPane>
+            <ScatterChart fx:id="chart" animated="false" minWidth="800.0" minHeight="300.0" prefWidth="1200.0" prefHeight="260.0" maxWidth="Infinity" maxHeight="Infinity" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+               <xAxis>
+                  <NumberAxis side="BOTTOM" label="Position" />
+               </xAxis>
+               <yAxis>
+                  <NumberAxis side="LEFT" label="Copy number" lowerBound="0.0" upperBound="4.0" tickUnit="0.4" autoRanging="false" minorTickCount="4" minorTickVisible="true" />
+               </yAxis>
+            </ScatterChart>
          </children>
       </AnchorPane>
    </center>

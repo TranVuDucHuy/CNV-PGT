@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.ButtonBar?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.MenuButton?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="pgt.cnv_view.Controller.MultiScatterChartController">
+    <top>
+        <AnchorPane prefHeight="25.0" style="-fx-background-color: #ced1f5;" BorderPane.alignment="CENTER">
+            <children>
+                <VBox>
+                    <children>
+                        <Label text="Scatter Chart" />
+                        <ButtonBar>
+                            <buttons>
+                <MenuButton fx:id="dataMenu" mnemonicParsing="false" prefWidth="120.0" text="Copy number">
+                                    <items>
+                    <MenuItem mnemonicParsing="false" text="Copy number" onAction="#onMenuItemSelected" />
+                    <MenuItem mnemonicParsing="false" text="Raw count" onAction="#onMenuItemSelected" />
+                                    </items>
+                                </MenuButton>
+                <MenuButton fx:id="chromosomeMenu" mnemonicParsing="false" text="All chromosome">
+                                    <items>
+                    <MenuItem mnemonicParsing="false" text="Chromosome 1" onAction="#onMenuItemSelected" />
+                    <MenuItem mnemonicParsing="false" text="Chromosome 2" onAction="#onMenuItemSelected" />
+                    <MenuItem mnemonicParsing="false" text="Chromosome 3" onAction="#onMenuItemSelected" />
+                    <MenuItem mnemonicParsing="false" text="Chromosome 4" onAction="#onMenuItemSelected" />
+                    <MenuItem mnemonicParsing="false" text="Chromosome 5" onAction="#onMenuItemSelected" />
+                    <MenuItem mnemonicParsing="false" text="Chromosome 6" onAction="#onMenuItemSelected" />
+                    <MenuItem mnemonicParsing="false" text="Chromosome 7" onAction="#onMenuItemSelected" />
+                    <MenuItem mnemonicParsing="false" text="Chromosome 8" onAction="#onMenuItemSelected" />
+                    <MenuItem mnemonicParsing="false" text="Chromosome 9" onAction="#onMenuItemSelected" />
+                    <MenuItem mnemonicParsing="false" text="Chromosome 10" onAction="#onMenuItemSelected" />
+                    <MenuItem mnemonicParsing="false" text="Chromosome 11" onAction="#onMenuItemSelected" />
+                    <MenuItem mnemonicParsing="false" text="Chromosome 12" onAction="#onMenuItemSelected" />
+                    <MenuItem mnemonicParsing="false" text="Chromosome 13" onAction="#onMenuItemSelected" />
+                    <MenuItem mnemonicParsing="false" text="Chromosome 14" onAction="#onMenuItemSelected" />
+                    <MenuItem mnemonicParsing="false" text="Chromosome 15" onAction="#onMenuItemSelected" />
+                    <MenuItem mnemonicParsing="false" text="Chromosome 16" onAction="#onMenuItemSelected" />
+                    <MenuItem mnemonicParsing="false" text="Chromosome 17" onAction="#onMenuItemSelected" />
+                    <MenuItem mnemonicParsing="false" text="Chromosome 18" onAction="#onMenuItemSelected" />
+                    <MenuItem mnemonicParsing="false" text="Chromosome 19" onAction="#onMenuItemSelected" />
+                    <MenuItem mnemonicParsing="false" text="Chromosome 20" onAction="#onMenuItemSelected" />
+                    <MenuItem mnemonicParsing="false" text="Chromosome 21" onAction="#onMenuItemSelected" />
+                    <MenuItem mnemonicParsing="false" text="Chromosome 22" onAction="#onMenuItemSelected" />
+                    <MenuItem mnemonicParsing="false" text="Chromosome X" onAction="#onMenuItemSelected" />
+                    <MenuItem mnemonicParsing="false" text="Chromosome Y" onAction="#onMenuItemSelected" />
+                    <MenuItem mnemonicParsing="false" text="All chromosome" onAction="#onMenuItemSelected" />
+                                    </items>
+                                </MenuButton>
+                            </buttons>
+                        </ButtonBar>
+                    </children>
+                </VBox>
+            </children>
+        </AnchorPane>
+    </top>
+    <center>
+        <ScrollPane fx:id="rootScroll" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="ALWAYS" BorderPane.alignment="CENTER">
+            <content>
+                <VBox fx:id="chartsBox" spacing="25.0" style="-fx-padding: 10;" />
+            </content>
+        </ScrollPane>
+    </center>
+</BorderPane>
