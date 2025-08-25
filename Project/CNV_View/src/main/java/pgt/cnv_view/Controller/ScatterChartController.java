@@ -29,6 +29,16 @@ public class ScatterChartController implements Initializable {
 
 	private static final double CANVAS_POINT_SIZE_MULTI = 2.0;
 	private static final double CANVAS_POINT_SIZE_SINGLE = 3.0;
+	// Colors by segment Type
+	private static final Color COLOR_NO_CHANGE = Color.web("#25c225ff"); // green
+	private static final Color COLOR_LOSS = Color.web("#1c60c5ff"); // blue
+	private static final Color COLOR_GAIN = Color.web("#ce371cff"); // red
+	// Separate segment colors (can differ from point colors for emphasis)
+	private static final Color SEG_COLOR_NO_CHANGE = Color.web("#017a09ff"); // example: darker green
+	private static final Color SEG_COLOR_LOSS = Color.web("#0241ffff"); // deeper blue
+	private static final Color SEG_COLOR_GAIN = Color.web("#fe0101ff"); // deeper red
+	private static final double POINT_OPACITY = 0.6; // requested opacity
+	private static final double REF_LINE_WIDTH = 2.0; // thicker reference lines y=1 & y=3
 
 	@FXML
 	private MenuButton chromosomeMenu; // not used now
@@ -158,6 +168,10 @@ public class ScatterChartController implements Initializable {
 	}
 
 	private List<Segment> currentSegments = Collections.emptyList();
+	// Categorized point lists (genomic x, copy) after classification by segment Type
+	private List<double[]> fastPointsNoChange = Collections.emptyList();
+	private List<double[]> fastPointsLoss = Collections.emptyList();
+	private List<double[]> fastPointsGain = Collections.emptyList();
 	private Map<String, Long> currentChromOffset = Collections.emptyMap();
 	private Map<String, Long> currentChromLength = Collections.emptyMap();
 	private List<String> chromosomeOrder = List.of();
@@ -172,6 +186,7 @@ public class ScatterChartController implements Initializable {
 				Map<String, List<long[]>> points = new HashMap<>(); // long[]{start, copyBits}
 				Map<String, Long> chromMax = new HashMap<>(); // use max END (col2) else start
 				List<Segment> segments = new ArrayList<>();
+				Map<String, List<Segment>> segmentsByChr = new HashMap<>();
 
 				try (Stream<String> lines = Files.lines(binsFile)) {
 					lines.skip(1).filter(l -> !l.isBlank()).forEach(line -> {
@@ -199,7 +214,7 @@ public class ScatterChartController implements Initializable {
 					try (Stream<String> lines = Files.lines(segmentsFile)) {
 						lines.skip(1).filter(l -> !l.isBlank()).forEach(line -> {
 							String[] p = line.split("\t");
-							if (p.length < 4) return; // expect chr start end value
+							if (p.length < 4) return; // need at least chr start end copy
 							String chr = p[0].replaceFirst("^(?i)chr", "");
 							if (!chromList.contains(chr)) return;
 							if (filterChr != null && !chr.equalsIgnoreCase(filterChr)) return;
@@ -207,11 +222,16 @@ public class ScatterChartController implements Initializable {
 								long start = Long.parseLong(p[1]);
 								long end = parseLongSafe(p[2], start);
 								double copy = Double.parseDouble(p[3]);
-								segments.add(new Segment(chr, start, end, copy));
+								String type = (p.length > 4 ? p[4] : "");
+								Segment seg = new Segment(chr, start, end, copy, type);
+								segments.add(seg);
+								segmentsByChr.computeIfAbsent(chr, k -> new ArrayList<>()).add(seg);
 							} catch (NumberFormatException ignored) {}
 						});
 					} catch (IOException ignored) {}
 				}
+				// Sort each chr's segments for binary search classification
+				for (List<Segment> lst : segmentsByChr.values()) lst.sort(Comparator.comparingLong(a -> a.start));
 
 				// Total length (sum of chrom lengths with data)
 				long totalLen = chromMax.values().stream().mapToLong(Long::longValue).sum();
@@ -221,7 +241,10 @@ public class ScatterChartController implements Initializable {
 				// This is critical for CNV analysis where small variations matter
 				
 				int totalPoints = points.values().stream().mapToInt(List::size).sum();
-				List<double[]> fastPointsLocal = new ArrayList<>(totalPoints); // canvas points
+				List<double[]> fastPointsLocal = new ArrayList<>(totalPoints); // all points (for legacy use)
+				List<double[]> ptsNoChange = new ArrayList<>();
+				List<double[]> ptsLoss = new ArrayList<>();
+				List<double[]> ptsGain = new ArrayList<>();
 
 				// Build cumulative offsets proportional to length; normalize to 0..totalLen
 				long cumulative = 0;
@@ -233,11 +256,16 @@ public class ScatterChartController implements Initializable {
 						chromOffset.put(chr, cumulative);
 						List<long[]> lst = points.get(chr);
 						if (lst != null) {
+							List<Segment> segs = segmentsByChr.get(chr);
 							for (long[] arr : lst) {
 								long start = arr[0];
 								double copy = Double.longBitsToDouble(arr[1]);
 								double x = cumulative + (double) start;
 								fastPointsLocal.add(new double[]{x, copy});
+								String typeNorm = classify(start, segs);
+								if (typeNorm.equals("loss")) ptsLoss.add(new double[]{x, copy});
+								else if (typeNorm.equals("gain")) ptsGain.add(new double[]{x, copy});
+								else ptsNoChange.add(new double[]{x, copy});
 							}
 						}
 						cumulative += len;
@@ -249,10 +277,15 @@ public class ScatterChartController implements Initializable {
 						chromOffset.put(filterChr, 0L);
 						List<long[]> lst = points.get(filterChr);
 						if (lst != null) {
+							List<Segment> segs = segmentsByChr.get(filterChr);
 							for (long[] arr : lst) {
 								long start = arr[0];
 								double copy = Double.longBitsToDouble(arr[1]);
 								fastPointsLocal.add(new double[]{(double) start, copy});
+								String typeNorm = classify(start, segs);
+								if (typeNorm.equals("loss")) ptsLoss.add(new double[]{(double) start, copy});
+								else if (typeNorm.equals("gain")) ptsGain.add(new double[]{(double) start, copy});
+								else ptsNoChange.add(new double[]{(double) start, copy});
 							}
 						}
 					}
@@ -275,7 +308,10 @@ public class ScatterChartController implements Initializable {
 				currentChromLength = chromMax;
 				chromosomeOrder = (filterChr == null ? chromList.stream().filter(chromMax::containsKey).toList() : (chromMax.containsKey(filterChr) ? List.of(filterChr) : List.of()));
 				currentGenomeTotal = totalLen;
-				final List<double[]> finalFastPoints = fastPointsLocal; // points for canvas
+				final List<double[]> finalFastPoints = fastPointsLocal; // all points (legacy)
+				final List<double[]> finalPtsNoChange = ptsNoChange;
+				final List<double[]> finalPtsLoss = ptsLoss;
+				final List<double[]> finalPtsGain = ptsGain;
 
 				Platform.runLater(() -> {
 					// Race guard: generation + overrides + chromosome filter must still match
@@ -296,7 +332,10 @@ public class ScatterChartController implements Initializable {
 						chart.applyCss();
 						chart.layout();
 						setupFastCanvasIfNeeded();
-						fastPoints = finalFastPoints; // store
+						fastPoints = finalFastPoints; // legacy store
+						fastPointsNoChange = finalPtsNoChange;
+						fastPointsLoss = finalPtsLoss;
+						fastPointsGain = finalPtsGain;
 						drawFastPoints();
 					});
 
@@ -322,9 +361,11 @@ public class ScatterChartController implements Initializable {
 		// reference pane explicitly (no-op) to satisfy compiler if future refactors remove usages
 		@SuppressWarnings("unused") javafx.scene.layout.Pane _paneRef = pane;
 
-		// Hide default vertical grid lines so only custom chromosome boundaries show
+		// Hide default grid lines (vertical & horizontal) so only our custom overlays show
 		chart.lookupAll(".chart-vertical-grid-lines").forEach(node -> node.setVisible(false));
 		chart.lookupAll(".chart-vertical-zero-line").forEach(node -> node.setVisible(false));
+		chart.lookupAll(".chart-horizontal-grid-lines").forEach(node -> node.setVisible(false));
+		chart.lookupAll(".chart-horizontal-zero-line").forEach(node -> node.setVisible(false));
 
 		// Bounds of background within the plotArea (offset due to padding / axis)
 		var bgBounds = bg.getBoundsInParent();
@@ -337,8 +378,26 @@ public class ScatterChartController implements Initializable {
 			Object ref = n.getProperties().get("refLine");
 			Object bLine = n.getProperties().get("chrBoundaryLine");
 			Object lbl = n.getProperties().get("chrLabel");
-			return (seg instanceof Boolean b1 && b1) || (ref instanceof Boolean b2 && b2) || (bLine instanceof Boolean b3 && b3) || (lbl instanceof Boolean b4 && b4);
+			Object aux = n.getProperties().get("auxHLine");
+			return (seg instanceof Boolean b1 && b1) || (ref instanceof Boolean b2 && b2) || (bLine instanceof Boolean b3 && b3) || (lbl instanceof Boolean b4 && b4) || (aux instanceof Boolean b5 && b5);
 		});
+
+		// Custom auxiliary horizontal lines (bolder) for intermediate ticks excluding reference lines y=1 & y=3
+		double xStartAll = offsetX + xAxis.getDisplayPosition(xAxis.getLowerBound());
+		double xEndAll = offsetX + xAxis.getDisplayPosition(xAxis.getUpperBound());
+		for (var tick : yAxis.getTickMarks()) {
+			double val = tick.getValue().doubleValue();
+			if (Math.abs(val - 1.0) < 1e-6 || Math.abs(val - 3.0) < 1e-6 || Math.abs(val - 0.0) < 1e-6 || Math.abs(val - 4.0) < 1e-6) continue; // skip ref & excluded lines (0,1,3,4)
+			double y = offsetY + yAxis.getDisplayPosition(val);
+			if (Double.isNaN(y)) continue;
+			Line auxLine = new Line(xStartAll, y, xEndAll, y);
+			auxLine.getProperties().put("auxHLine", true);
+			auxLine.setManaged(false);
+			auxLine.setMouseTransparent(true);
+			auxLine.setStrokeWidth(1.2); // slightly thicker
+			auxLine.setStyle("-fx-stroke: #858585ff; -fx-opacity: 0.8; -fx-stroke-dash-array: 5 10;"); // dashed auxiliary line
+			pane.getChildren().add(auxLine);
+		}
 
 		// Chromosome boundary + labels only in multi-chrom mode
 		if (filteredChromosome == null && !chromosomeOrder.isEmpty() && currentGenomeTotal > 0) {
@@ -355,7 +414,7 @@ public class ScatterChartController implements Initializable {
 				vLine.setManaged(false);
 				vLine.setMouseTransparent(true);
 				vLine.setStrokeWidth(1.0);
-				vLine.setStyle("-fx-stroke: #666666; -fx-opacity: 0.9;");
+				vLine.setStyle("-fx-stroke: #4e4e4eff; -fx-opacity: 0.9;");
 				pane.getChildren().add(vLine);
 			}
 
@@ -403,7 +462,27 @@ public class ScatterChartController implements Initializable {
 			}
 		}
 
-		// Draw CNV segments (if any loaded)
+		// Draw horizontal reference lines FIRST so they appear behind points & segments
+		double xStart = offsetX + xAxis.getDisplayPosition(xAxis.getLowerBound());
+		double xEnd = offsetX + xAxis.getDisplayPosition(xAxis.getUpperBound());
+		int canvasIndex = -1;
+		if (fastCanvas != null) canvasIndex = pane.getChildren().indexOf(fastCanvas);
+		double[] refYVals = {1.0, 3.0};
+		for (double refVal : refYVals) {
+			if (refVal < yAxis.getLowerBound() || refVal > yAxis.getUpperBound()) continue;
+			double y = offsetY + yAxis.getDisplayPosition(refVal);
+			if (Double.isNaN(y)) continue;
+			Line refLine = new Line(xStart, y, xEnd, y);
+			refLine.getProperties().put("refLine", true);
+			refLine.setManaged(false);
+			refLine.setMouseTransparent(true);
+			refLine.setStrokeWidth(REF_LINE_WIDTH);
+			String color = (refVal == 3.0) ? "#ff2600ff" : "#00aeffff"; // y=3 -> red, y=1 -> blue
+			refLine.setStyle("-fx-stroke: " + color + "; -fx-stroke-dash-array: 5 10; -fx-opacity: 0.9;");
+			if (canvasIndex >= 0) pane.getChildren().add(canvasIndex, refLine); else pane.getChildren().add(0, refLine);
+		}
+
+		// Draw CNV segments (after reference lines, above them)
 		if (!currentSegments.isEmpty()) {
 			for (Segment s : currentSegments) {
 				Long cOff = currentChromOffset.get(s.chr);
@@ -420,26 +499,14 @@ public class ScatterChartController implements Initializable {
 				line.setManaged(false);
 				line.setMouseTransparent(true);
 				line.setStrokeWidth(4.0);
-				line.setStyle("-fx-stroke: #d40000; -fx-opacity: 1;");
+				String colorCss = switch (s.typeNormalized) {
+					case "loss" -> toRgbaCss(SEG_COLOR_LOSS);
+					case "gain" -> toRgbaCss(SEG_COLOR_GAIN);
+					default -> toRgbaCss(SEG_COLOR_NO_CHANGE);
+				};
+				line.setStyle("-fx-stroke: " + colorCss + "; -fx-opacity: 1;");
 				pane.getChildren().add(line);
 			}
-		}
-
-		// Draw horizontal reference lines at y=1 and y=3 (aneuploidy helpers)
-		double xStart = offsetX + xAxis.getDisplayPosition(xAxis.getLowerBound());
-		double xEnd = offsetX + xAxis.getDisplayPosition(xAxis.getUpperBound());
-		double[] refYVals = {1.0, 3.0};
-		for (double refVal : refYVals) {
-			if (refVal < yAxis.getLowerBound() || refVal > yAxis.getUpperBound()) continue;
-			double y = offsetY + yAxis.getDisplayPosition(refVal);
-			if (Double.isNaN(y)) continue;
-			Line refLine = new Line(xStart, y, xEnd, y);
-			refLine.getProperties().put("refLine", true);
-			refLine.setManaged(false);
-			refLine.setMouseTransparent(true);
-			refLine.setStrokeWidth(1.5);
-			refLine.setStyle("-fx-stroke: #005bbb; -fx-stroke-dash-array: 6 6; -fx-opacity: 0.9;");
-			pane.getChildren().add(refLine);
 		}
 		// Fast mode canvas redraw (points) after overlays updated
 		if (fastCanvas != null && fastCanvas.isVisible()) {
@@ -449,7 +516,7 @@ public class ScatterChartController implements Initializable {
 
 	// ---------------- Fast Canvas Rendering -----------------
 	private Canvas fastCanvas; // overlay canvas
-	private List<double[]> fastPoints = Collections.emptyList(); // raw (x,y) in genomic coordinate & copy value
+	private List<double[]> fastPoints = Collections.emptyList(); // legacy combined list (not color-classified)
 
 	private void setupFastCanvasIfNeeded() {
 		if (fastCanvas != null) return;
@@ -488,8 +555,8 @@ public class ScatterChartController implements Initializable {
 		positionAndResizeFastCanvas();
 		fastCanvas.setVisible(true);
 		GraphicsContext g = fastCanvas.getGraphicsContext2D();
-		g.setFill(Color.web("#038003"));
 		g.clearRect(0,0, fastCanvas.getWidth(), fastCanvas.getHeight());
+		g.setGlobalAlpha(POINT_OPACITY);
 		// Determine scaling: map data x to display position then subtract lower bound position to fit canvas
 		double lowerBoundX = xAxis.getLowerBound();
 		double upperBoundX = xAxis.getUpperBound();
@@ -501,7 +568,15 @@ public class ScatterChartController implements Initializable {
 		if (spanDisplay == 0) return;
 		// Draw with size depending on single/multi chromosome view
 		double size = (filteredChromosome == null ? CANVAS_POINT_SIZE_MULTI : CANVAS_POINT_SIZE_SINGLE);
-		for (double[] pt : fastPoints) {
+		drawPointList(g, xAxis, yAxis, fastPointsNoChange, COLOR_NO_CHANGE, size, lowerBoundX, upperBoundX, lowerBoundY, upperBoundY);
+		drawPointList(g, xAxis, yAxis, fastPointsLoss, COLOR_LOSS, size, lowerBoundX, upperBoundX, lowerBoundY, upperBoundY);
+		drawPointList(g, xAxis, yAxis, fastPointsGain, COLOR_GAIN, size, lowerBoundX, upperBoundX, lowerBoundY, upperBoundY);
+	}
+
+	private void drawPointList(GraphicsContext g, NumberAxis xAxis, NumberAxis yAxis, List<double[]> pts, Color c, double size, double lowerBoundX, double upperBoundX, double lowerBoundY, double upperBoundY) {
+		if (pts == null || pts.isEmpty()) return;
+		g.setFill(c);
+		for (double[] pt : pts) {
 			double xVal = pt[0];
 			if (xVal < lowerBoundX || xVal > upperBoundX) continue;
 			double yVal = pt[1];
@@ -513,9 +588,36 @@ public class ScatterChartController implements Initializable {
 		}
 	}
 
+	private String classify(long pos, List<Segment> segs) {
+		if (segs == null || segs.isEmpty()) return "no_change";
+		int lo = 0, hi = segs.size()-1;
+		while (lo <= hi) {
+			int mid = (lo+hi)/2;
+			Segment s = segs.get(mid);
+			if (pos < s.start) hi = mid - 1;
+			else if (pos > s.end) lo = mid + 1;
+			else return s.typeNormalized;
+		}
+		return "no_change";
+	}
+
 	private static class Segment {
-		final String chr; final long start; final long end; final double copy;
-		Segment(String chr, long start, long end, double copy) { this.chr = chr; this.start = start; this.end = end; this.copy = copy; }
+		final String chr; final long start; final long end; final double copy; final String typeRaw; final String typeNormalized;
+		Segment(String chr, long start, long end, double copy, String typeRaw) {
+			this.chr = chr; this.start = start; this.end = end; this.copy = copy; this.typeRaw = typeRaw == null ? "" : typeRaw;
+			String t = this.typeRaw.trim().toLowerCase(Locale.ROOT);
+			if (t.equals("loss") || t.equals("del") || t.equals("deletion") || t.equals("loh")) this.typeNormalized = "loss";
+			else if (t.equals("gain") || t.equals("dup") || t.equals("duplication") || t.equals("amp") || t.equals("amplification")) this.typeNormalized = "gain";
+			else this.typeNormalized = "no_change";
+		}
+	}
+
+	private static String toRgbaCss(Color c) {
+		int r = (int)Math.round(c.getRed()*255);
+		int g = (int)Math.round(c.getGreen()*255);
+		int b = (int)Math.round(c.getBlue()*255);
+		int a = (int)Math.round(c.getOpacity()*255);
+		return String.format("#%02x%02x%02x%02x", r,g,b,a);
 	}
 
 	private long parseLongSafe(String s, long fallback) {
@@ -529,7 +631,8 @@ public class ScatterChartController implements Initializable {
 	private String buildTitle(String sample, String algoToken, String chrFilter) {
 		String algoPretty = prettyAlgorithm(algoToken);
 		String chrPart = (chrFilter == null ? "All chromosomes" : "Chromosome " + chrFilter);
-		return sample + " -- " + algoPretty + " -- " + chrPart;
+		String displaySample = CnvData.displaySampleName(sample);
+		return displaySample + " -- " + algoPretty + " -- " + chrPart;
 	}
 
 	private String algoTokenForTitle() {

@@ -84,4 +84,33 @@ public final class CnvData {
         }
         return false;
     }
+
+    // -------- Sample name parsing --------
+    // Format: FlowcellID-CycleID-EmbryoID where FlowcellID & EmbryoID contain no '-', CycleID may contain '-'
+    public record SampleParts(String flowcell, String cycle, String embryo) {}
+
+    public static SampleParts parseSample(String sample) {
+        if (sample == null || sample.isBlank()) return new SampleParts(sample, sample, sample);
+        String[] tokens = sample.split("-");
+        if (tokens.length < 3) { // fallback: cannot reliably split
+            return new SampleParts(sample, sample, sample);
+        }
+        String flowcell = tokens[0];
+        String embryo = tokens[tokens.length - 1];
+        StringBuilder cycle = new StringBuilder();
+        for (int i = 1; i < tokens.length - 1; i++) {
+            if (i > 1) cycle.append('-');
+            cycle.append(tokens[i]);
+        }
+        return new SampleParts(flowcell, cycle.toString(), embryo);
+    }
+
+    public static String cycleId(String sample) { return parseSample(sample).cycle(); }
+    public static String flowcellId(String sample) { return parseSample(sample).flowcell(); }
+    public static String embryoId(String sample) { return parseSample(sample).embryo(); }
+    // Display name used in chart/report titles: FlowcellID-EmbryoID
+    public static String displaySampleName(String sample) {
+        SampleParts p = parseSample(sample);
+        return p.flowcell() + '-' + p.embryo();
+    }
 }

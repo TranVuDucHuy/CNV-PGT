@@ -5,6 +5,7 @@
 <?import javafx.scene.control.MenuButton?>
 <?import javafx.scene.control.MenuItem?>
 <?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.SplitPane?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.VBox?>
@@ -61,10 +62,20 @@
         </AnchorPane>
     </top>
     <center>
-        <ScrollPane fx:id="rootScroll" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="ALWAYS" BorderPane.alignment="CENTER">
-            <content>
-                <VBox fx:id="chartsBox" spacing="25.0" style="-fx-padding: 10;" />
-            </content>
-        </ScrollPane>
+    <SplitPane fx:id="mainSplit" orientation="HORIZONTAL" dividerPositions="0.70" BorderPane.alignment="CENTER">
+            <items>
+        <ScrollPane fx:id="rootScroll" fitToWidth="false" hbarPolicy="AS_NEEDED" vbarPolicy="ALWAYS" minWidth="300.0">
+                    <content>
+                        <VBox fx:id="chartsBox" spacing="25.0" style="-fx-padding: 10;" />
+                    </content>
+                </ScrollPane>
+        <AnchorPane minWidth="0.0" prefWidth="320.0" maxWidth="600.0">
+                    <children>
+                        <!-- Anchor the included report to fill the right pane so its internal ScrollPane can scroll properly -->
+                        <fx:include source="Report.fxml" fx:id="report" AnchorPane.topAnchor="0.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" />
+                    </children>
+                </AnchorPane>
+            </items>
+        </SplitPane>
     </center>
 </BorderPane>
