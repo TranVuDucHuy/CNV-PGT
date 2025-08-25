@@ -9,6 +9,7 @@ import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
 import javafx.event.ActionEvent;
 import javafx.scene.layout.VBox;
+import javafx.scene.layout.Region;
 import java.net.URL;
 import java.util.*;
 
@@ -24,9 +25,12 @@ public class MultiScatterChartController implements Initializable {
     @FXML private VBox chartsBox;
     @FXML private MenuButton dataMenu;
     @FXML private MenuButton chromosomeMenu;
+    // Included report controller (fx:include fx:id="report" => field name reportController)
+    @FXML private ReportController reportController;
 
     // Keep references to child chart controllers for updates
     private final List<ScatterChartController> childControllers = new ArrayList<>();
+    private static final double BASE_CHART_WIDTH = 1040; // initial logical width before expanding
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -58,6 +62,10 @@ public class MultiScatterChartController implements Initializable {
             String sample = uniqueSamples.get(0);
             for (String algo : algos) addSingleChart(sample, algo);
         }
+    // Load report after charts constructed
+    if (reportController != null) reportController.refresh();
+    // Setup responsive width after initial layout pass
+    javafx.application.Platform.runLater(this::setupResponsiveWidthBinding);
     }
 
     private void addSingleChart(String sample, String algo) {
@@ -95,6 +103,29 @@ public class MultiScatterChartController implements Initializable {
                 for (ScatterChartController c : childControllers) {
                     c.setChromosome(token);
                 }
+            }
+        }
+    }
+
+    private void setupResponsiveWidthBinding() {
+        if (rootScroll == null || chartsBox == null) return;
+        // Adjust widths when viewport changes (split pane drag / fullscreen)
+        rootScroll.viewportBoundsProperty().addListener((obs, oldB, newB) -> {
+            double vpW = newB.getWidth();
+            double target = Math.max(BASE_CHART_WIDTH, vpW - 20); // minus padding
+            for (var node : chartsBox.getChildren()) {
+                if (node instanceof Region r) {
+                    r.setPrefWidth(target);
+                }
+            }
+        });
+        // Run once with current viewport if available
+        var vb = rootScroll.getViewportBounds();
+        if (vb != null) {
+            double vpW = vb.getWidth();
+            double target = Math.max(BASE_CHART_WIDTH, vpW - 20);
+            for (var node : chartsBox.getChildren()) {
+                if (node instanceof Region r) r.setPrefWidth(target);
             }
         }
     }

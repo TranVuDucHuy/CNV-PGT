@@ -7,9 +7,9 @@
 
 <BorderPane prefWidth="1040.0" stylesheets="@../CSS/Sample.css" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="pgt.cnv_view.Controller.ScatterChartController">
    <center>
-      <AnchorPane BorderPane.alignment="CENTER" minWidth="800.0" minHeight="200.0" prefWidth="1200.0" prefHeight="400.0">
+   <AnchorPane BorderPane.alignment="CENTER" minWidth="800.0" minHeight="200.0" prefWidth="1040.0" prefHeight="400.0">
          <children>
-            <ScatterChart fx:id="chart" animated="false" minWidth="800.0" minHeight="300.0" prefWidth="1200.0" prefHeight="260.0" maxWidth="Infinity" maxHeight="Infinity" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+            <ScatterChart fx:id="chart" animated="false" minWidth="800.0" minHeight="300.0" prefWidth="1040.0" prefHeight="260.0" maxWidth="Infinity" maxHeight="Infinity" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                <xAxis>
                   <NumberAxis side="BOTTOM" label="Position" />
                </xAxis>

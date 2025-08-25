@@ -32,6 +32,8 @@ public class ViewController implements Initializable {
 
     // Store up to 6 selected sample checkboxes (FIFO behavior)
     private final List<CheckBox> selectedSamples = new LinkedList<>();
+    // Cycle ID currently locked (after first selection); null means no restriction yet
+    private String selectedCycleId = null;
 
     @FXML
     private CheckBox baseline, bicSeq2, wisecondorX, blueFuse, scatterChart, boxPlot, dataTable, report;
@@ -82,6 +84,16 @@ public class ViewController implements Initializable {
     private void setupSampleSelection(CheckBox sample) {
         sample.selectedProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal) { // selecting
+                String cycle = pgt.cnv_view.util.CnvData.cycleId(originalSample(sample));
+                if (selectedCycleId == null) {
+                    selectedCycleId = cycle; // lock cycle on first selection
+                    applyCycleRestriction();
+                } else if (!selectedCycleId.equals(cycle)) {
+                    // Reject selection from different cycle
+                    sample.setSelected(false);
+                    showTransientTooltip(sample, "Chỉ chọn được sample cùng Cycle: " + selectedCycleId);
+                    return;
+                }
                 if (!selectedSamples.contains(sample)) {
                     if (selectedSamples.size() == 6) { // limit increased from 2 -> 6
                         // Remove (deselect) the oldest to maintain cap
@@ -94,6 +106,11 @@ public class ViewController implements Initializable {
             } else { // deselecting
                 selectedSamples.remove(sample);
                 sample.getStyleClass().remove("selected");
+                if (selectedSamples.isEmpty()) {
+                    // Unlock cycle restriction
+                    selectedCycleId = null;
+                    applyCycleRestriction();
+                }
             }
 
             // Enable / disable downstream checkboxes based on whether any sample is selected
@@ -113,6 +130,29 @@ public class ViewController implements Initializable {
             // Enforce dynamic algorithm selection limit (if >=2 samples selected -> only 1 algorithm allowed)
             enforceAlgorithmLimit();
         });
+    }
+
+    private void applyCycleRestriction() {
+        if (sampleContainer == null) return;
+        for (javafx.scene.Node n : sampleContainer.getChildren()) {
+            if (n instanceof CheckBox cb) {
+                String cycle = pgt.cnv_view.util.CnvData.cycleId(originalSample(cb));
+                boolean enable = (selectedCycleId == null) || selectedCycleId.equals(cycle) || cb.isSelected();
+                cb.setDisable(!enable);
+            }
+        }
+    }
+
+    private void showTransientTooltip(CheckBox cb, String text) {
+        Tooltip tip = new Tooltip(text);
+        tip.setAutoHide(true);
+        javafx.geometry.Point2D p = cb.localToScreen(0, cb.getHeight());
+        if (p != null) tip.show(cb.getScene().getWindow(), p.getX(), p.getY());
+        // Auto hide after 1.5s
+        new Thread(() -> {
+            try { Thread.sleep(1500); } catch (InterruptedException ignored) {}
+            javafx.application.Platform.runLater(tip::hide);
+        }, "TipHide").start();
     }
 
     private void disableCheckBoxes(boolean disable) {
@@ -283,7 +323,7 @@ public class ViewController implements Initializable {
 
     private void loadDataTable() {
         if (!canShowDataTable()) { contentArea.getChildren().clear(); return; }
-        String sample = selectedSamples.get(0).getText();
+    String sample = originalSample(selectedSamples.get(0));
         String algoToken = getPrimaryAlgorithmToken();
         if (algoToken == null) { contentArea.getChildren().clear(); return; }
     Path binsFile = CnvData.resolveDataRoot()
@@ -320,7 +360,7 @@ public class ViewController implements Initializable {
                 {wisecondorX, "wisecondorx"},
                 {blueFuse, "bluefuse"}
         };
-        List<String> sampleNames = selectedSamples.stream().map(CheckBox::getText).toList();
+    List<String> sampleNames = selectedSamples.stream().map(this::originalSample).toList();
         for (Object[] entry : algos) {
             CheckBox cb = (CheckBox) entry[0];
             String token = (String) entry[1];
@@ -344,31 +384,31 @@ public class ViewController implements Initializable {
         try {
             Path dataRoot = CnvData.resolveDataRoot();
             if (!Files.exists(dataRoot) || !Files.isDirectory(dataRoot)) return;
+            // Group by Cycle_ID
+            java.util.Map<String, java.util.List<String>> byCycle = new java.util.TreeMap<>();
             Files.list(dataRoot)
-                    .filter(Files::isDirectory)
-                    .map(p -> p.getFileName().toString())
-                    .filter(CnvData::sampleDirectoryHasAnyAlgorithm)
-                    .sorted()
-                    .forEach(this::addSampleCheckbox);
+                .filter(Files::isDirectory)
+                .map(p -> p.getFileName().toString())
+                .filter(CnvData::sampleDirectoryHasAnyAlgorithm)
+                .forEach(name -> {
+                    String cycle = CnvData.cycleId(name);
+                    byCycle.computeIfAbsent(cycle, k -> new java.util.ArrayList<>()).add(name);
+                });
+            for (var entry : byCycle.entrySet()) {
+                String cycle = entry.getKey();
+                javafx.scene.control.Label header = createCycleHeader(cycle);
+                sampleContainer.getChildren().add(header);
+                entry.getValue().stream().sorted().forEach(this::addSampleCheckbox);
+            }
         } catch (Exception ignored) {}
     }
     // Removed sampleDirectoryHasAnyAlgorithm & resolveDataRoot (now in CnvData)
 
     // Accessors for DataTable
-    public List<String> getSelectedSampleNames() {
-        return selectedSamples.stream().map(CheckBox::getText).toList();
-    }
+    public List<String> getSelectedSampleNames() { return selectedSamples.stream().map(this::originalSample).toList(); }
 
     // Return selected sample names in the visual order (order of checkboxes inside sampleContainer)
-    public List<String> getSelectedSampleNamesInDisplayOrder() {
-        List<String> ordered = new LinkedList<>();
-        for (javafx.scene.Node n : sampleContainer.getChildren()) {
-            if (n instanceof CheckBox cb && cb.isSelected()) {
-                ordered.add(cb.getText());
-            }
-        }
-        return ordered;
-    }
+    public List<String> getSelectedSampleNamesInDisplayOrder() { List<String> ordered = new LinkedList<>(); for (javafx.scene.Node n : sampleContainer.getChildren()) if (n instanceof CheckBox cb && cb.isSelected()) ordered.add(originalSample(cb)); return ordered; }
 
     public String getPrimaryAlgorithmToken() { if (selectedAlgorithms.isEmpty()) return null; return CnvData.normalizeAlgorithm(selectedAlgorithms.get(0).getText()); }
 
@@ -380,21 +420,26 @@ public class ViewController implements Initializable {
     // Called by AddSample controller after successful addition or detection of existing sample
     public void registerSample(String sampleName) {
         // Avoid duplicates
-        for (CheckBox cb : getAllSampleCheckBoxes()) {
-            if (cb.getText().equals(sampleName)) { updateAlgorithmAvailability(); return; }
-        }
+    for (CheckBox cb : getAllSampleCheckBoxes()) if (originalSample(cb).equals(sampleName)) { updateAlgorithmAvailability(); return; }
+        // Find header for this cycle or create at bottom
+        String cycle = CnvData.cycleId(sampleName);
+        boolean headerExists = false;
+    for (javafx.scene.Node n : sampleContainer.getChildren()) if (n instanceof javafx.scene.control.Label lbl && lbl.getText().equals(cycle)) { headerExists = true; break; }
+    if (!headerExists) sampleContainer.getChildren().add(createCycleHeader(cycle));
         addSampleCheckbox(sampleName);
         updateAlgorithmAvailability();
     }
 
     private void addSampleCheckbox(String sampleName) {
-        CheckBox cb = new CheckBox(sampleName);
+        String display = CnvData.displaySampleName(sampleName);
+        CheckBox cb = new CheckBox(display);
+        cb.setUserData(sampleName); // keep original full name
         // Let width expand to content; enables horizontal scrollbar instead of wrapping
         cb.setPrefWidth(Region.USE_COMPUTED_SIZE);
         cb.setMinWidth(Region.USE_PREF_SIZE);
         cb.setMaxWidth(Region.USE_COMPUTED_SIZE);
         cb.setWrapText(false);
-        cb.setTooltip(new Tooltip(sampleName)); // hover shows full name anyway
+        cb.setTooltip(new Tooltip(sampleName + "\n" + CnvData.cycleId(sampleName)));
         cb.getStyleClass().add("sample");
         sampleContainer.getChildren().add(cb);
         setupSampleSelection(cb);
@@ -406,5 +451,47 @@ public class ViewController implements Initializable {
             if (n instanceof CheckBox c) list.add(c);
         }
         return list;
+    }
+
+    private String originalSample(CheckBox cb) { Object ud = cb.getUserData(); return (ud instanceof String s) ? s : cb.getText(); }
+
+    // ----- Cycle header interactivity -----
+    private static final String CYCLE_HEADER_BASE_STYLE = "-fx-font-weight:bold; -fx-padding:6 4 2 4; -fx-text-fill:#1a1a1a; -fx-background-color:transparent; -fx-cursor:hand;";
+
+    private javafx.scene.control.Label createCycleHeader(String cycle) {
+        javafx.scene.control.Label lbl = new javafx.scene.control.Label(cycle);
+        lbl.setStyle(CYCLE_HEADER_BASE_STYLE);
+        lbl.setOnMouseEntered(e -> lbl.setStyle(CYCLE_HEADER_BASE_STYLE + " -fx-background-color:#e6f1ff;"));
+        lbl.setOnMouseExited(e -> lbl.setStyle(CYCLE_HEADER_BASE_STYLE));
+        lbl.setOnMouseClicked(e -> toggleCycleSelection(cycle, lbl));
+        lbl.setTooltip(new Tooltip("Chọn / bỏ chọn tất cả phôi"));
+        return lbl;
+    }
+
+    private void toggleCycleSelection(String cycle, javafx.scene.control.Label source) {
+        List<CheckBox> cycleBoxes = new LinkedList<>();
+        for (CheckBox cb : getAllSampleCheckBoxes()) if (CnvData.cycleId(originalSample(cb)).equals(cycle)) cycleBoxes.add(cb);
+        if (cycleBoxes.isEmpty()) return;
+        boolean anyUnselected = cycleBoxes.stream().anyMatch(cb -> !cb.isSelected());
+        if (anyUnselected) {
+            int max = 6;
+            if (selectedSamples.size() >= max) { showTransientTooltipNode(source, "Chỉ được chọn tối đa 6 phôi"); return; }
+            for (CheckBox cb : cycleBoxes) {
+                if (!cb.isSelected()) {
+                    cb.setSelected(true);
+                    if (selectedSamples.size() >= max) break;
+                }
+            }
+        } else {
+            // all selected -> deselect
+            for (CheckBox cb : cycleBoxes) cb.setSelected(false);
+        }
+    }
+
+    private void showTransientTooltipNode(javafx.scene.Node node, String text) {
+        Tooltip tip = new Tooltip(text); tip.setAutoHide(true);
+        javafx.geometry.Point2D p = node.localToScreen(0, node.getBoundsInLocal().getHeight());
+        if (p != null) tip.show(node.getScene().getWindow(), p.getX(), p.getY());
+        new Thread(() -> { try { Thread.sleep(1200); } catch (InterruptedException ignored) {} javafx.application.Platform.runLater(tip::hide); }, "HideTip").start();
     }
 }
