@@ -19,6 +19,7 @@ import java.util.ResourceBundle;
 import java.util.LinkedList;
 import java.util.List;
 import java.nio.file.*;
+import pgt.cnv_view.util.CnvData;
 
 import javafx.event.ActionEvent;
 
@@ -29,7 +30,7 @@ public class ViewController implements Initializable {
     @FXML
     private VBox sampleContainer;
 
-    // Store up to 2 selected sample checkboxes (FIFO behavior)
+    // Store up to 6 selected sample checkboxes (FIFO behavior)
     private final List<CheckBox> selectedSamples = new LinkedList<>();
 
     @FXML
@@ -46,35 +47,19 @@ public class ViewController implements Initializable {
     loadExistingSamples();
     // expose this instance for scatter chart
     try { ViewControllerStaticRef.set(this); } catch (NoClassDefFoundError ignored) {}
+        attachUnifiedViewListeners();
     }
 
+    private enum ViewType { SCATTER, DATATABLE, BOX, REPORT, NONE }
+    private ViewType currentView = ViewType.NONE;
+
     public void scatterChart(ActionEvent actionEvent) throws IOException {
-    // Always load MultiScatterChart.fxml; controller will decide to render
-    // one or multiple charts based on current selections.
-    Parent fxml = FXMLLoader.load(getClass().getResource("/pgt/cnv_view/FXML/MultiScatterChart.fxml"));
-    contentArea.getChildren().setAll(fxml);
+        // Delegate to unified refresh (selection state already changed)
+        refreshViewContent();
     }
 
     public void dataTable(ActionEvent actionEvent) throws IOException {
-        // Determine first selected sample + primary algorithm -> build bins file path
-        if (selectedSamples.isEmpty() || selectedAlgorithms.isEmpty()) {
-            return; // nothing to show
-        }
-        String sample = selectedSamples.get(0).getText();
-        String algoToken = getPrimaryAlgorithmToken();
-        if (algoToken == null) return;
-        Path binsFile = resolveDataRoot()
-                .resolve(sample)
-                .resolve(algoToken)
-                .resolve(sample + "_" + algoToken + "_bins.tsv");
-
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/pgt/cnv_view/FXML/DataTable.fxml"));
-        Parent root = loader.load();
-        DataTableController ctrl = loader.getController();
-        if (ctrl != null) {
-            ctrl.loadBinsFile(binsFile);
-        }
-        contentArea.getChildren().setAll(root);
+        refreshViewContent();
     }
 
     public void addSample(ActionEvent actionEvent) throws IOException {
@@ -98,15 +83,13 @@ public class ViewController implements Initializable {
         sample.selectedProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal) { // selecting
                 if (!selectedSamples.contains(sample)) {
-                    if (selectedSamples.size() == 2) {
-                        // Remove (deselect) the oldest
+                    if (selectedSamples.size() == 6) { // limit increased from 2 -> 6
+                        // Remove (deselect) the oldest to maintain cap
                         CheckBox oldest = selectedSamples.remove(0);
-                        oldest.setSelected(false); // this triggers its own listener to remove it
+                        oldest.setSelected(false); // triggers its listener
                     }
                     selectedSamples.add(sample);
-                    if (!sample.getStyleClass().contains("selected")) {
-                        sample.getStyleClass().add("selected");
-                    }
+                    if (!sample.getStyleClass().contains("selected")) sample.getStyleClass().add("selected");
                 }
             } else { // deselecting
                 selectedSamples.remove(sample);
@@ -127,7 +110,7 @@ public class ViewController implements Initializable {
                 checkFirstGroupSelection();
             }
 
-            // Enforce dynamic algorithm selection limit (if 2 samples selected -> only 1 algorithm allowed)
+            // Enforce dynamic algorithm selection limit (if >=2 samples selected -> only 1 algorithm allowed)
             enforceAlgorithmLimit();
         });
     }
@@ -161,12 +144,13 @@ public class ViewController implements Initializable {
         addAlgorithmSelectionListener(blueFuse);
     }
 
-    // Enforce maximum of 2 selected algorithm checkboxes
+    // Enforce maximum algorithms (4 if single sample, else 1 when multiple samples)
     private void addAlgorithmSelectionListener(CheckBox checkBox) {
         checkBox.selectedProperty().addListener((observable, oldVal, newVal) -> {
+            if (oldVal == newVal) return; // no change
             if (newVal) { // selecting
                 if (!selectedAlgorithms.contains(checkBox)) {
-                    int limit = (selectedSamples.size() == 2) ? 1 : 2; // dynamic limit
+                    int limit = (selectedSamples.size() >= 2) ? 1 : 4; // single sample -> up to 4 algos, multi-sample -> 1
                     if (selectedAlgorithms.size() == limit) {
                         // Deselect the oldest (FIFO) to respect current limit
                         CheckBox oldest = selectedAlgorithms.get(0);
@@ -183,12 +167,23 @@ public class ViewController implements Initializable {
             enforceAlgorithmLimit();
             // Recompute availability (in case deselect changed intersection)
             updateAlgorithmAvailability();
+            // Reset view selection & content because algorithm context changed (user or logic)
+            resetViewSelection();
         });
     }
 
-    // Ensure algorithm selection count respects dynamic limit (1 if 2 samples selected, else 2)
+    private void resetViewSelection() {
+        if (scatterChart != null) scatterChart.setSelected(false);
+        if (boxPlot != null) boxPlot.setSelected(false);
+        if (dataTable != null) dataTable.setSelected(false);
+        if (report != null) report.setSelected(false);
+        contentArea.getChildren().clear();
+        currentView = ViewType.NONE;
+    }
+
+    // Ensure algorithm selection count respects dynamic limit (1 if >=2 samples selected, else 4)
     private void enforceAlgorithmLimit() {
-        int limit = (selectedSamples.size() == 2) ? 1 : 2;
+        int limit = (selectedSamples.size() >= 2) ? 1 : 4;
         while (selectedAlgorithms.size() > limit) {
             CheckBox oldest = selectedAlgorithms.remove(0);
             if (oldest.isSelected()) {
@@ -229,6 +224,89 @@ public class ViewController implements Initializable {
         });
     }
 
+    // Unified selection listeners for all view checkboxes
+    private void attachUnifiedViewListeners() {
+        if (scatterChart != null) scatterChart.selectedProperty().addListener((o, ov, nv) -> refreshViewContent());
+        if (dataTable != null) dataTable.selectedProperty().addListener((o, ov, nv) -> refreshViewContent());
+        if (boxPlot != null) boxPlot.selectedProperty().addListener((o, ov, nv) -> refreshViewContent());
+        if (report != null) report.selectedProperty().addListener((o, ov, nv) -> refreshViewContent());
+    }
+
+    private void refreshViewContent() {
+        ViewType desired = determineDesiredView();
+        if (desired == ViewType.NONE) {
+            if (currentView != ViewType.NONE) {
+                contentArea.getChildren().clear();
+                currentView = ViewType.NONE;
+            }
+            return;
+        }
+        if (desired == currentView) {
+            // Still ensure prerequisites (e.g., data) else clear
+            if (desired == ViewType.DATATABLE && !canShowDataTable()) {
+                contentArea.getChildren().clear();
+                currentView = ViewType.NONE;
+            }
+            return; // already showing
+        }
+        // Switch content
+        switch (desired) {
+            case SCATTER -> loadScatterChart();
+            case DATATABLE -> loadDataTable();
+            case BOX -> showPlaceholder("Box Plot view chưa được triển khai huhu");
+            case REPORT -> showPlaceholder("Report view chưa được triển khai huhu");
+            default -> contentArea.getChildren().clear();
+        }
+        currentView = desired;
+    }
+
+    private ViewType determineDesiredView() {
+        if (scatterChart != null && scatterChart.isSelected()) return ViewType.SCATTER;
+        if (dataTable != null && dataTable.isSelected()) return ViewType.DATATABLE;
+        if (boxPlot != null && boxPlot.isSelected()) return ViewType.BOX;
+        if (report != null && report.isSelected()) return ViewType.REPORT;
+        return ViewType.NONE;
+    }
+
+    private void loadScatterChart() {
+        try {
+            Parent fxml = FXMLLoader.load(getClass().getResource("/pgt/cnv_view/FXML/MultiScatterChart.fxml"));
+            contentArea.getChildren().setAll(fxml);
+        } catch (IOException e) {
+            showPlaceholder("Không thể load Scatter Chart: " + e.getMessage());
+        }
+    }
+
+    private boolean canShowDataTable() {
+        return !selectedSamples.isEmpty() && !selectedAlgorithms.isEmpty() && getPrimaryAlgorithmToken() != null;
+    }
+
+    private void loadDataTable() {
+        if (!canShowDataTable()) { contentArea.getChildren().clear(); return; }
+        String sample = selectedSamples.get(0).getText();
+        String algoToken = getPrimaryAlgorithmToken();
+        if (algoToken == null) { contentArea.getChildren().clear(); return; }
+    Path binsFile = CnvData.resolveDataRoot()
+        .resolve(sample)
+        .resolve(algoToken)
+        .resolve(CnvData.binsFileName(sample, algoToken));
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/pgt/cnv_view/FXML/DataTable.fxml"));
+            Parent root = loader.load();
+            DataTableController ctrl = loader.getController();
+            if (ctrl != null) ctrl.loadBinsFile(binsFile);
+            contentArea.getChildren().setAll(root);
+        } catch (IOException e) {
+            showPlaceholder("Không thể load Data Table: " + e.getMessage());
+        }
+    }
+
+    private void showPlaceholder(String msg) {
+        javafx.scene.control.Label l = new javafx.scene.control.Label(msg);
+        l.setStyle("-fx-padding:20; -fx-text-fill:#555; -fx-font-size:14px;");
+        contentArea.getChildren().setAll(l);
+    }
+
     // Update which algorithms are selectable: an algorithm is enabled only if ALL selected samples have result files for it
     private void updateAlgorithmAvailability() {
         if (selectedSamples.isEmpty()) {
@@ -258,78 +336,46 @@ public class ViewController implements Initializable {
     }
 
     private boolean samplesHaveAlgorithm(List<String> sampleNames, String algoToken) {
-        for (String sample : sampleNames) {
-            if (!sampleHasAlgorithm(sample, algoToken)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private boolean sampleHasAlgorithm(String sampleName, String algoToken) {
-        try {
-            Path dataRoot = resolveDataRoot();
-            Path dir = dataRoot.resolve(sampleName).resolve(algoToken);
-            if (!Files.isDirectory(dir)) return false;
-            Path bins = dir.resolve(sampleName + "_" + algoToken + "_bins.tsv");
-            Path segs = dir.resolve(sampleName + "_" + algoToken + "_segments.tsv");
-            return Files.exists(bins) && Files.exists(segs);
-        } catch (Exception e) {
-            return false;
-        }
+    for (String sample : sampleNames) if (!CnvData.sampleHasAlgorithm(sample, algoToken)) return false; return true;
     }
 
     // Scan data root to preload existing samples dynamically
     private void loadExistingSamples() {
         try {
-            Path dataRoot = resolveDataRoot();
+            Path dataRoot = CnvData.resolveDataRoot();
             if (!Files.exists(dataRoot) || !Files.isDirectory(dataRoot)) return;
             Files.list(dataRoot)
                     .filter(Files::isDirectory)
                     .map(p -> p.getFileName().toString())
-                    .filter(this::sampleDirectoryHasAnyAlgorithm)
+                    .filter(CnvData::sampleDirectoryHasAnyAlgorithm)
                     .sorted()
                     .forEach(this::addSampleCheckbox);
         } catch (Exception ignored) {}
     }
-
-    private boolean sampleDirectoryHasAnyAlgorithm(String sampleName) {
-        String[] algos = {"baseline", "bicseq2", "wisecondorx", "bluefuse"};
-        for (String algo : algos) {
-            if (sampleHasAlgorithm(sampleName, algo)) return true;
-        }
-        return false;
-    }
-
-    private Path resolveDataRoot() {
-        Path projectData = Paths.get("src", "main", "resources", "pgt", "cnv_view", "Data");
-        if (Files.exists(projectData)) return projectData;
-        return Paths.get(System.getProperty("user.dir"), "data");
-    }
+    // Removed sampleDirectoryHasAnyAlgorithm & resolveDataRoot (now in CnvData)
 
     // Accessors for DataTable
     public List<String> getSelectedSampleNames() {
         return selectedSamples.stream().map(CheckBox::getText).toList();
     }
 
-    public String getPrimaryAlgorithmToken() {
-        if (selectedAlgorithms.isEmpty()) return null;
-        CheckBox cb = selectedAlgorithms.get(0);
-        String text = cb.getText().toLowerCase().replaceAll("\\s+", "");
-        // unify mapping for bic-seq2 vs formatting
-        if (text.contains("bic")) return "bicseq2";
-        return text;
+    // Return selected sample names in the visual order (order of checkboxes inside sampleContainer)
+    public List<String> getSelectedSampleNamesInDisplayOrder() {
+        List<String> ordered = new LinkedList<>();
+        for (javafx.scene.Node n : sampleContainer.getChildren()) {
+            if (n instanceof CheckBox cb && cb.isSelected()) {
+                ordered.add(cb.getText());
+            }
+        }
+        return ordered;
     }
 
-    public List<String> getSelectedAlgorithmTokens() {
-        List<String> tokens = new LinkedList<>();
-        for (CheckBox cb : selectedAlgorithms) {
-            String text = cb.getText().toLowerCase().replaceAll("\\s+", "");
-            if (text.contains("bic")) text = "bicseq2";
-            tokens.add(text);
-        }
-        return tokens;
-    }
+    public String getPrimaryAlgorithmToken() { if (selectedAlgorithms.isEmpty()) return null; return CnvData.normalizeAlgorithm(selectedAlgorithms.get(0).getText()); }
+
+    public List<String> getSelectedAlgorithmTokens() { List<String> tokens = new LinkedList<>(); for (CheckBox cb : selectedAlgorithms) tokens.add(CnvData.normalizeAlgorithm(cb.getText())); return tokens; }
+
+    // Return selected algorithm tokens in fixed display order (baseline, bicseq2, wisecondorx, bluefuse)
+    public List<String> getSelectedAlgorithmTokensInDisplayOrder() { List<String> ordered = new LinkedList<>(); CheckBox[] order = {baseline, bicSeq2, wisecondorX, blueFuse}; for (CheckBox cb : order) if (cb!=null && cb.isSelected()) ordered.add(CnvData.normalizeAlgorithm(cb.getText())); return ordered; }
 
     // Called by AddSample controller after successful addition or detection of existing sample
     public void registerSample(String sampleName) {

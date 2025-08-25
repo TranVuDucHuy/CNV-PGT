@@ -30,25 +30,32 @@ public class MultiScatterChartController implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        ViewController vc = ViewControllerStaticRef.get();
-        if (vc == null) return;
-    List<String> samples = vc.getSelectedSampleNames();
-    List<String> algos = vc.getSelectedAlgorithmTokens();
+    ViewController vc = ViewControllerStaticRef.get();
+    if (vc == null) return;
+    // Use visual order (left pane order) rather than selection timestamp order
+    List<String> samples = vc.getSelectedSampleNamesInDisplayOrder();
+    List<String> algos = vc.getSelectedAlgorithmTokensInDisplayOrder();
 
-    boolean twoSamples = samples.size() == 2 && algos.size() >= 1; // limit already enforced elsewhere
-    boolean twoAlgos = samples.size() == 1 && algos.size() == 2;
+        // Deduplicate while preserving selection order to avoid accidental duplicate charts
+        LinkedHashSet<String> uniqueSampleSet = new LinkedHashSet<>(samples);
+        List<String> uniqueSamples = new ArrayList<>(uniqueSampleSet);
 
-        if (!(twoSamples || twoAlgos)) {
-            // Fallback: load single chart fxml for current primary selection
-            addSingleChart(samples.isEmpty() ? null : samples.get(0), algos.isEmpty()? null : algos.get(0));
+        boolean multiSamples = uniqueSamples.size() >= 2 && algos.size() >= 1; // now supports 2..6 samples stacked
+        boolean multiAlgosSingleSample = samples.size() == 1 && algos.size() >= 2; // still allow comparing algorithms for one sample
+
+        if (!(multiSamples || multiAlgosSingleSample)) {
+            addSingleChart(uniqueSamples.isEmpty() ? null : uniqueSamples.get(0), algos.isEmpty() ? null : algos.get(0));
             return;
         }
 
-        if (twoSamples) {
-            String algo = algos.get(0);
-            for (String sample : samples) addSingleChart(sample, algo);
-        } else if (twoAlgos) {
-            String sample = samples.get(0);
+        if (multiSamples) {
+            String algo = algos.get(0); // only first algorithm used when multiple samples selected
+            for (String sample : uniqueSamples) {
+                if (sample == null || sample.isBlank()) continue;
+                addSingleChart(sample, algo);
+            }
+        } else if (multiAlgosSingleSample) {
+            String sample = uniqueSamples.get(0);
             for (String algo : algos) addSingleChart(sample, algo);
         }
     }
@@ -60,7 +67,11 @@ public class MultiScatterChartController implements Initializable {
             // Top bar was removed from ScatterChart.fxml; just add the chart container directly
             chartsBox.getChildren().add(root);
             ScatterChartController ctrl = loader.getController();
-            if (sample != null && algo != null && ctrl != null) ctrl.reloadWith(sample, algo);
+            if (sample != null && algo != null && ctrl != null) {
+                // Debug print to console (can remove later)
+                System.out.println("[MultiScatter] Creating chart for sample=" + sample + ", algo=" + algo);
+                ctrl.reloadWith(sample, algo);
+            }
             if (ctrl != null) childControllers.add(ctrl);
         } catch (Exception e) {
             e.printStackTrace();

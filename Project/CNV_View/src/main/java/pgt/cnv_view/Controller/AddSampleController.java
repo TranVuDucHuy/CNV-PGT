@@ -11,6 +11,7 @@ import java.net.URL;
 import java.util.ResourceBundle;
 import java.nio.file.*;
 import java.io.IOException;
+import pgt.cnv_view.util.CnvData;
 
 public class AddSampleController implements Initializable {
 
@@ -109,7 +110,7 @@ public class AddSampleController implements Initializable {
 			return;
 		}
 
-		String algoToken = normalizeAlgorithm(selectedAlgorithm);
+		String algoToken = CnvData.normalizeAlgorithm(selectedAlgorithm);
 		String binBase = stripExtension(binFile.getName());
 		String segBase = stripExtension(segmentFile.getName());
 
@@ -120,18 +121,16 @@ public class AddSampleController implements Initializable {
 		}
 
 		try {
-			// Determine target paths and check if already added BEFORE copying
-			Path dataRoot = resolveWritableDataRoot();
+			Path dataRoot = CnvData.resolveWritableDataRoot();
 			Path targetDir = dataRoot.resolve(vr.sampleName).resolve(algoToken);
-			Path existingBin = targetDir.resolve(vr.sampleName + "_" + algoToken + "_bins.tsv");
-			Path existingSeg = targetDir.resolve(vr.sampleName + "_" + algoToken + "_segments.tsv");
+			Path existingBin = targetDir.resolve(CnvData.binsFileName(vr.sampleName, algoToken));
+			Path existingSeg = targetDir.resolve(CnvData.segmentsFileName(vr.sampleName, algoToken));
 			if (Files.exists(existingBin) && Files.exists(existingSeg)) {
 				showAlert(Alert.AlertType.INFORMATION, "Already exists", "Sample '" + vr.sampleName + "' with algorithm '" + selectedAlgorithm + "' already exists.");
 				if (parentController != null) parentController.registerSample(vr.sampleName);
 				closeWindow();
 				return;
 			}
-			// Copy now
 			Path copiedBin = copyIntoDataFolder(binFile.toPath(), vr.sampleName, algoToken, true);
 			Path copiedSeg = copyIntoDataFolder(segmentFile.toPath(), vr.sampleName, algoToken, false);
 			showAlert(Alert.AlertType.INFORMATION, "Success", "Added sample '" + vr.sampleName + "' with algorithm '" + selectedAlgorithm + "' (\n" + copiedBin.getFileName() + "\n" + copiedSeg.getFileName() + ")");
@@ -171,11 +170,6 @@ public class AddSampleController implements Initializable {
 		return new ValidationResult(true, "", sampleBin);
 	}
 
-	private String normalizeAlgorithm(String algorithm) {
-		// Chuyển sang lowercase, bỏ khoảng trắng
-		return algorithm.toLowerCase().replaceAll("\\s+", "");
-	}
-
 	private String stripExtension(String filename) {
 		int idx = filename.lastIndexOf('.');
 		return idx > 0 ? filename.substring(0, idx) : filename;
@@ -202,22 +196,12 @@ public class AddSampleController implements Initializable {
 	}
 
 	private Path copyIntoDataFolder(Path source, String sampleName, String algoToken, boolean isBin) throws IOException {
-		Path dataRoot = resolveWritableDataRoot();
+		Path dataRoot = CnvData.resolveWritableDataRoot();
 		Path targetDir = dataRoot.resolve(sampleName).resolve(algoToken);
 		Files.createDirectories(targetDir);
-		String targetFileName = sampleName + "_" + algoToken + (isBin ? "_bins.tsv" : "_segments.tsv");
+		String targetFileName = isBin ? CnvData.binsFileName(sampleName, algoToken) : CnvData.segmentsFileName(sampleName, algoToken);
 		Path target = targetDir.resolve(targetFileName);
 		Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
 		return target;
-	}
-
-	private Path resolveWritableDataRoot() throws IOException {
-		Path projectData = Paths.get("src", "main", "resources", "pgt", "cnv_view", "Data");
-		if (Files.exists(projectData) && Files.isDirectory(projectData) && Files.isWritable(projectData)) {
-			return projectData;
-		}
-		Path external = Paths.get(System.getProperty("user.dir"), "data");
-		Files.createDirectories(external);
-		return external;
 	}
 }
