@@ -16,11 +16,19 @@ import java.util.stream.Stream;
 import javafx.scene.text.Text;
 import javafx.geometry.VPos;
 import javafx.application.Platform;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.paint.Color;
 
 import java.net.URL;
 import java.util.ResourceBundle;
+import pgt.cnv_view.util.CnvData;
+import javafx.util.StringConverter;
 
 public class ScatterChartController implements Initializable {
+
+	private static final double CANVAS_POINT_SIZE_MULTI = 2.0;
+	private static final double CANVAS_POINT_SIZE_SINGLE = 3.0;
 
 	@FXML
 	private MenuButton chromosomeMenu; // not used now
@@ -31,6 +39,9 @@ public class ScatterChartController implements Initializable {
 	private String overrideSample;
 	private String overrideAlgorithm;
 
+	// Incrementing token to cancel stale async loads (sample/algo/chr changes)
+	private volatile long loadGeneration = 0;
+
 	// Optional chromosome filter ("1".."22","X","Y" or null for all)
 	private String filteredChromosome; // null -> all
 
@@ -40,9 +51,8 @@ public class ScatterChartController implements Initializable {
 	public void initialize(URL location, ResourceBundle resources) {
 		// Set default label
 		if (chromosomeMenu != null) chromosomeMenu.setText("All Chromosomes");
-		
-		// FXML đã xử lý việc sizing và scrolling, chỉ cần load data (initial default)
-		loadAndPlot();
+		// Không tự load ở chế độ multi-chart để tránh race condition (tất cả controller ban đầu sẽ lấy mẫu đầu tiên)
+		// MultiScatterChartController sẽ gọi reloadWith(sample, algo) cho từng chart.
 
 		// Redraw segment overlays when chart resized or axis range changes
 		if (chart != null) {
@@ -123,6 +133,7 @@ public class ScatterChartController implements Initializable {
 		chart.getData().clear();
 		ViewController vc = ViewControllerStaticRef.get();
 		if (vc == null) return;
+		long myGen = ++loadGeneration; // new load cycle id
 		List<String> samples;
 		String algo;
 		if (overrideSample != null && overrideAlgorithm != null) {
@@ -134,6 +145,8 @@ public class ScatterChartController implements Initializable {
 		}
 		if (samples == null || samples.isEmpty() || algo == null) return;
 		String sample = samples.get(0);
+		// Pre-set a provisional title while loading
+		chart.setTitle(buildTitle(sample, algo, filteredChromosome));
 		Path binsFile = resolveDataRoot()
 				.resolve(sample)
 				.resolve(algo)
@@ -141,7 +154,7 @@ public class ScatterChartController implements Initializable {
 		if (!Files.exists(binsFile)) return;
 
 		// Load data asynchronously to avoid UI freezing
-		loadDataAsync(binsFile, sample);
+		loadDataAsync(binsFile, sample, algo, myGen);
 	}
 
 	private List<Segment> currentSegments = Collections.emptyList();
@@ -150,12 +163,12 @@ public class ScatterChartController implements Initializable {
 	private List<String> chromosomeOrder = List.of();
 	private long currentGenomeTotal = 0L;
 
-	private void loadDataAsync(Path binsFile, String sample) {
+	private void loadDataAsync(Path binsFile, String sample, String algoForThread, long gen) {
 		// Run data loading in background thread
 		new Thread(() -> {
 			try {
-				List<String> chromList = Arrays.asList("1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","X","Y");
-				String filterChr = filteredChromosome; // snapshot
+				List<String> chromList = CnvData.CHROMOSOMES; // standardized list
+				String filterChr = filteredChromosome; // snapshot (race guard)
 				Map<String, List<long[]>> points = new HashMap<>(); // long[]{start, copyBits}
 				Map<String, Long> chromMax = new HashMap<>(); // use max END (col2) else start
 				List<Segment> segments = new ArrayList<>();
@@ -180,8 +193,8 @@ public class ScatterChartController implements Initializable {
 					});
 				}
 
-				// Parse segments file (optional)
-				Path segmentsFile = binsFile.getParent().resolve(sample + "_" + ViewControllerStaticRef.get().getPrimaryAlgorithmToken() + "_segments.tsv");
+				// Parse segments file (optional) — must match the algorithm of this chart, not global primary
+				Path segmentsFile = binsFile.getParent().resolve(sample + "_" + algoForThread + "_segments.tsv");
 				if (Files.exists(segmentsFile)) {
 					try (Stream<String> lines = Files.lines(segmentsFile)) {
 						lines.skip(1).filter(l -> !l.isBlank()).forEach(line -> {
@@ -207,16 +220,8 @@ public class ScatterChartController implements Initializable {
 				// No sampling - show all points to preserve small CNV anomalies
 				// This is critical for CNV analysis where small variations matter
 				
-				XYChart.Series<Number, Number> series = new XYChart.Series<>();
 				int totalPoints = points.values().stream().mapToInt(List::size).sum();
-				if (filterChr == null) {
-					series.setName(sample + " (All chr - " + totalPoints + " points)");
-				} else {
-					series.setName(sample + " (chr" + filterChr + " - " + totalPoints + " points)");
-				}
-
-				// Use ArrayList for better performance when adding many points
-				List<XYChart.Data<Number, Number>> dataPoints = new ArrayList<>();
+				List<double[]> fastPointsLocal = new ArrayList<>(totalPoints); // canvas points
 
 				// Build cumulative offsets proportional to length; normalize to 0..totalLen
 				long cumulative = 0;
@@ -232,7 +237,7 @@ public class ScatterChartController implements Initializable {
 								long start = arr[0];
 								double copy = Double.longBitsToDouble(arr[1]);
 								double x = cumulative + (double) start;
-								dataPoints.add(new XYChart.Data<>(x, copy));
+								fastPointsLocal.add(new double[]{x, copy});
 							}
 						}
 						cumulative += len;
@@ -247,14 +252,13 @@ public class ScatterChartController implements Initializable {
 							for (long[] arr : lst) {
 								long start = arr[0];
 								double copy = Double.longBitsToDouble(arr[1]);
-								dataPoints.add(new XYChart.Data<>((double) start, copy));
+								fastPointsLocal.add(new double[]{(double) start, copy});
 							}
 						}
 					}
 				}
-				
-				// Add all data points at once for better performance
-				series.getData().addAll(dataPoints);
+
+				// no node series population
 
 				// Update UI on JavaFX Application Thread
 				Platform.runLater(() -> {
@@ -271,55 +275,30 @@ public class ScatterChartController implements Initializable {
 				currentChromLength = chromMax;
 				chromosomeOrder = (filterChr == null ? chromList.stream().filter(chromMax::containsKey).toList() : (chromMax.containsKey(filterChr) ? List.of(filterChr) : List.of()));
 				currentGenomeTotal = totalLen;
+				final List<double[]> finalFastPoints = fastPointsLocal; // points for canvas
 
 				Platform.runLater(() -> {
-					chart.setTitle(null); // Clear loading message
-					chart.getData().add(series);
+					// Race guard: generation + overrides + chromosome filter must still match
+					if (gen != loadGeneration) return; // superseded by a newer request
+					if (overrideSample != null && !Objects.equals(overrideSample, sample)) return; // outdated sample
+					if (overrideAlgorithm != null && !Objects.equals(overrideAlgorithm, algoForThread)) return; // outdated algo
+					if (!Objects.equals(filteredChromosome, filterChr)) return; // chromosome changed
+					chart.setTitle(buildTitle(sample, algoTokenForTitle(), filterChr));
+					chart.getData().add(new XYChart.Series<>()); // minimal empty series for axes
+					// Always hide legend to maximize vertical space & avoid overlap
+					chart.setLegendVisible(false);
 
-					// Configure axis: 0..totalLen with hidden numeric labels
-					if (chart.getXAxis() instanceof NumberAxis xAxis) {
-						xAxis.setAutoRanging(false);
-						xAxis.setLowerBound(0);
-						long ub = (filterChr == null ? totalLen : chromMax.getOrDefault(filterChr, totalLen));
-						xAxis.setUpperBound(ub);
-						if (filterChr == null) {
-							// Multi-chrom genome view: hide numeric positions to reduce clutter
-							xAxis.setTickLabelsVisible(false);
-							xAxis.setMinorTickVisible(false);
-							xAxis.setTickMarkVisible(false);
-							xAxis.setTickUnit(ub / 20.0);
-						} else {
-							// Single chromosome: show genomic position scale
-							xAxis.setTickLabelsVisible(true);
-							xAxis.setTickMarkVisible(true);
-							xAxis.setMinorTickVisible(false);
-							// Choose a human-friendly tick unit (~10 ticks)
-							double raw = ub / 10.0;
-							double magnitude = Math.pow(10, Math.floor(Math.log10(Math.max(1, raw))));
-							double norm = raw / magnitude; // between 1 and 10
-							double step;
-							if (norm < 2) step = 1 * magnitude; else if (norm < 5) step = 2 * magnitude; else step = 5 * magnitude;
-							xAxis.setTickUnit(step);
-						}
-					}
+					configureAndForceXAxis(filterChr, chromMax, totalLen);
 
-					// Apply CSS styling safely
-					try {
-						if (series.getNode() != null) {
-							series.getNode().setStyle("-fx-background-color: #038003, #038003; -fx-background-radius: 2px; -fx-padding: 2px;");
-						}
-					} catch (Exception e) { /* ignore */ }
-
-					// If single chromosome mode, enlarge point symbols (~3px radius)
-					if (filterChr != null) {
-						Platform.runLater(() -> {
-							for (XYChart.Data<Number, Number> d : series.getData()) {
-								if (d.getNode() != null) {
-									d.getNode().setStyle("-fx-background-color: #038003, #038003; -fx-background-radius: 2.5px; -fx-padding: 2.5px;");
-								}
-							}
-						});
-					}
+					// Trigger canvas drawing after layout
+					Platform.runLater(() -> {
+						// Ensure axis layout updated before drawing points to avoid stale scaling
+						chart.applyCss();
+						chart.layout();
+						setupFastCanvasIfNeeded();
+						fastPoints = finalFastPoints; // store
+						drawFastPoints();
+					});
 
 					if (!segments.isEmpty()) {
 						Platform.runLater(this::redrawSegments); // layout then draw
@@ -339,7 +318,9 @@ public class ScatterChartController implements Initializable {
 		var bg = chart.lookup(".chart-plot-background");
 		if (bg == null) return;
 		var plotArea = bg.getParent(); // StackPane containing background + series
-		if (!(plotArea instanceof javafx.scene.layout.Pane pane)) return;
+		if (!(plotArea instanceof javafx.scene.layout.Pane pane)) return; // need pane for child overlay modifications
+		// reference pane explicitly (no-op) to satisfy compiler if future refactors remove usages
+		@SuppressWarnings("unused") javafx.scene.layout.Pane _paneRef = pane;
 
 		// Hide default vertical grid lines so only custom chromosome boundaries show
 		chart.lookupAll(".chart-vertical-grid-lines").forEach(node -> node.setVisible(false));
@@ -460,6 +441,76 @@ public class ScatterChartController implements Initializable {
 			refLine.setStyle("-fx-stroke: #005bbb; -fx-stroke-dash-array: 6 6; -fx-opacity: 0.9;");
 			pane.getChildren().add(refLine);
 		}
+		// Fast mode canvas redraw (points) after overlays updated
+		if (fastCanvas != null && fastCanvas.isVisible()) {
+			drawFastPoints();
+		}
+	}
+
+	// ---------------- Fast Canvas Rendering -----------------
+	private Canvas fastCanvas; // overlay canvas
+	private List<double[]> fastPoints = Collections.emptyList(); // raw (x,y) in genomic coordinate & copy value
+
+	private void setupFastCanvasIfNeeded() {
+		if (fastCanvas != null) return;
+		var bg = chart.lookup(".chart-plot-background");
+		if (bg == null) return;
+		var plotArea = bg.getParent();
+		if (!(plotArea instanceof javafx.scene.layout.Pane pane)) return;
+		fastCanvas = new Canvas();
+		fastCanvas.getProperties().put("fastCanvas", true);
+		fastCanvas.setMouseTransparent(true);
+		pane.getChildren().add(fastCanvas);
+		// Listeners to resize canvas with plot area
+		pane.layoutBoundsProperty().addListener((o,a,b)-> positionAndResizeFastCanvas());
+	}
+
+	private void positionAndResizeFastCanvas() {
+		if (fastCanvas == null) return;
+		var bg = chart.lookup(".chart-plot-background");
+		if (bg == null) return;
+		var plotArea = bg.getParent();
+		if (!(plotArea instanceof javafx.scene.layout.Pane)) return;
+		var bgBounds = bg.getBoundsInParent();
+		fastCanvas.setLayoutX(bgBounds.getMinX());
+		fastCanvas.setLayoutY(bgBounds.getMinY());
+		double w = Math.max(1, bgBounds.getWidth());
+		double h = Math.max(1, bgBounds.getHeight());
+		if (fastCanvas.getWidth() != w || fastCanvas.getHeight() != h) {
+			fastCanvas.setWidth(w);
+			fastCanvas.setHeight(h);
+		}
+	}
+
+	private void drawFastPoints() {
+		if (fastCanvas == null || fastPoints == null) return;
+		if (!(chart.getXAxis() instanceof NumberAxis xAxis) || !(chart.getYAxis() instanceof NumberAxis yAxis)) return;
+		positionAndResizeFastCanvas();
+		fastCanvas.setVisible(true);
+		GraphicsContext g = fastCanvas.getGraphicsContext2D();
+		g.setFill(Color.web("#038003"));
+		g.clearRect(0,0, fastCanvas.getWidth(), fastCanvas.getHeight());
+		// Determine scaling: map data x to display position then subtract lower bound position to fit canvas
+		double lowerBoundX = xAxis.getLowerBound();
+		double upperBoundX = xAxis.getUpperBound();
+		double lbDisplay = xAxis.getDisplayPosition(lowerBoundX); // should be 0 within background
+		double ubDisplay = xAxis.getDisplayPosition(upperBoundX);
+		double spanDisplay = ubDisplay - lbDisplay;
+		double lowerBoundY = yAxis.getLowerBound();
+		double upperBoundY = yAxis.getUpperBound();
+		if (spanDisplay == 0) return;
+		// Draw with size depending on single/multi chromosome view
+		double size = (filteredChromosome == null ? CANVAS_POINT_SIZE_MULTI : CANVAS_POINT_SIZE_SINGLE);
+		for (double[] pt : fastPoints) {
+			double xVal = pt[0];
+			if (xVal < lowerBoundX || xVal > upperBoundX) continue;
+			double yVal = pt[1];
+			if (yVal < lowerBoundY || yVal > upperBoundY) continue;
+			double x = xAxis.getDisplayPosition(xVal);
+			double y = yAxis.getDisplayPosition(yVal);
+			if (Double.isNaN(x) || Double.isNaN(y)) continue;
+			g.fillOval(x - size/2, y - size/2, size, size);
+		}
 	}
 
 	private static class Segment {
@@ -471,10 +522,63 @@ public class ScatterChartController implements Initializable {
 		try { return Long.parseLong(s); } catch (NumberFormatException e) { return fallback; }
 	}
 
-	private Path resolveDataRoot() {
-		Path projectData = Paths.get("src", "main", "resources", "pgt", "cnv_view", "Data");
-		if (Files.exists(projectData)) return projectData;
-		return Paths.get(System.getProperty("user.dir"), "data");
+
+	private Path resolveDataRoot() { return CnvData.resolveDataRoot(); }
+
+	// ---- Title helpers ----
+	private String buildTitle(String sample, String algoToken, String chrFilter) {
+		String algoPretty = prettyAlgorithm(algoToken);
+		String chrPart = (chrFilter == null ? "All chromosomes" : "Chromosome " + chrFilter);
+		return sample + " -- " + algoPretty + " -- " + chrPart;
+	}
+
+	private String algoTokenForTitle() {
+		if (overrideAlgorithm != null) return overrideAlgorithm;
+		ViewController vc = ViewControllerStaticRef.get();
+		return vc == null ? "" : vc.getPrimaryAlgorithmToken();
+	}
+
+	private String prettyAlgorithm(String token) { return CnvData.prettyAlgorithm(token); }
+
+	// Ensure consistent axis range & tick calculation when switching chromosomes (fix scale bug after switching 1 -> 8)
+	private void configureAndForceXAxis(String filterChr, Map<String, Long> chromMax, long totalLen) {
+		if (!(chart.getXAxis() instanceof NumberAxis xAxis)) return;
+		xAxis.setAutoRanging(false);
+		xAxis.setLowerBound(0);
+		long ub = (filterChr == null ? totalLen : chromMax.getOrDefault(filterChr, totalLen));
+		if (ub <= 0) ub = 1; // avoid zero-range
+		xAxis.setUpperBound(ub);
+		if (!xAxis.getLabel().isBlank() && xAxis.getUserData() == null) xAxis.setUserData(xAxis.getLabel());
+		xAxis.setLabel("");
+		if (filterChr == null) {
+			// multi-chromosome view
+			xAxis.setTickLabelsVisible(false);
+			xAxis.setMinorTickVisible(false);
+			xAxis.setTickMarkVisible(false);
+			xAxis.setTickUnit(Math.max(1, ub / 20.0));
+		} else {
+			// Single chromosome view: show genomic position in Mb (rounded), ticks every 25 Mb
+			xAxis.setTickLabelsVisible(true);
+			xAxis.setTickMarkVisible(true);
+			xAxis.setMinorTickVisible(false);
+			final double mb = 1_000_000d;
+			final double desiredStepMb = 25d; // 25 Mb step asked by user
+			double stepBp = desiredStepMb * mb;
+			// Fallback if chromosome shorter than one step: aim ~5 ticks
+			if (ub < stepBp) {
+				stepBp = Math.max(1, Math.ceil(ub / 5.0));
+			}
+			xAxis.setTickUnit(stepBp);
+			xAxis.setTickLabelFormatter(new StringConverter<Number>() {
+				@Override public String toString(Number object) { return Long.toString(Math.round(object.doubleValue() / mb)); }
+				@Override public Number fromString(String string) {
+					try { return Long.parseLong(string) * (long) mb; } catch (NumberFormatException e) { return 0; }
+				}
+			});
+		}
+		// Force layout recalculation early so later canvas draw uses fresh scale
+		chart.applyCss();
+		chart.layout();
 	}
 }
 
