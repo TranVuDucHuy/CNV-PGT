@@ -80,7 +80,7 @@ class CNV:
             test_proportion_normalized_list.append(test_proportion_normalized_file)
 
         print("\n5. Calculate statistics from train samples (raw & normalized) and filter out unstable bins...")
-        mean_normalized, std_normalized, cv_normalized = self.estimator.statistics(self.work_directory / "Temporary" / "Normalized" / "Train", self.work_directory / "Temporary" / "Normalized")
+        mean_normalized, cv_normalized = self.estimator.statistics(self.work_directory / "Temporary" / "Normalized" / "Train", self.work_directory / "Temporary" / "Normalized")
         blacklist_normalized = filter_bins(cv_normalized, self.filter_ratio, self.work_directory / "Temporary" / "Normalized")
         mean_filtered_normalized = create_filter_files(mean_normalized, blacklist_normalized, self.work_directory / "Temporary" / "Normalized")
 

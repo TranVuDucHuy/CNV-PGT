@@ -167,18 +167,16 @@ class Estimator:
                 print(f"  Chromosome {chromosome}: {chromosome_data.shape[1]} bins, {chromosome_data.shape[0]} samples")
 
         mean_file = output_dir / "Mean.npz"
-        std_file = output_dir / "StandardDeviation.npz"
         cv_file = output_dir / "CoefficientVariation.npz"
 
         np.savez_compressed(mean_file, **mean_dict)
-        np.savez_compressed(std_file, **std_dict)
         np.savez_compressed(cv_file, **cv_dict)
 
         print(f"Statistics saved to: {output_dir}")
 
-        return str(mean_file), str(std_file), str(cv_file)
+        return str(mean_file), str(cv_file)
 
-    def calculate_ratio(self, case_file, mean_file, blacklist_file, output_dir):
+    def calculate_ratio(self, test_file, mean_file, blacklist_file, output_dir):
         """
         Calculate log2 ratio between test and train samples
 
@@ -191,19 +189,19 @@ class Estimator:
         Returns:
             str: NPZ file path containing log2 ratio
         """
-        case_data = np.load(case_file)
+        test_data = np.load(test_file)
         mean_data = np.load(mean_file)
         bin_data = np.load(blacklist_file)
 
-        # case_name = Path(case_file).stem.replace('_proportion', '_ratio')
-        case_name = Path(case_file).stem.replace('_readCount', '_ratio')
-        ratio_file = output_dir / f"{case_name}.npz"
+        test_name = Path(test_file).stem.replace('_proportion', '_ratio')
+        # case_name = Path(case_file).stem.replace('_readCount', '_ratio')
+        ratio_file = output_dir / f"{test_name}.npz"
 
         ratio_dict = {}
 
         for chromosome in self.chromosome_list:
-            if chromosome in case_data.files and chromosome in mean_data.files and chromosome in bin_data.files:
-                case_ratios = case_data[chromosome]
+            if chromosome in test_data.files and chromosome in mean_data.files and chromosome in bin_data.files:
+                case_ratios = test_data[chromosome]
                 mean_ratios = mean_data[chromosome]
                 bin_mask = bin_data[chromosome]
 
