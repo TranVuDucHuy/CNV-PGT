@@ -136,8 +136,8 @@ class Estimator:
         """
         print("Calculating statistics from train samples...")
 
-        # proportion_list = list(Path(control_npz_dir).glob("*_proportion.npz"))
-        proportion_list = list(Path(control_npz_dir).glob("*_readCount.npz"))
+        proportion_list = list(Path(control_npz_dir).glob("*_proportion.npz"))
+        # proportion_list = list(Path(control_npz_dir).glob("*_readCount.npz"))
 
         print(f"Found {len(proportion_list)} sample files")
 

@@ -48,134 +48,67 @@ class CNV:
 
         print("=== START CNV DETECTION PIPELINE ===")
 
-        print("\n1. Count reads and calculate proportion for train samples...")
-
-        control_bam_files = list((self.work_directory / "Input" / "Train").glob('*.bam'))
-
-        control_raw_files = []
-        control_proportion_raw_files = []
-        for bam_file in control_bam_files:
+        print("\n1. Count reads train samples...")
+        train_bam_list = list((self.work_directory / "Input" / "Train").glob('*.bam'))
+        train_raw_list = []
+        for bam_file in train_bam_list:
             raw_file = self.estimator.count_read(str(bam_file), self.work_directory / "Temporary" / "Raw" / "Train")
-            if raw_file:
-                control_raw_files.append(raw_file)
-                control_proportion_raw_file = self.estimator.calculate_proportion(raw_file, self.work_directory / "Temporary" / "Raw" / "Train")
-                if control_proportion_raw_file:
-                    control_proportion_raw_files.append(control_proportion_raw_file)
+            train_raw_list.append(raw_file)
 
-        print("\n2. Normalized train samples...")
-
-        control_normalized_files = []
-        control_proportion_normalized_files = []
-        for raw_file in control_raw_files:
+        print("\n2. Normalized and calculate proportion for train samples...")
+        control_normalized_list = []
+        for raw_file in train_raw_list:
             normalized_file = normalize_readcount(self, raw_file, self.work_directory / "Temporary" / "Normalized" / "Train")
-            if normalized_file:
-                control_normalized_files.append(normalized_file)
-                control_proportion_normalized_file = self.estimator.calculate_proportion(normalized_file, self.work_directory / "Temporary" / "Normalized" / "Train")
-                if control_proportion_normalized_file:
-                    control_proportion_normalized_files.append(control_proportion_normalized_file)
+            control_normalized_list.append(normalized_file)
+            control_proportion_normalized_file = self.estimator.calculate_proportion(normalized_file, self.work_directory / "Temporary" / "Normalized" / "Train")
 
-        print("\n3. Count reads and calculate proportion for test samples...")
 
-        case_bam_files = list((self.work_directory / "Input" / "Test").glob('*.bam'))
-
-        case_raw_files = []
-        case_proportion_raw_files = []
-        for bam_file in case_bam_files:
+        print("\n3. Count reads for test samples...")
+        test_bam_list = list((self.work_directory / "Input" / "Test").glob('*.bam'))
+        test_raw_list = []
+        for bam_file in test_bam_list:
             raw_file = self.estimator.count_read(str(bam_file), self.work_directory / "Temporary" / "Raw" / "Test")
-            if raw_file:
-                case_raw_files.append(raw_file)
-                case_proportion_raw_file = self.estimator.calculate_proportion(raw_file, self.work_directory / "Temporary" / "Raw" / "Test")
-                if case_proportion_raw_file:
-                    case_proportion_raw_files.append(case_proportion_raw_file)
+            test_raw_list.append(raw_file)
 
-        print("\n4. Normalize test samples...")
-
-        case_normalized_files = []
-        case_proportion_normalized_files = []
-        for raw_file in case_raw_files:
+        print("\n4. Normalize test and calculate proportion for samples...")
+        test_normalized_list = []
+        test_proportion_normalized_list = []
+        for raw_file in test_raw_list:
             normalized_file = normalize_readcount(self, raw_file, self.work_directory / "Temporary" / "Normalized" / "Test")
-            if normalized_file:
-                case_normalized_files.append(normalized_file)
-                case_proportion_normalized_file = self.estimator.calculate_proportion(normalized_file, self.work_directory / "Temporary" / "Normalized" / "Test")
-                if case_proportion_normalized_file:
-                    case_proportion_normalized_files.append(case_proportion_normalized_file)
+            test_normalized_list.append(normalized_file)
+            test_proportion_normalized_file = self.estimator.calculate_proportion(normalized_file, self.work_directory / "Temporary" / "Normalized" / "Test")
+            test_proportion_normalized_list.append(test_proportion_normalized_file)
 
         print("\n5. Calculate statistics from train samples (raw & normalized) and filter out unstable bins...")
-
-        mean_raw_file, std_raw_file, cv_raw_file = self.estimator.statistics(self.work_directory / "Temporary" / "Raw" / "Train", self.work_directory / "Temporary" / "Raw")
-        blacklist_raw_file = filter_bins(cv_raw_file, self.filter_ratio, self.work_directory / "Temporary" / "Raw")
-        mean_filtered_raw_file = create_filter_files(mean_raw_file, blacklist_raw_file, self.work_directory / "Temporary" / "Raw")
-
-        mean_normalized_file, std_normalized_file, cv_normalized_file = self.estimator.statistics(self.work_directory / "Temporary" / "Normalized" / "Train", self.work_directory / "Temporary" / "Normalized")
-        blacklist_normalized_file = filter_bins(cv_normalized_file, self.filter_ratio, self.work_directory / "Temporary" / "Normalized")
-        mean_filtered_normalized_file = create_filter_files(mean_normalized_file, blacklist_normalized_file, self.work_directory / "Temporary" / "Normalized")
+        mean_normalized, std_normalized, cv_normalized = self.estimator.statistics(self.work_directory / "Temporary" / "Normalized" / "Train", self.work_directory / "Temporary" / "Normalized")
+        blacklist_normalized = filter_bins(cv_normalized, self.filter_ratio, self.work_directory / "Temporary" / "Normalized")
+        mean_filtered_normalized = create_filter_files(mean_normalized, blacklist_normalized, self.work_directory / "Temporary" / "Normalized")
 
         print("\n6. Calculate ratio for test samples (raw & normalized)...")
-
         # # Will fix soon (filtered file) ------------------------------------------------------------------------------------------------------------ @@@@@@@@@@@@@@@
-        # ratio_raw_files = []
-        # for case_file in case_proportion_raw_files:
-        #     ratio_file = self.estimator.calculate_ratio(case_file, mean_raw_file, blacklist_raw_file, self.work_directory / "Output" / "Raw" / "Data")
-        #     if ratio_file:
-        #         ratio_raw_files.append(ratio_file)
-        #
         # ratio_normalized_files = []
         # for case_file in case_proportion_normalized_files:
         #     ratio_file = self.estimator.calculate_ratio(case_file, mean_normalized_file, blacklist_normalized_file, self.work_directory / "Output" / "Normalized" / "Data")
         #     if ratio_file:
         #         ratio_normalized_files.append(ratio_file)
-        ratio_raw_files = []
-        for case_file in case_raw_files:
-            ratio_file = self.estimator.calculate_ratio(case_file, mean_raw_file, blacklist_raw_file,
-                                                        self.work_directory / "Output" / "Raw" / "Data")
-            if ratio_file:
-                ratio_raw_files.append(ratio_file)
 
-        ratio_normalized_files = []
-        for case_file in case_normalized_files:
-            ratio_file = self.estimator.calculate_ratio(case_file, mean_normalized_file, blacklist_normalized_file,
+        ratio_normalized_list = []
+        for test_proportion_normalized_file in test_proportion_normalized_list:
+            ratio_normalized_file = self.estimator.calculate_ratio(test_proportion_normalized_file, mean_normalized, blacklist_normalized,
                                                         self.work_directory / "Output" / "Normalized" / "Data")
-            if ratio_file:
-                ratio_normalized_files.append(ratio_file)
+            ratio_normalized_list.append(ratio_normalized_file)
 
         print("\n7. Performing CBS segmentation...")
-
-        segments_raw_files = []
-        for ratio_file in ratio_raw_files:
-            segments_file = cbs(self, ratio_file, self.work_directory / "Output" / "Raw" / "Data", self.bin_size, self.chromosome_list)
-            if segments_file:
-                segments_raw_files.append(segments_file)
-            else:
-                segments_raw_files.append(None)
-
-        segments_normalized_files = []
-        for ratio_file in ratio_normalized_files:
-            segments_file = cbs(self, ratio_file, self.work_directory / "Output" / "Normalized" / "Data", self.bin_size, self.chromosome_list)
-            if segments_file:
-                segments_normalized_files.append(segments_file)
-            else:
-                segments_normalized_files.append(None)
+        segments_normalized_list = []
+        for ratio_normalized_file in ratio_normalized_list:
+            segments_file = cbs(self, ratio_normalized_file, self.work_directory / "Output" / "Normalized" / "Data", self.bin_size, self.chromosome_list)
+            segments_normalized_list.append(segments_file)
 
         print("\n9. Create chart with segments (raw & normalized)...")
 
-        plot_raw_files = []
-        for i, ratio_file in enumerate(ratio_raw_files):
-            segments_file = segments_raw_files[i] if i < len(segments_raw_files) else None
-
-            plotter = Plotter(
-                self.chromosome_list,
-                self.bin_size,
-                self.work_directory / "Output" / "Raw" / "Plot"
-            )
-
-            plot_file = plotter.plot(ratio_file, mean_filtered_raw_file, segments_file)
-
-            if plot_file:
-                plot_raw_files.append(plot_file)
-
         plot_normalized_files = []
-        for i, ratio_file in enumerate(ratio_normalized_files):
-            segments_file = segments_normalized_files[i] if i < len(segments_normalized_files) else None
+        for i, ratio_normalized_file in enumerate(ratio_normalized_list):
+            segments_file = segments_normalized_list[i]
 
             plotter = Plotter(
                 self.chromosome_list,
@@ -183,10 +116,8 @@ class CNV:
                 self.work_directory / "Output" / "Normalized" / "Plot"
             )
 
-            plot_file = plotter.plot(ratio_file, mean_filtered_normalized_file, segments_file)
-
-            if plot_file:
-                plot_normalized_files.append(plot_file)
+            plot_file = plotter.plot(ratio_normalized_file, mean_filtered_normalized, segments_file)
+            plot_normalized_files.append(plot_file)
 
         print(f"\n=== COMPLETED PIPELINE ===")
 
