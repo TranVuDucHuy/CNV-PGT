@@ -24,21 +24,6 @@ option_list = list(
 opt_parser = OptionParser(option_list=option_list)
 opt = parse_args(opt_parser)
 
-if (is.null(opt$input)){
-  print_help(opt_parser)
-  stop("Cần chỉ định file input CSV.", call.=FALSE)
-}
-
-if (is.null(opt$output)){
-  print_help(opt_parser)
-  stop("Cần chỉ định file output.", call.=FALSE)
-}
-
-cat("=== CBS Segmentation ===\n")
-cat("Input file:", opt$input, "\n")
-cat("Output file:", opt$output, "\n")
-cat("Sample name:", opt$sample, "\n")
-
 # Đọc dữ liệu CSV đã được chuẩn bị từ Python
 cat("Đang đọc dữ liệu từ file CSV...\n")
 
@@ -46,62 +31,36 @@ if (!file.exists(opt$input)) {
   stop(paste("File input không tồn tại:", opt$input))
 }
 
-cnv_data <- read.csv(opt$input)
+ratio_df <- read.csv(opt$input)
 
-if (nrow(cnv_data) == 0) {
+if (nrow(ratio_df) == 0) {
   stop("Không có dữ liệu hợp lệ để phân tích")
 }
 
-cat("Số điểm dữ liệu:", nrow(cnv_data), "\n")
-
-# Kiểm tra các cột cần thiết
-required_cols <- c("sample.name", "chrom_numeric", "maploc", "log2_ratio")
-missing_cols <- setdiff(required_cols, colnames(cnv_data))
-if (length(missing_cols) > 0) {
-  stop(paste("Thiếu các cột cần thiết:", paste(missing_cols, collapse=", ")))
-}
-
 # Tạo đối tượng CNA
-cat("Tạo đối tượng CNA...\n")
-CNA.object <- CNA(genomdat = cnv_data$log2_ratio,
-                  chrom = cnv_data$chrom_numeric,
-                  maploc = cnv_data$maploc,
+CNA_object <- CNA(genomdat = ratio_df$log2_ratio,
+                  chrom = ratio_df$chrom_numeric,
+                  maploc = ratio_df$maploc,
                   data.type = "logratio",
                   sampleid = opt$sample)
 
 # Smooth the data (tùy chọn)
-cat("Smoothing dữ liệu...\n")
-smoothed.CNA.object <- smooth.CNA(CNA.object)
+smoothed_CNA_object <- smooth.CNA(CNA_object)
 
 # Thực hiện segmentation
-cat("Thực hiện CBS segmentation...\n")
-cat("  Alpha:", opt$alpha, "\n")
-cat("  Nperm:", opt$nperm, "\n")
-cat("  P-method:", opt$p.method, "\n")
-
-segment.result <- segment(smoothed.CNA.object, 
+segment_result <- segment(smoothed_CNA_object, 
                          alpha = opt$alpha,
                          nperm = opt$nperm,
                          p.method = opt$p.method,
                          verbose = 1)
 
 # Lấy kết quả segmentation
-segments_df <- segment.result$output
+segments_df <- segment_result$output
 
-# Thêm thông tin chromosome gốc
-segments_df$chrom_original <- ifelse(segments_df$chrom == 23, "X",
-                                   ifelse(segments_df$chrom == 24, "Y", 
-                                         as.character(segments_df$chrom)))
+# Thay thế trực tiếp giá trị 23/24 thành X/Y trong cột chrom
+segments_df$chrom <- ifelse(segments_df$chrom == 23, "X",
+        ifelse(segments_df$chrom == 24, "Y",
+          as.character(segments_df$chrom)))
 
 # Lưu kết quả
-cat("Lưu kết quả segmentation...\n")
 write.csv(segments_df, opt$output, row.names = FALSE)
-
-# In thống kê tóm tắt
-cat("\n=== Thống kê Segmentation ===\n")
-cat("Số segments:", nrow(segments_df), "\n")
-cat("Segments có gain (>0.2):", sum(segments_df$seg.mean > 0.2), "\n")
-cat("Segments có loss (<-0.2):", sum(segments_df$seg.mean < -0.2), "\n")
-cat("Segments normal:", sum(abs(segments_df$seg.mean) <= 0.2), "\n")
-
-cat("\nHoàn thành CBS segmentation!\n")

@@ -4,7 +4,7 @@ import numpy as np
 from pathlib import Path
 
 
-def cbs(pipeline_obj, ratio_file, temp_dir, bin_size, chromosome_list):
+def cbs(ratio_file, temp_dir, bin_size, chromosome_list):
 
     ratio_name = Path(ratio_file).stem.replace('_ratio', '')
     segments_file = Path(temp_dir) / f"{ratio_name}_segments.csv"
