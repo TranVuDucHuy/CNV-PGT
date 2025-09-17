@@ -1,21 +1,16 @@
-import multiprocessing
 import subprocess
 import sys
 import time
 import os
 import glob
+import argparse
 
-INPUT_FASTQ_DIR = "/mnt/g/Lab/SelfDevelop/BWA/Fastq"
-REFERENCE_FASTA = "/mnt/g/Lab/SelfDevelop/BWA/Reference/hg19.p13.plusMT.no_alt_analysis_set.fa"
-OUTPUT_DIR_BAM = "/mnt/g/Lab/SelfDevelop/BWA/Bam"
-CLEANUP_INTERMEDIATE_FILES = True
-
-THREADS = multiprocessing.cpu_count()
+FASTQ_PATTERN = "*.fastq*"
 
 def run_command(command):
-    print(f"Current command: {' '.join(command)}")
+    print(f"Current command: {' '.join(map(str, command))}")
     try:
-        subprocess.run(command, check = True, stderr = subprocess.STDOUT, stdout = sys.stdout)
+        subprocess.run(command, check=True, stderr=subprocess.STDOUT, stdout=sys.stdout)
         print(f"--- DONE ---\n")
     except FileNotFoundError:
         print(f"'{command[0]}' doesn't exist.")
@@ -25,8 +20,7 @@ def run_command(command):
         sys.exit(1)
 
 def find_fastq_files(input_dir):
-    fastq_pattern = "*.fastq"
-    pattern_path = os.path.join(input_dir, fastq_pattern)
+    pattern_path = os.path.join(input_dir, FASTQ_PATTERN)
     fastq_files = glob.glob(pattern_path)
     fastq_files.sort()
     return fastq_files
@@ -34,66 +28,49 @@ def find_fastq_files(input_dir):
 def run_bwa_mem(command, output_sam_file):
     try:
         with open(output_sam_file, 'w') as f_out:
-            process = subprocess.run(command, check = True, stdout = f_out, stderr = subprocess.PIPE, text = True)
+            process = subprocess.run(command, check=True, stdout=f_out, stderr=subprocess.PIPE, text=True)
             if process.stderr:
                 print("BWA-MEM INFO:")
-                print(process.stderr, file = sys.stderr)
+                print(process.stderr, file=sys.stderr)
     except FileNotFoundError:
         print(f"{command[0]} doesn't exist!")
         sys.exit(1)
     except subprocess.CalledProcessError as e:
         print(f"BWA-MEM failed, exit code: {e.returncode}")
         if e.stderr:
-            print(e.stderr, file = sys.stderr)
+            print(e.stderr, file=sys.stderr)
         sys.exit(1)
 
-def format_bam(input_bam, output_bam, base_name, cleanup):
-    head_file = os.path.join(OUTPUT_DIR_BAM, f"{base_name}_head.txt")
-    cmd = f"samtools view -H {input_bam} | head -n 26 > {head_file}"
-    subprocess.run(cmd, shell=True, check=True)
+def format_bam(input_bam, output_bam, base_name, output_dir_bam, cleanup):
+    with open("header.txt", "r", encoding="utf-8") as f:
+        header = f.read()
+    header = header.replace("SAMPLE", base_name)
 
-    with open("tail.txt", "r", encoding="utf-8") as f:
-        data = f.read()
-
-    data = data.replace("SAMPLE", base_name)
-
-    tail_file = os.path.join(OUTPUT_DIR_BAM, f"{base_name}_tail.txt")
-
-    with open(tail_file, "w", encoding="utf-8") as f:
-        f.write(data)
-
-    header_file = os.path.join(OUTPUT_DIR_BAM, f"{base_name}_header.txt")
-    with open(header_file, "w", encoding="utf-8") as fout:
-        with open(head_file, "r", encoding="utf-8") as f1:
-            fout.write(f1.read())
-        with open(tail_file, "r", encoding="utf-8") as f2:
-            fout.write(f2.read())
+    header_file = os.path.join(output_dir_bam, f"{base_name}_header.txt")
+    with open(header_file, "w", encoding="utf-8") as f:
+        f.write(header)
 
     cmd = f"samtools reheader -P {header_file} {input_bam} > {output_bam}"
     subprocess.run(cmd, shell=True, check=True)
 
     if cleanup:
         try:
-            if os.path.exists(head_file):
-                os.remove(head_file)
-            if os.path.exists(tail_file):
-                os.remove(tail_file)
             if os.path.exists(header_file):
                 os.remove(header_file)
-
         except OSError as e:
             print(f"Can't delete temp files: {e}")
 
-def process_single_fastq(input_fastq, output_dir, reference_fasta, threads, cleanup):
-    os.makedirs(output_dir, exist_ok = True)
+def process_single_fastq(input_fastq, output_dir, reference_fasta, threads, min_mapq, filter_flags, bwa_batch, sort_mem, cleanup):
+    os.makedirs(output_dir, exist_ok=True)
     base_name = os.path.splitext(os.path.basename(input_fastq))[0]
 
     sam_file = os.path.join(output_dir, f"{base_name}.sam")
     fixmate_bam_file = os.path.join(output_dir, f"{base_name}.fixmate.bam")
-    final_bam_file = os.path.join(output_dir, f"{base_name}.bam")
+    final_bam_file = os.path.join(output_dir, f"{base_name}_S93.bam")
     temp_sort_prefix = os.path.join(output_dir, f"{base_name}_temp_sort")
     sorted_bam_file = os.path.join(output_dir, f"{base_name}.sorted.bam")
-    sorted_index_bam_file = os.path.join(output_dir, f"{base_name}.sorted.bam.bai")
+    filtered_bam_file = os.path.join(output_dir, f"{base_name}.sorted.q{min_mapq}.bam")
+    filtered_bam_index_file = os.path.join(output_dir, f"{base_name}.sorted.q{min_mapq}.bam.bai")
 
     try:
         index_file_check = f"{reference_fasta}.bwt"
@@ -102,7 +79,7 @@ def process_single_fastq(input_fastq, output_dir, reference_fasta, threads, clea
             run_command(cmd)
 
         rg_header = f"@RG\\tID:{base_name}\\tPL:ILLUMINA\\tSM:{base_name}"
-        cmd = ["bwa", "mem", "-M", "-t", str(threads), "-R", rg_header, reference_fasta, input_fastq]
+        cmd = ["bwa", "mem", "-M", "-K", str(bwa_batch), "-t", str(threads), "-R", rg_header, reference_fasta, input_fastq]
         run_bwa_mem(cmd, sam_file)
 
         cmd = ["samtools", "fixmate", "-O", "bam", sam_file, fixmate_bam_file]
@@ -112,68 +89,40 @@ def process_single_fastq(input_fastq, output_dir, reference_fasta, threads, clea
                "-T", temp_sort_prefix,
                "-O", "bam",
                "-@", str(threads),
+               "-m", sort_mem,
                "-o", sorted_bam_file,
                fixmate_bam_file]
         run_command(cmd)
 
-        cmd = ["samtools", "index", sorted_bam_file]
+        cmd = ["samtools", "view",
+               "-b",
+               "-@", str(threads),
+               "-q", str(min_mapq),
+               "-F", str(filter_flags),
+               sorted_bam_file]
+        with open(filtered_bam_file, "wb") as fout:
+            subprocess.run(cmd, check=True, stdout=fout)
+
+        cmd = ["samtools", "index", filtered_bam_file]
         run_command(cmd)
 
         primary24_bam = os.path.join(output_dir, f"{base_name}.primary24.bam")
 
         keep_chrs = ["chrMT"] + ["chr" + str(i) for i in range(1, 23)] + ["chrX", "chrY"]
-        cmd = ["samtools", "view", "-b", sorted_bam_file] + keep_chrs
+        cmd = ["samtools", "view", "-b", filtered_bam_file] + keep_chrs
         with open(primary24_bam, "wb") as fout:
             subprocess.run(cmd, check=True, stdout=fout)
 
-        raw_hdr = subprocess.check_output(["samtools", "view", "-H", primary24_bam], text=True)
-        allowed = set(keep_chrs)
-        new_lines = []
-        for ln in raw_hdr.splitlines():
-            if ln.startswith("@SQ"):
-                sn = None
-                for f in ln.split("\t"):
-                    if f.startswith("SN:"):
-                        sn = f[3:]
-                        break
-                if sn not in allowed:
-                    continue
-                ln = ln.replace("SN:chrMT", "SN:chrM")
-                if "AS:" not in ln:
-                    ln = ln + "\tAS:hg19"
-                new_lines.append(ln)
-            else:
-                new_lines.append(ln)
-        hdr = "\n".join(new_lines) + "\n"
+        format_bam(primary24_bam, final_bam_file, base_name, output_dir, cleanup)
 
-        with open(final_bam_file, "wb") as fout:
-            proc = subprocess.Popen(
-                ["samtools", "reheader", "-", primary24_bam],
-                stdin=subprocess.PIPE, stdout=fout, text=True
-            )
-            proc.communicate(hdr)
-
-        final_format_bam_file = os.path.join(OUTPUT_DIR_BAM, f"{base_name}_S93.bam")
-
-        format_bam(final_bam_file, final_format_bam_file, base_name, cleanup = CLEANUP_INTERMEDIATE_FILES)
-
-        cmd = ["samtools", "index", final_format_bam_file]
+        cmd = ["samtools", "index", final_bam_file]
         run_command(cmd)
 
         if cleanup:
             try:
-                if os.path.exists(sam_file):
-                    os.remove(sam_file)
-                if os.path.exists(fixmate_bam_file):
-                    os.remove(fixmate_bam_file)
-                if os.path.exists(sorted_bam_file):
-                    os.remove(sorted_bam_file)
-                if os.path.exists(primary24_bam):
-                    os.remove(primary24_bam)
-                if os.path.exists(sorted_index_bam_file):
-                    os.remove(sorted_index_bam_file)
-                if os.path.exists(final_bam_file):
-                    os.remove(final_bam_file)
+                for file in (sam_file, fixmate_bam_file, sorted_bam_file, filtered_bam_file, filtered_bam_index_file, primary24_bam):
+                    if os.path.exists(file):
+                        os.remove(file)
             except OSError as e:
                 print(f"Can't delete temp files: {e}")
 
@@ -182,30 +131,52 @@ def process_single_fastq(input_fastq, output_dir, reference_fasta, threads, clea
         print(f"ERROR! {base_name}: {e}")
         return False
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="Create BlueFuse-friendly BAM with MAPQ filter & low-RAM options")
+    parser.add_argument("-i", "--input-fastq-dir", help="FASTQ folder")
+    parser.add_argument("-r", "--reference-fasta", help="Refer FASTA)")
+    parser.add_argument("-o", "--output-dir-bam", help="Output dir")
+    parser.add_argument("-t", "--threads", type=int, help="Threads")
+    parser.add_argument("-q", "--min-mapq", type=int, help="MAPQ")
+    parser.add_argument("-F", "--filter-flags", type=lambda x: int(x, 0), help="Samtools -F flags")
+    parser.add_argument("-K", "--bwa-batch", type=int, help="Batch size")
+    parser.add_argument("--sort-mem", help="samtools sort -m")
+    parser.add_argument("--cleanup", dest="cleanup", action="store_true", default=True, help="Delete temp file")
+    parser.add_argument("--no-cleanup", dest="cleanup", action="store_false", help="Don't delete temp file")
+    return parser.parse_args()
+
 def main_pipeline():
     start_time = time.time()
     total_time = 0
 
-    if not os.path.exists(INPUT_FASTQ_DIR):
-        print(f"Folder FASTQ doesn't exist: {INPUT_FASTQ_DIR}")
+    args = parse_args()
+    if not os.path.exists(args.input_fastq_dir):
+        print(f"Folder FASTQ doesn't exist: {args.input_fastqMIN_MAPQ_dir}")
         sys.exit(1)
-    if not os.path.exists(REFERENCE_FASTA):
-        print(f"File FASTA doesn't exist: {REFERENCE_FASTA}")
+    if not os.path.exists(args.reference_fasta):
+        print(f"File FASTA doesn't exist: {args.reference_fasta}")
         sys.exit(1)
+    os.makedirs(args.output_dir_bam, exist_ok=True)
 
-    fastq_files = find_fastq_files(INPUT_FASTQ_DIR)
+    fastq_files = find_fastq_files(args.input_fastq_dir)
     if not fastq_files:
-        print(f"ERROR! Can't find any files in folder FASTQ: {INPUT_FASTQ_DIR}")
+        print(f"ERROR! Can't find any files in folder FASTQ: {args.input_fastq_dir}")
         sys.exit(1)
 
     successful_count = 0
     failed_files = []
     for i, fastq_file in enumerate(fastq_files, 1):
-        success = process_single_fastq(input_fastq = fastq_file,
-                                       output_dir = OUTPUT_DIR_BAM,
-                                       reference_fasta = REFERENCE_FASTA,
-                                       threads = THREADS,
-                                       cleanup = CLEANUP_INTERMEDIATE_FILES)
+        success = process_single_fastq(
+            input_fastq = fastq_file,
+            output_dir = args.output_dir_bam,
+            reference_fasta = args.reference_fasta,
+            threads = args.threads,
+            min_mapq = args.min_mapq,
+            filter_flags = args.filter_flags,
+            bwa_batch = args.bwa_batch,
+            sort_mem = args.sort_mem,
+            cleanup = args.cleanup
+        )
         if success:
             successful_count += 1
         else:
@@ -213,14 +184,11 @@ def main_pipeline():
 
         single_time = time.time() - start_time
         print(f"#{i}: {single_time:.2f} giây ({single_time / 60:.2f} phút)")
-
         total_time += single_time
         start_time = time.time()
 
     print(f"TIME: {total_time:.2f} giây ({total_time / 60:.2f} phút)")
+    print(f"Total files: {len(fastq_files)} | Failed: {len(failed_files)}")
 
-    print(f"Total files: {len(fastq_files)}")
-    print(f"Failed files: {len(failed_files)}")
-
-if (__name__ == "__main__"):
+if __name__ == "__main__":
     main_pipeline()
