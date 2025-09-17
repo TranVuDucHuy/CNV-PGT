@@ -9,33 +9,32 @@ Tài liệu này mô tả hai thành phần nhỏ trong một hệ thống phân
 hơn:
 
 1.  **Tiền xử lý BWA**
-    -   Chuyển đổi từ FASTQ → BAM chuẩn **BlueFuse**.\
+    -   Chuyển đổi từ FASTQ → BAM chuẩn **BlueFuse**.
     -   Bao gồm bước align (BWA-MEM), lọc theo MAPQ, chọn lọc nhiễm sắc
         thể chuẩn (24 chr) và thêm header.
 2.  **Pipeline CNV**
     -   Workflow phân tích CNV dạng module gồm:
-        -   Đếm reads trên từng bin.\
-        -   Chuẩn hóa bằng GC/LOWESS.\
-        -   Lọc bin không ổn định bằng hệ số biến thiên (CV).\
-        -   Tính log2 ratio (test vs. train).\
-        -   Phân đoạn bằng **Circular Binary Segmentation (CBS)**.\
+        -   Đếm reads trên từng bin.
+        -   Chuẩn hóa bằng GC/LOWESS.
+        -   Lọc bin không ổn định bằng hệ số biến thiên (CV).
+        -   Tính log2 ratio (test vs. train).
+        -   Phân đoạn bằng **Circular Binary Segmentation (CBS)**.
         -   Vẽ biểu đồ CNV để đánh giá trực quan.
         
 > Lưu ý: Đây chỉ là **các module phụ trợ**. Trong dự án tổng thể, chúng
-> sẽ được tích hợp cùng nhiều bước xử lý khác (chất lượng dữ liệu, gọi
-> CNV nâng cao, QC đa tầng, ...).
+> sẽ được tích hợp cùng nhiều bước xử lý khác.
 
 ------------------------------------------------------------------------
 ## 2. Yêu cầu hệ thống
 
--   Python ≥ 3.8\
+-   Python ≥ 3.8
 
--   R (cần cài gói `DNAcopy`)\
+-   R (cần cài gói `DNAcopy`)
 
 -   Công cụ dòng lệnh:
 
-    -   [BWA](http://bio-bwa.sourceforge.net/) (≥ 0.7.17)\
-    -   [Samtools](http://www.htslib.org/) (≥ 1.10)\
+    -   [BWA](http://bio-bwa.sourceforge.net/) (≥ 0.7.17)
+    -   [Samtools](http://www.htslib.org/) (≥ 1.10)
 
 -   Thư viện Python:
 
@@ -109,14 +108,14 @@ hơn:
 python bwa.py     -i fastq/     -r reference.fa     -o bam/     -t 8     -q 30     -F 0x4     -K 10000000     --sort-mem 4G	--cleanup
 ```
 
-Tham số chính:\
-- `-i` : thư mục FASTQ đầu vào\
-- `-r` : reference genome (FASTA)\
-- `-o` : thư mục BAM đầu ra\
-- `-t` : số threads\
-- `-q` : ngưỡng MAPQ (mặc định: 30)\
-- `-F` : Samtools flags cần lọc (`0x4` = unmapped)\
-- `-K` : batch size BWA\
+Tham số chính:
+- `-i` : thư mục FASTQ đầu vào
+- `-r` : reference genome (FASTA)
+- `-o` : thư mục BAM đầu ra
+- `-t` : số threads
+- `-q` : ngưỡng MAPQ (mặc định: 30)
+- `-F` : Samtools flags cần lọc (`0x4` = unmapped)
+- `-K` : batch size BWA
 - `--sort-mem` : bộ nhớ sort (vd: 4G)
 - `--cleanup`  : xóa các file trung gian 
 
@@ -131,27 +130,27 @@ hoặc baseline pipeline.
 python Code/baseline.py     -o <thu_muc_work>     --bin-size 200000     --filter-ratio 0.8
 ```
 
-Tham số chính:\
-- `-o` : thư mục làm việc\
-- `--bin-size` : kích thước bin (mặc định 200000)\
+Tham số chính:
+- `-o` : thư mục làm việc
+- `--bin-size` : kích thước bin (mặc định 200000)
 - `--filter-ratio` : tỉ lệ giữ lại bin ổn định (mặc định 0.8)
 ------------------------------------------------------------------------
 
 ## 5. Quy trình phân tích CNV baseline
 
-1.  **Đếm reads (Train/Test)** → `.npz` chứa read counts.\
-2.  **Chuẩn hóa (LOWESS/GC)** → loại bỏ bias theo GC, N-content.\
-3.  **Tính thống kê (Train)** → Mean + CV trên mỗi bin.\
-4.  **Lọc bin** → tạo `blacklist.npz` và `Mean_filtered.npz`.\
-5.  **Tính log2 ratio (Test/Train)** → `.npz` chứa log2 ratio.\
-6.  **CBS segmentation** → phân đoạn bất thường copy number.\
+1.  **Đếm reads (Train/Test)** → `.npz` chứa read counts.
+2.  **Chuẩn hóa (LOWESS/GC)** → loại bỏ bias theo GC, N-content.
+3.  **Tính thống kê (Train)** → Mean + CV trên mỗi bin.
+4.  **Lọc bin** → tạo `blacklist.npz` và `Mean_filtered.npz`.
+5.  **Tính log2 ratio (Test/Train)** → `.npz` chứa log2 ratio.
+6.  **CBS segmentation** → phân đoạn bất thường copy number.
 7.  **Vẽ CNV plots** → scatter plot + boxplot cho toàn bộ genome.
 
 ------------------------------------------------------------------------
 
 ## 6. Kết quả đầu ra
 
--   `Output/Normalized/Data/` : normalized, ratio, segments CSV\
+-   `Output/Normalized/Data/` : normalized, ratio, segments CSV
 -   `Output/Normalized/Plot/` : biểu đồ CNV `.png`
 
 ------------------------------------------------------------------------
@@ -159,8 +158,8 @@ Tham số chính:\
 ## 7. Ghi chú
 
 -   BAM đầu vào cho `baseline.py` nên được tạo bằng `bwa.py` để đảm bảo
-    tương thích BlueFuse.\
--   File reference genome (`hg19.fa`) phải có trong `Input/`.\
--   CBS segmentation cần **R + DNAcopy**.\
+    tương thích BlueFuse.
+-   File reference genome (`hg19.fa`) phải có trong `Input/`.
+-   CBS segmentation cần **R + DNAcopy**.
 -   Các module này chỉ là **một phần nhỏ trong dự án phân tích PGT lớn
     hơn**.
