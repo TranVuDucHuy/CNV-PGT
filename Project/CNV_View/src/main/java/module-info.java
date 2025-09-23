@@ -12,11 +12,12 @@ module pgt.cnv_view {
     requires eu.hansolo.tilesfx;
     requires com.almasb.fxgl.all;
     requires java.logging;
+    requires okhttp3;
 
 // opens pgt.cnv_view to javafx.fxml;
 // exports pgt.cnv_view;
-    exports pgt.cnv_view.Application;
-    opens pgt.cnv_view.Application to javafx.fxml;
-    exports pgt.cnv_view.Controller;
-    opens pgt.cnv_view.Controller to javafx.fxml;
+    exports pgt.cnv_view.application;
+    opens pgt.cnv_view.application to javafx.fxml;
+    exports pgt.cnv_view.controller;
+    opens pgt.cnv_view.controller to javafx.fxml;
 }

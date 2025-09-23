@@ -1,4 +1,4 @@
-package pgt.cnv_view.Controller;
+package pgt.cnv_view.controller;
 
 import javafx.application.Platform;
 import javafx.fxml.FXML;

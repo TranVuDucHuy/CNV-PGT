@@ -1,10 +1,9 @@
-package pgt.cnv_view.Application;
+package pgt.cnv_view.application;
 
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
-import javafx.stage.StageStyle;
 
 import java.io.IOException;
 

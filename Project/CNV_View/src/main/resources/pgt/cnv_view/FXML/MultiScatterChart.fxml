@@ -10,7 +10,7 @@
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.VBox?>
 
-<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="pgt.cnv_view.Controller.MultiScatterChartController">
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="pgt.cnv_view.controller.MultiScatterChartController">
     <top>
         <AnchorPane prefHeight="25.0" style="-fx-background-color: #ced1f5;" BorderPane.alignment="CENTER">
             <children>
