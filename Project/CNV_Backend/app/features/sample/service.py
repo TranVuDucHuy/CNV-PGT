@@ -23,14 +23,21 @@ def add_sample(patient_id: int, file_storage) -> Sample:
     content_type = file_storage.mimetype or "application/octet-stream"
     object_uri = save_file(binary_stream, unique_name, content_type)
 
+    print(f"File uploaded to MinIO: {object_uri}")
     sample = Sample(patient_id=patient_id, bam_url=object_uri)
     db.session.add(sample)
     db.session.commit()
+
+    print(f"Sample created: {sample}")
+
     return sample
 
 
 def get_sample(sample_id: int) -> Optional[Sample]:
     return Sample.query.get(sample_id)
+
+def get_all_samples() -> list[Sample]:
+    return Sample.query.all()
 
 
 def remove_sample(sample_id: int) -> bool:
@@ -44,5 +51,7 @@ def remove_sample(sample_id: int) -> bool:
     db.session.delete(sample)
     db.session.commit()
     return True
+
+
 
 

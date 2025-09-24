@@ -1,7 +1,7 @@
 from flask import request, jsonify
 
 from . import sample_bp
-from .service import add_sample, get_sample, remove_sample
+from .service import add_sample, get_all_samples, get_sample, remove_sample
 
 
 @sample_bp.post("/samples")
@@ -34,6 +34,17 @@ def read_sample(sample_id: int):
         "created_at": sample.created_at.isoformat(),
         "patient_id": sample.patient_id,
     })
+        
+
+@sample_bp.get("/samples")
+def list_samples():
+    samples = get_all_samples()
+    return jsonify([{
+        "id": sample.id,
+        "bam_url": sample.bam_url,
+        "created_at": sample.created_at.isoformat(),
+        "patient_id": sample.patient_id,
+    } for sample in samples]), 200
 
 
 @sample_bp.delete("/samples/<int:sample_id>")
