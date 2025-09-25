@@ -8,4 +8,5 @@ public interface SampleService {
     void deleteSample(Long sampleId) throws Exception;
     Sample getSample(Long sampleId) throws Exception;
     List<Sample> getAllSamples() throws Exception;
+    File downloadSampleFile(Long sampleId) throws Exception;
 }

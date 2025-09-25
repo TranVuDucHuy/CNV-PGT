@@ -2,6 +2,7 @@ package pgt.cnv_view.feature.sample;
 
 import okhttp3.MultipartBody;
 import okhttp3.RequestBody;
+import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.http.*;
 
@@ -23,4 +24,7 @@ public interface RetrofitSampleService {
 
     @GET("/api/samples")
     Call<List<Sample>> getAllSamples();
+
+    @GET("/api/samples/{sample_id}/file")
+    Call<ResponseBody> downloadSampleFile(@Path("sample_id") Long sampleId);
 }

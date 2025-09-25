@@ -6,6 +6,7 @@ import pgt.cnv_view.util.ApiClient;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.List;
 
 public class SampleServiceImpl implements SampleService {
@@ -39,5 +40,25 @@ public class SampleServiceImpl implements SampleService {
     @Override
     public List<Sample> getAllSamples() throws IOException {
         return service.getAllSamples().execute().body();
+    }
+
+    @Override
+    public File downloadSampleFile(Long sampleId) throws Exception {
+        var response = service.downloadSampleFile(sampleId).execute();
+
+        var responseBody = response.body();
+
+        if (!response.isSuccessful() || responseBody == null) {
+            throw new IOException("Failed to download file: " + response.message());
+        }
+
+        // Save the file to a temporary location
+        File tempFile = File.createTempFile("sample_" + sampleId, ".bam");
+
+        var outputStream = Files.newOutputStream(tempFile.toPath());
+        responseBody.byteStream().transferTo(outputStream);
+
+        responseBody.close();
+        return tempFile;
     }
 }

@@ -66,4 +66,20 @@ def delete_file(object_uri: str) -> None:
         # Ignore if not found
         pass
 
+def get_file(object_uri: str) -> Optional[io.BytesIO]:
+    """Retrieve a file from MinIO by its stored URI path (minio://bucket/object)."""
+    if not object_uri.startswith("minio://"):
+        return None
+    _, remainder = object_uri.split("://", 1)
+    bucket, object_name = remainder.split("/", 1)
+
+    client = _get_minio_client()
+    try:
+        response = client.get_object(bucket, object_name)
+        data = response.read()
+        response.close()
+        response.release_conn()
+        return io.BytesIO(data)
+    except S3Error:
+        return None
 

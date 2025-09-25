@@ -35,4 +35,16 @@ public class SampleServiceTest {
         assert s != null;
     }
 
+    @Test
+    void testDownload() throws Exception {
+        var f = service.downloadSampleFile(1L);
+        System.out.println(f);
+        assert f != null;
+    }
+
+    @Test
+    void testDelete() throws Exception {
+        service.deleteSample(2L);
+    }
+
 }

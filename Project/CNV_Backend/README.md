@@ -9,7 +9,8 @@ Feature-driven Flask app using SQLAlchemy, Alembic, and MinIO.
 2. Create virtual env and install deps:
    - `python -m venv .venv && .venv\Scripts\activate` (Windows)
    - `pip install -r requirements.txt`
-3. Set env (example):
+3. Set env (Not compulsory):
+
    - `set FLASK_APP=app:create_app`
    - `set MYSQL_HOST=localhost`
    - `set MYSQL_USER=cnv_user`
@@ -19,14 +20,18 @@ Feature-driven Flask app using SQLAlchemy, Alembic, and MinIO.
    - `set MINIO_ACCESS_KEY=minioadmin`
    - `set MINIO_SECRET_KEY=minioadmin`
    - `set MINIO_BUCKET=cnv-bucket`
-4. Initialize DB:
 
-   - `flask --app app:create_app db init` (first time only if migrations/ absent)
+4. Initialize DB:
+   Call only once:
+
+   - `flask --app app:create_app db init` (creates migrations folder)
+     Then, for every change in models:
    - `flask --app app:create_app db migrate -m "init"`
    - `flask --app app:create_app db upgrade`
 
 5. Run app:
    - `flask run`
+   - Or run the file `run.py`
 
 ### API
 
