@@ -48,6 +48,9 @@ class CNV:
 
         print("=== START CNV DETECTION PIPELINE ===")
 
+        print("\n0. Prepare bin coordinates...")
+        bin_coordinate_file = self.estimator.save_bin_coordinates(self.work_directory / "Temporary")
+
         print("\n1. Count reads train samples...")
         train_bam_list = list((self.work_directory / "Input" / "Train").glob('*.bam'))
         train_raw_list = []
@@ -80,7 +83,8 @@ class CNV:
 
         print("\n5. Calculate statistics from train samples (raw & normalized) and filter out unstable bins...")
         mean_normalized, cv_normalized = self.estimator.statistics(self.work_directory / "Temporary" / "Normalized" / "Train", self.work_directory / "Temporary" / "Normalized")
-        blacklist_normalized = filter_bins(cv_normalized, self.filter_ratio, self.work_directory / "Temporary" / "Normalized")
+        bed_file = str(self.work_directory / "Input" / "wgEncodeDacMapabilityConsensusExcludable.bed.gz")
+        blacklist_normalized = filter_bins(cv_normalized, bed_file, bin_coordinate_file, self.filter_ratio, self.work_directory / "Temporary" / "Normalized")
         mean_filtered_normalized = create_filter_files(mean_normalized, blacklist_normalized, self.work_directory / "Temporary" / "Normalized")
 
         print("\n6. Calculate ratio for test samples (raw & normalized)...")

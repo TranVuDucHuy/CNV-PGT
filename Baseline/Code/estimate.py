@@ -16,6 +16,36 @@ class Estimator:
         self.bin_size = int(bin_size)
         self.chromosome_list = (chromosome_list if chromosome_list is not None else [str(i) for i in range(1, 23)] + ["X", "Y"])
 
+    def save_bin_coordinates(self, output_dir):
+        """
+        Generate bin coordinate file (NPZ) based on chromosome lengths and bin size
+        Each chromosome -> Nx2 array [start, end]
+
+        Args:
+            output_dir (Path): Output directory to save NPZ file
+
+        Returns:
+            str: NPZ file path containing bin coordinates
+        """
+        bin_coordinate_file = output_dir / "binCoordinate.npz"
+        if bin_coordinate_file.exists():
+            print(f"Bin coordinate file already exists: {bin_coordinate_file}")
+            return str(bin_coordinate_file)
+
+        chromosome_bins = {}
+
+        for chromosome in self.chromosome_list:
+            chromosome_length = CHROMOSOME_LENGTHS_GRCh37[str(chromosome)]
+            num_bins = chromosome_length // self.bin_size
+
+            start_positions = np.arange(0, num_bins * self.bin_size, self.bin_size, dtype=np.int64)
+            end_positions = np.minimum(start_positions + self.bin_size, chromosome_length)
+
+            chromosome_bins[chromosome] = np.column_stack((start_positions, end_positions))
+
+        np.savez_compressed(bin_coordinate_file, **chromosome_bins)
+        return str(bin_coordinate_file)
+
     def count_read(self, bam_file, output_dir):
         """
         Count the number of reads in bins on each chromosome (raw counts only)
