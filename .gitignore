@@ -1,0 +1,55 @@
+# ====== General ======
+__pycache__/
+*.pyc
+*.log
+*.tmp
+*.bak
+*.swp
+
+# ====== Output files ======
+*.npz
+*.npy
+*.csv
+*.tsv
+*.txt
+*.xlsx
+*.xls
+*.pdf
+
+# ====== Image / Figure ======
+*.png
+*.jpg
+*.jpeg
+*.tiff
+*.svg
+
+# ====== BAM / NGS data ======
+*.bam
+*.bai
+*.sam
+*.fastq
+*.fastq.gz
+*.fq
+*.fq.gz
+*.vcf
+*.vcf.gz
+
+# ====== Checkpoints / Models ======
+*.pt
+*.ckpt
+*.h5
+*.pkl
+
+# ====== System or IDE ======
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+
+# ====== Local experiment folders ======
+Output/
+Results/
+Logs/
+tmp/
+data/
