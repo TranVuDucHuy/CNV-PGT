@@ -18,7 +18,13 @@ option_list = list(
   make_option(c("--nperm"), type="integer", default=10000, 
               help="Số permutations cho CBS [default= %default]", metavar="number"),
   make_option(c("--p.method"), type="character", default="hybrid", 
-              help="P-value method [default= %default]", metavar="character")
+              help="P-value method [default= %default]", metavar="character"),
+  make_option(c("--min.width"), type="integer", default=2,
+              help="Số markers tối thiểu cho một segment (min.width) [default= %default]", metavar="number"),
+  make_option(c("--undo.splits"), type="character", default="none",
+              help="Phương pháp undo splits (none, prune, sdundo) [default= %default]", metavar="character"),
+  make_option(c("--undo.SD"), type="double", default=3.0,
+              help="Ngưỡng SD cho phương pháp sdundo (undo.SD) [default= %default]", metavar="number")
 )
 
 opt_parser = OptionParser(option_list=option_list)
@@ -78,11 +84,17 @@ cat("Thực hiện CBS segmentation...\n")
 cat("  Alpha:", opt$alpha, "\n")
 cat("  Nperm:", opt$nperm, "\n")
 cat("  P-method:", opt$p.method, "\n")
+cat("  Min width:", opt$min.width, "\n")
+cat("  Undo splits:", opt$undo.splits, "\n")
+cat("  Undo SD:", opt$undo.SD, "\n")
 
 segment.result <- segment(smoothed.CNA.object, 
                          alpha = opt$alpha,
                          nperm = opt$nperm,
                          p.method = opt$p.method,
+                         min.width = opt$min.width,
+                         undo.splits = opt$undo.splits,
+                         undo.SD = opt$undo.SD,
                          verbose = 1)
 
 # Lấy kết quả segmentation
