@@ -72,28 +72,23 @@ class CNV:
 
         print("\n4. Normalize test and calculate proportion for samples...")
         test_normalized_list = []
+        test_proportion_normalized_list = []
         for raw_file in test_raw_list:
             normalized_file = normalize_readcount(self, raw_file, self.work_directory / "Temporary" / "Normalized" / "Test")
             test_normalized_list.append(normalized_file)
             test_proportion_normalized_file = self.estimator.calculate_proportion(normalized_file, self.work_directory / "Temporary" / "Normalized" / "Test")
+            test_proportion_normalized_list.append(test_proportion_normalized_file)
 
 
-        print("\n5. Calculate statistics from train samples (raw & normalized) and filter out unstable bins...")
+        print("\n5. Calculate statistics from train samples (normalized) and filter out unstable bins...")
         mean_normalized, cv_normalized = self.estimator.statistics(self.work_directory / "Temporary" / "Normalized" / "Train", self.work_directory / "Temporary" / "Normalized")
         blacklist_normalized = filter_bins(cv_normalized, self.filter_ratio, self.work_directory / "Temporary" / "Normalized")
         mean_filtered_normalized = create_filter_files(mean_normalized, blacklist_normalized, self.work_directory / "Temporary" / "Normalized")
 
-        print("\n6. Calculate ratio for test samples (raw & normalized)...")
-        # # Will fix soon (filtered file) ------------------------------------------------------------------------------------------------------------ @@@@@@@@@@@@@@@
-        # ratio_normalized_files = []
-        # for case_file in case_proportion_normalized_files:
-        #     ratio_file = self.estimator.calculate_ratio(case_file, mean_normalized_file, blacklist_normalized_file, self.work_directory / "Output" / "Normalized" / "Data")
-        #     if ratio_file:
-        #         ratio_normalized_files.append(ratio_file)
-
-        test_proportion_normalized_list = [
-            str(p) for p in (self.work_directory / "Temporary" / "Normalized" / "Test").glob("*_proportion.npz")
-        ]
+        print("\n6. Calculate ratio for test samples (normalized)...")
+        # test_proportion_normalized_list = [
+        #     str(p) for p in (self.work_directory / "Temporary" / "Normalized" / "Test").glob("*_proportion.npz")
+        # ]
         ratio_normalized_list = []
         for test_proportion_normalized_file in test_proportion_normalized_list:
             ratio_normalized_file = self.estimator.calculate_ratio(test_proportion_normalized_file, mean_normalized, blacklist_normalized,
@@ -106,7 +101,7 @@ class CNV:
             segments_file = cbs(ratio_normalized_file, self.work_directory / "Output" / "Normalized" / "Data", self.bin_size, self.chromosome_list)
             segments_normalized_list.append(segments_file)
 
-        print("\n9. Create chart with segments (raw & normalized)...")
+        print("\n9. Create chart with segments (normalized)...")
 
         plot_normalized_files = []
         for i, ratio_normalized_file in enumerate(ratio_normalized_list):

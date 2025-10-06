@@ -178,8 +178,8 @@ def lowess_normalize(raw_data, gc_data, n_data, max_n=0.1, min_rd=0.0001, frac=0
                     # Nếu có lỗi, giữ nguyên giá trị gốc
                     corrected_counts[bin_index] = read_count_list[bin_index]
             else:
-                # Bin không hợp lệ thì giữ nguyên giá trị gốc
-                corrected_counts[bin_index] = read_count_list[bin_index]
+                # Bin không hợp lệ thì cho giá trị 0
+                corrected_counts[bin_index] = 0
 
         # Lưu kết quả đã correction cho chromosome này
         corrected_data[chromosome] = corrected_counts

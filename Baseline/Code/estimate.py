@@ -81,31 +81,40 @@ class Estimator:
         data = np.load(readcount_file)
 
         name = Path(readcount_file).stem
-        proportion_file = output_dir / f"{name.replace('_readCount', '_proportion')}.npz"
+        proportion_file = output_dir / f"{name.replace('_readCount', '_proportion_1')}.npz"
 
         proportion_file.parent.mkdir(parents=True, exist_ok=True)
 
-        total_reads = 0
-        for chromosome in self.chromosome_list:
+        # Only count total reads from autosomes (1-22), excluding X and Y
+        autosome_list = [str(i) for i in range(1, 23)]
+        total_reads = 0.0
+        total_counts_per_chromosome = {chr_name: 0.0 for chr_name in autosome_list}
+        for chromosome in autosome_list:
             if chromosome in data.files:
                 counts = data[chromosome]
-
                 valid_counts = counts[counts != -1]
-                total_reads += np.sum(valid_counts)
+                chromosome_read_total = float(np.sum(valid_counts))
+                total_counts_per_chromosome[chromosome] = chromosome_read_total
+                total_reads += chromosome_read_total
 
-        print(f"Total reads: {total_reads:,}")
+        print(f"Total reads (autosomes only): {int(total_reads):,}")
 
         if total_reads == 0:
             print(f"Warning: Total reads = 0!")
             return None
+
+        total_exclude = {}
+        for chr_name in autosome_list:
+            total_exclude[chr_name] = total_reads - total_counts_per_chromosome.get(chr_name, 0.0)
+        total_exclude["X"] = total_reads
+        total_exclude["Y"] = total_reads
 
         proportion_dict = {}
 
         for chromosome in self.chromosome_list:
             if chromosome in data.files:
                 counts = data[chromosome].astype(np.float32)
-
-                read_proportion = counts / total_reads
+                read_proportion = counts / (total_exclude.get(chromosome, total_reads))
 
                 invalid_mask = (counts == -1)
                 read_proportion[invalid_mask] = -1
@@ -114,8 +123,10 @@ class Estimator:
 
                 valid_mask = ~invalid_mask
                 if np.any(valid_mask):
-                    print(f"  Chr {chromosome}: {np.sum(valid_mask)} bins, "
-                          f"ratio range: {np.min(read_proportion[valid_mask]):.6f} - {np.max(read_proportion[valid_mask]):.6f}")
+                    print(
+                        f"  Chr {chromosome}: {np.sum(valid_mask)} bins, "
+                        f"ratio range: {np.min(read_proportion[valid_mask]):.6f} - {np.max(read_proportion[valid_mask]):.6f}"
+                    )
 
         np.savez_compressed(proportion_file, **proportion_dict)
 
@@ -136,8 +147,7 @@ class Estimator:
         """
         print("Calculating statistics from train samples...")
 
-        proportion_list = list(Path(control_npz_dir).glob("*_proportion.npz"))
-        # proportion_list = list(Path(control_npz_dir).glob("*_readCount.npz"))
+        proportion_list = list(Path(control_npz_dir).glob("*_proportion_1.npz"))
 
         print(f"Found {len(proportion_list)} sample files")
 
@@ -193,8 +203,7 @@ class Estimator:
         mean_data = np.load(mean_file)
         bin_data = np.load(blacklist_file)
 
-        test_name = Path(test_file).stem.replace('_proportion', '_ratio')
-        # case_name = Path(case_file).stem.replace('_readCount', '_ratio')
+        test_name = Path(test_file).stem.replace('_proportion_1', '_ratio_1')
         ratio_file = output_dir / f"{test_name}.npz"
 
         ratio_dict = {}

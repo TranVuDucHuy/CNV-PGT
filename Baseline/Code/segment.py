@@ -6,7 +6,7 @@ from pathlib import Path
 
 def cbs(ratio_file, temp_dir, bin_size, chromosome_list):
 
-    ratio_name = Path(ratio_file).stem.replace('_ratio', '')
+    ratio_name = Path(ratio_file).stem.replace('_ratio_1', '')
     segments_file = Path(temp_dir) / f"{ratio_name}_segments.csv"
     temp_csv = prepare_cbs_data(ratio_file, ratio_name, temp_dir, bin_size, chromosome_list)
     cbs_script = Path(__file__).parent / "CBS.R"
