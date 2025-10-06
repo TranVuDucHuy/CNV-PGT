@@ -81,7 +81,7 @@ class Estimator:
         data = np.load(readcount_file)
 
         name = Path(readcount_file).stem
-        proportion_file = output_dir / f"{name.replace('_readCount', '_proportion_1')}.npz"
+        proportion_file = output_dir / f"{name.replace('_readCount', '_proportion')}.npz"
 
         proportion_file.parent.mkdir(parents=True, exist_ok=True)
 
@@ -147,7 +147,7 @@ class Estimator:
         """
         print("Calculating statistics from train samples...")
 
-        proportion_list = list(Path(control_npz_dir).glob("*_proportion_1.npz"))
+        proportion_list = list(Path(control_npz_dir).glob("*_proportion.npz"))
 
         print(f"Found {len(proportion_list)} sample files")
 
@@ -201,28 +201,28 @@ class Estimator:
         """
         test_data = np.load(test_file)
         mean_data = np.load(mean_file)
-        bin_data = np.load(blacklist_file)
+        blacklist_data = np.load(blacklist_file)
 
-        test_name = Path(test_file).stem.replace('_proportion_1', '_ratio_1')
+        test_name = Path(test_file).stem.replace('_proportion', '_ratio_1')
         ratio_file = output_dir / f"{test_name}.npz"
 
         ratio_dict = {}
 
         for chromosome in self.chromosome_list:
-            if chromosome in test_data.files and chromosome in mean_data.files and chromosome in bin_data.files:
-                case_ratios = test_data[chromosome]
+            if chromosome in test_data.files and chromosome in mean_data.files and chromosome in blacklist_data.files:
+                test_ratios = test_data[chromosome]
                 mean_ratios = mean_data[chromosome]
-                bin_mask = bin_data[chromosome]
+                bin_mask = blacklist_data[chromosome]
 
-                log2_ratios = np.full_like(case_ratios, -2.0)
+                log2_ratios = np.full_like(test_ratios, -2.0)
 
                 valid_bins = bin_mask == True
-                valid_case = case_ratios > 0
+                valid_case = test_ratios > 0
                 valid_mean = mean_ratios > 0
                 valid_mask = valid_bins & valid_case & valid_mean
 
                 if np.any(valid_mask):
-                    log2_ratios[valid_mask] = np.log2(case_ratios[valid_mask] / mean_ratios[valid_mask])
+                    log2_ratios[valid_mask] = np.log2(test_ratios[valid_mask] / mean_ratios[valid_mask])
 
                 ratio_dict[chromosome] = log2_ratios
 
@@ -236,3 +236,110 @@ class Estimator:
         print(f"Saved log2 ratio to: {ratio_file}")
 
         return str(ratio_file)
+
+    def recalculate_ratio(self, readcount_file, ratio_file, mean_file, blacklist_file, output_dir, aberration_threshold):
+        """
+        Recalculate log2 ratio after adjusting chromosome totals using aberration masking and scaling.
+        """
+        # Load inputs
+        counts_data = np.load(readcount_file)
+        ratio_data = np.load(ratio_file)
+        mean_data = np.load(mean_file)
+        blacklist_data = np.load(blacklist_file)
+
+        name = Path(readcount_file).stem
+        out_file = Path(output_dir) / f"{name.replace('_readCount', '_ratio_2')}.npz"
+
+        autosome_list = [str(i) for i in range(1, 23)]
+
+        # 1) Aberration masks from ratio_file (ratio_file contains log2 ratios)
+        aberration_masks = {}
+        for chromosome in self.chromosome_list:
+            log2_vals = ratio_data[chromosome]
+            # Convert log2 ratio to linear ratio
+            linear_ratio = np.power(2.0, log2_vals.astype(np.float32))
+            aberration_mask = np.abs(linear_ratio - 1.0) > float(aberration_threshold)
+            aberration_masks[chromosome] = aberration_mask
+
+        # 2) Compute scale using non-aberration & non-blacklist bins across autosomes
+        sum_test_reads = 0.0
+        sum_mean_vals = 0.0
+        for chromosome in autosome_list:
+            counts = counts_data[chromosome].astype(np.float64)
+            mean_prop = mean_data[chromosome].astype(np.float64)
+            bin_mask_keep = (blacklist_data[chromosome] == True)
+            ab_mask = aberration_masks.get(chromosome, np.zeros_like(counts, dtype=bool))
+            include_mask = bin_mask_keep & (~ab_mask)
+
+            if include_mask.size:
+                # Exclude invalid negative counts (e.g., -1) from sums implicitly via mask on counts > -1
+                valid_counts_mask = include_mask & (counts >= 0)
+                sum_test_reads += float(np.sum(counts[valid_counts_mask]))
+                sum_mean_vals += float(np.sum(mean_prop[include_mask]))
+
+        scale = (sum_test_reads / sum_mean_vals) if sum_mean_vals > 0 else 1.0
+
+        # 3) Compute per-chromosome totals with aberration bins replaced by mean*scale (autosomes only)
+        total_reads = 0.0
+        total_counts_per_chromosome = {chr_name: 0.0 for chr_name in autosome_list}
+        for chromosome in autosome_list:     
+            counts = counts_data[chromosome].astype(np.float64)
+            mean_prop = mean_data[chromosome].astype(np.float64)
+            ab_mask = aberration_masks.get(chromosome, np.zeros_like(counts, dtype=bool))
+
+            adjusted_counts = counts.copy()
+            # Replace aberration bin counts with expected mean*scale
+            replace_values = mean_prop[ab_mask] * scale
+            adjusted_counts[ab_mask] = replace_values
+
+            # Sum excluding invalid bins (e.g., -1)
+            valid_mask = adjusted_counts >= 0
+            chrom_total = float(np.sum(adjusted_counts[valid_mask]))
+            total_counts_per_chromosome[chromosome] = chrom_total
+            total_reads += chrom_total
+
+        # Build total_exclude like calculate_proportion: exclude the chromosome itself for autosomes; X/Y use total_reads
+        total_exclude = {}
+        for chr_name in autosome_list:
+            total_exclude[chr_name] = total_reads - total_counts_per_chromosome.get(chr_name, 0.0)
+        total_exclude["X"] = total_reads
+        total_exclude["Y"] = total_reads
+
+        # 4) Compute read proportion per chromosome; skip blacklist bins; still compute for aberration bins
+        proportion_dict = {}
+        for chromosome in self.chromosome_list:
+            counts = counts_data[chromosome].astype(np.float32)
+            denom = float(total_exclude.get(chromosome, total_reads))
+            read_proportion = counts / denom if denom > 0 else np.zeros_like(counts, dtype=np.float32)
+
+            # Blacklist bins set to -1; also keep original -1 invalids as -1
+            keep_mask = (blacklist_data[chromosome] == True)
+            invalid_mask = (counts < 0) | (~keep_mask)
+
+            read_proportion[invalid_mask] = -1
+            proportion_dict[chromosome] = read_proportion
+
+        # 5) Compute log2 ratio vs mean_file like calculate_ratio and save
+        ratio_dict = {}
+        for chromosome in self.chromosome_list:
+            test_ratios = proportion_dict[chromosome]
+            mean_ratios = mean_data[chromosome]
+            bin_mask = blacklist_data[chromosome]
+
+            log2_ratios = np.full_like(test_ratios, -2.0, dtype=np.float32)
+
+            valid_bins = (bin_mask == True)
+            valid_case = test_ratios > 0
+            valid_mean = mean_ratios > 0
+            valid_mask = valid_bins & valid_case & valid_mean
+
+            if np.any(valid_mask):
+                log2_ratios[valid_mask] = np.log2(test_ratios[valid_mask] / mean_ratios[valid_mask]).astype(np.float32)
+
+            ratio_dict[chromosome] = log2_ratios
+
+        np.savez_compressed(out_file, **ratio_dict)
+
+        print(f"Saved recalculated log2 ratio to: {out_file}")
+
+        return str(out_file)

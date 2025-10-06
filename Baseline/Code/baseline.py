@@ -86,25 +86,36 @@ class CNV:
         mean_filtered_normalized = create_filter_files(mean_normalized, blacklist_normalized, self.work_directory / "Temporary" / "Normalized")
 
         print("\n6. Calculate ratio for test samples (normalized)...")
-        # test_proportion_normalized_list = [
-        #     str(p) for p in (self.work_directory / "Temporary" / "Normalized" / "Test").glob("*_proportion.npz")
-        # ]
         ratio_normalized_list = []
         for test_proportion_normalized_file in test_proportion_normalized_list:
             ratio_normalized_file = self.estimator.calculate_ratio(test_proportion_normalized_file, mean_normalized, blacklist_normalized,
                                                         self.work_directory / "Output" / "Normalized" / "Data")
             ratio_normalized_list.append(ratio_normalized_file)
 
-        print("\n7. Performing CBS segmentation...")
+        # 7 Recalculate ratio using aberration-based scaling and use it for segmentation
+        print("\n7. Recalculate ratio using aberration masking and scaling...")
+        recalculated_ratio_normalized_list = []
+        for i, ratio_normalized_file in enumerate(ratio_normalized_list):
+            readcount_file = test_normalized_list[i]
+            refined_ratio_file = self.estimator.recalculate_ratio(
+                readcount_file,
+                ratio_normalized_file,
+                mean_normalized,
+                blacklist_normalized,
+                self.work_directory / "Output" / "Normalized" / "Data",
+                0.3  # aberration_threshold
+            )
+            recalculated_ratio_normalized_list.append(refined_ratio_file)
+
+        print("\n8. Performing CBS segmentation...")
         segments_normalized_list = []
-        for ratio_normalized_file in ratio_normalized_list:
-            segments_file = cbs(ratio_normalized_file, self.work_directory / "Output" / "Normalized" / "Data", self.bin_size, self.chromosome_list)
+        for refined_ratio_file in recalculated_ratio_normalized_list:
+            segments_file = cbs(refined_ratio_file, self.work_directory / "Output" / "Normalized" / "Data", self.bin_size, self.chromosome_list)
             segments_normalized_list.append(segments_file)
 
         print("\n9. Create chart with segments (normalized)...")
 
-        plot_normalized_files = []
-        for i, ratio_normalized_file in enumerate(ratio_normalized_list):
+        for i, refined_ratio_file in enumerate(recalculated_ratio_normalized_list):
             segments_file = segments_normalized_list[i]
 
             plotter = Plotter(
@@ -113,8 +124,7 @@ class CNV:
                 self.work_directory / "Output" / "Normalized" / "Plot"
             )
 
-            plot_file = plotter.plot(ratio_normalized_file, mean_filtered_normalized, segments_file)
-            plot_normalized_files.append(plot_file)
+            plot_file = plotter.plot(refined_ratio_file, mean_filtered_normalized, segments_file)
 
         print(f"\n=== COMPLETED PIPELINE ===")
 
@@ -152,7 +162,7 @@ def main():
         filter_ratio = args.filter_ratio
     )
 
-    plot_files = pipeline.run_pipeline()
+    pipeline.run_pipeline()
 
 if __name__ == "__main__":
     main()

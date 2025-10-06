@@ -59,7 +59,7 @@ class Plotter:
                 print(f"Lỗi khi đọc segments: {e}")
 
         # Tạo tên file output
-        ratio_name = Path(ratio_npz).stem.replace('_ratio_1', '')
+        ratio_name = Path(ratio_npz).stem.replace('_ratio_2', '')
         plot_file = Path(output_dir) / f"{ratio_name}_cnv_plot.png"
 
         # Tạo figure chỉ với 1 subplot (loại bỏ boxplot)
