@@ -67,15 +67,17 @@ class Plotter:
 
         # Chuẩn bị dữ liệu cho plotting
         all_positions = []
-        all_ratios = []
+        all_copy_numbers = []
         all_colors = []
         all_chroms = []
         chromosome_boundaries = []
+        chromosome_centers = []
+        chromosome_labels = []
 
-        # Đường giới hạn cho các trạng thái ploidy
-        constitutional_3n = np.log2(3 / 2)  # ≈ 0.58
-        constitutional_2n = 0.0
-        constitutional_1n = np.log2(1 / 2)  # ≈ -1.0
+        # Đường giới hạn cho các trạng thái ploidy (thang copy number)
+        constitutional_3n_cn = 3.0
+        constitutional_2n_cn = 2.0
+        constitutional_1n_cn = 1.0
 
         current_pos = 0
 
@@ -94,6 +96,8 @@ class Plotter:
                 if np.any(valid_mask):
                     valid_positions = bin_positions[valid_mask]
                     valid_ratios = ratios[valid_mask]
+                    # Chuyển đổi từ log2(ratio) sang copy number: CN = 2^(log2 + 1)
+                    valid_copy_numbers = np.power(2.0, valid_ratios + 1.0)
 
                     # Phân loại màu sắc theo giá trị log2 ratio
                     colors = []
@@ -101,7 +105,7 @@ class Plotter:
                         colors.append('#888888')  # Xám cho normal
 
                     all_positions.extend(valid_positions)
-                    all_ratios.extend(valid_ratios)
+                    all_copy_numbers.extend(valid_copy_numbers)
                     all_colors.extend(colors)
                     all_chroms.extend([chrom] * len(valid_positions))
 
@@ -109,11 +113,15 @@ class Plotter:
                 if current_pos > 0:
                     chromosome_boundaries.append(current_pos)
 
+                # Tính center cho nhãn chromosome trên trục X
+                chromosome_centers.append(current_pos + num_bins / 2.0)
+                chromosome_labels.append(chrom)
+
                 current_pos += num_bins
 
         # Chuyển thành array
         all_positions = np.array(all_positions)
-        all_ratios = np.array(all_ratios)
+        all_copy_numbers = np.array(all_copy_numbers)
         all_colors = np.array(all_colors)
 
         # Kiểm tra xem có dữ liệu hợp lệ không
@@ -123,28 +131,45 @@ class Plotter:
             ax1.text(0.5, 0.5, 'Không có dữ liệu hợp lệ',
                      transform=ax1.transAxes, ha='center', va='center', fontsize=14)
         else:
-            # Vẽ scatter plot (subplot 1) - theo style WisecondorX
-            ax1.scatter(all_positions, all_ratios, c=all_colors, alpha=0.7, s=15, edgecolors='none')
+            # Vẽ scatter plot (subplot 1) theo thang copy number
+            ax1.scatter(all_positions, all_copy_numbers, c=all_colors, alpha=0.7, s=15, edgecolors='none')
 
             # Vẽ đường segments nếu có
             if segments_df is not None:
                 self._plot_segments(ax1, segments_df, ratio_data, bin_size)
 
-            # Vẽ đường giới hạn
-            ax1.axhline(y=constitutional_3n, color='lightcoral', linestyle='--', alpha=0.8, linewidth=1.5,
-                        label='Constitutional 3n')
-            ax1.axhline(y=constitutional_1n, color='lightblue', linestyle='--', alpha=0.8, linewidth=1.5,
-                        label='Constitutional 1n')
+            # Vẽ đường giới hạn (copy number)
+            ax1.axhline(y=constitutional_3n_cn, color='lightcoral', linestyle='--', alpha=0.8, linewidth=1.5,
+                        label='Constitutional 3n (CN=3)')
+            ax1.axhline(y=constitutional_1n_cn, color='lightblue', linestyle='--', alpha=0.8, linewidth=1.5,
+                        label='Constitutional 1n (CN=1)')
+            ax1.axhline(y=constitutional_2n_cn, color='darkgray', linestyle='-', alpha=0.8, linewidth=1.5,
+                        label='Diploid baseline (CN=2)')
 
             # Vẽ đường phân chia chromosome
             for boundary in chromosome_boundaries:
-                ax1.axvline(x=boundary, color='lightgray', linestyle='-', alpha=0.5, linewidth=0.8)
+                ax1.axvline(x=boundary, color='darkgray', linestyle='-', alpha=0.5, linewidth=0.8)
 
-        ax1.set_ylabel('log2(ratio)', fontsize=12)
+        ax1.set_ylabel('Copy number', fontsize=12)
         ax1.set_title(f'Copy Number Variation Analysis - {ratio_name}', fontsize=14, fontweight='bold')
         ax1.legend(loc='upper right')
-        ax1.grid(True, alpha=0.3)
-        ax1.set_ylim(-2, 2)  # Giới hạn trục y như WisecondorX
+        # Chỉ hiển thị grid theo trục Y
+        ax1.grid(True, axis='y', alpha=0.3)
+        # Ẩn spine (đường trục) của trục X và tắt grid trục X
+        ax1.xaxis.grid(False)
+        ax1.spines['bottom'].set_visible(False)
+        ax1.spines['top'].set_visible(False)
+        # Ẩn vạch tick của trục X nhưng giữ nhãn NST
+        ax1.tick_params(axis='x', which='both', length=0)
+        ax1.set_ylim(0, 4)  # Giới hạn trục y cho copy number
+        # Thiết lập các mức trên trục Y mỗi 0.2 để hiển thị đường mức dày hơn
+        ax1.set_yticks(np.arange(0, 4.1, 0.2))
+
+        # Thiết lập nhãn trục X theo chromosome (1..22, X, Y) thay cho số
+        if len(chromosome_centers) > 0:
+            ax1.set_xlim(0, current_pos)
+            ax1.set_xticks(chromosome_centers)
+            ax1.set_xticklabels(chromosome_labels, fontsize=10)
 
         # Đã loại bỏ phần vẽ boxplot (subplot 2)
 
@@ -210,13 +235,15 @@ class Plotter:
                 plot_start = max(chrom_info['start_bin'], plot_start)
                 plot_end = min(chrom_info['end_bin'], plot_end)
 
-                # Màu sắc segment
-                seg_mean = segment['seg.mean']
-                if seg_mean > 0.2:
+                # Xác định giá trị y vẽ segment theo scale
+                seg_value = float(np.power(2.0, segment['seg.mean'] + 1.0))
+
+                # Màu sắc segment dựa trên seg.mean ở thang log2
+                if seg_value > 2.5:
                     color = '#FF0000'  # Đỏ đậm cho gain
                     linewidth = 4
                     alpha = 0.9
-                elif seg_mean < -0.2:
+                elif seg_value < 1.5:
                     color = '#0000FF'  # Xanh đậm cho loss
                     linewidth = 4
                     alpha = 0.9
@@ -226,5 +253,5 @@ class Plotter:
                     alpha = 0.7
 
                 # Vẽ đường segment
-                ax.plot([plot_start, plot_end], [seg_mean, seg_mean],
+                ax.plot([plot_start, plot_end], [seg_value, seg_value],
                         color=color, linewidth=linewidth, alpha=alpha, solid_capstyle='round')

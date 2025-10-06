@@ -256,9 +256,22 @@ class Estimator:
         aberration_masks = {}
         for chromosome in self.chromosome_list:
             log2_vals = ratio_data[chromosome]
-            # Convert log2 ratio to linear ratio
+            # Evaluate aberration across all bins; rely on blacklist to exclude unwanted bins from the fraction
+            keep_mask = (blacklist_data[chromosome] == True) if chromosome in blacklist_data.files else np.ones_like(log2_vals, dtype=bool)
+
+            # Convert log2 ratio to linear ratio for all positions
             linear_ratio = np.power(2.0, log2_vals.astype(np.float32))
-            aberration_mask = np.abs(linear_ratio - 1.0) > float(aberration_threshold)
+
+            # Per-bin aberration mask
+            aberration_mask = (np.abs(linear_ratio - 1.0) > float(aberration_threshold))
+
+            # Apply chromosome-level rule: if >50% of kept bins are aberrant, mark entire chromosome as aberrant
+            denom_mask = keep_mask
+            if np.any(denom_mask):
+                frac_aberrant = float(np.count_nonzero(aberration_mask & denom_mask)) / float(np.count_nonzero(denom_mask))
+                if frac_aberrant > 0.5:
+                    aberration_mask[:] = True
+
             aberration_masks[chromosome] = aberration_mask
 
         # 2) Compute scale using non-aberration & non-blacklist bins across autosomes
