@@ -48,6 +48,9 @@ class CNV:
 
         print("=== START CNV DETECTION PIPELINE ===")
 
+        print("\n0. Prepare bin coordinates...")
+        bin_coordinate_file = self.estimator.save_bin_coordinates(self.work_directory / "Temporary")
+
         print("\n1. Count reads train samples...")
         train_bam_list = list((self.work_directory / "Input" / "Train").glob('*.bam'))
         train_raw_list = []
@@ -60,7 +63,11 @@ class CNV:
         for raw_file in train_raw_list:
             normalized_file = normalize_readcount(self, raw_file, self.work_directory / "Temporary" / "Normalized" / "Train")
             control_normalized_list.append(normalized_file)
-            control_proportion_normalized_file = self.estimator.calculate_proportion(normalized_file, self.work_directory / "Temporary" / "Normalized" / "Train")
+
+        mean_reference_file = self.estimator.build_mean_reference(self.work_directory / "Temporary" / "Normalized" / "Train", self.work_directory / "Input")
+
+        for normalized_file in control_normalized_list:
+            control_proportion_normalized_file = self.estimator.calculate_proportion(normalized_file, mean_reference_file, self.work_directory / "Temporary" / "Normalized" / "Train")
 
 
         print("\n3. Count reads for test samples...")
@@ -75,12 +82,13 @@ class CNV:
         for raw_file in test_raw_list:
             normalized_file = normalize_readcount(self, raw_file, self.work_directory / "Temporary" / "Normalized" / "Test")
             test_normalized_list.append(normalized_file)
-            test_proportion_normalized_file = self.estimator.calculate_proportion(normalized_file, self.work_directory / "Temporary" / "Normalized" / "Test")
+            test_proportion_normalized_file = self.estimator.calculate_proportion(normalized_file, mean_reference_file, self.work_directory / "Temporary" / "Normalized" / "Test")
 
 
         print("\n5. Calculate statistics from train samples (raw & normalized) and filter out unstable bins...")
         mean_normalized, cv_normalized = self.estimator.statistics(self.work_directory / "Temporary" / "Normalized" / "Train", self.work_directory / "Temporary" / "Normalized")
-        blacklist_normalized = filter_bins(cv_normalized, self.filter_ratio, self.work_directory / "Temporary" / "Normalized")
+        bed_file = str(self.work_directory / "Input" / "wgEncodeDacMapabilityConsensusExcludable.bed.gz")
+        blacklist_normalized = filter_bins(cv_normalized, bed_file, bin_coordinate_file, self.filter_ratio, self.work_directory / "Temporary" / "Normalized")
         mean_filtered_normalized = create_filter_files(mean_normalized, blacklist_normalized, self.work_directory / "Temporary" / "Normalized")
 
         print("\n6. Calculate ratio for test samples (raw & normalized)...")
