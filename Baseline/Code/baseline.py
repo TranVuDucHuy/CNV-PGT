@@ -63,7 +63,11 @@ class CNV:
         for raw_file in train_raw_list:
             normalized_file = normalize_readcount(self, raw_file, self.work_directory / "Temporary" / "Normalized" / "Train")
             control_normalized_list.append(normalized_file)
-            control_proportion_normalized_file = self.estimator.calculate_proportion(normalized_file, self.work_directory / "Temporary" / "Normalized" / "Train")
+
+        mean_reference_file = self.estimator.build_mean_reference(self.work_directory / "Temporary" / "Normalized" / "Train", self.work_directory / "Input")
+
+        for normalized_file in control_normalized_list:
+            control_proportion_normalized_file = self.estimator.calculate_proportion(normalized_file, mean_reference_file, self.work_directory / "Temporary" / "Normalized" / "Train")
 
 
         print("\n3. Count reads for test samples...")
@@ -78,7 +82,7 @@ class CNV:
         for raw_file in test_raw_list:
             normalized_file = normalize_readcount(self, raw_file, self.work_directory / "Temporary" / "Normalized" / "Test")
             test_normalized_list.append(normalized_file)
-            test_proportion_normalized_file = self.estimator.calculate_proportion(normalized_file, self.work_directory / "Temporary" / "Normalized" / "Test")
+            test_proportion_normalized_file = self.estimator.calculate_proportion(normalized_file, mean_reference_file, self.work_directory / "Temporary" / "Normalized" / "Test")
 
 
         print("\n5. Calculate statistics from train samples (raw & normalized) and filter out unstable bins...")
