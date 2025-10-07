@@ -25,13 +25,12 @@ class Plotter:
         self.bin_size = bin_size
         self.output_dir = Path(output_dir)
 
-    def plot(self, ratio_npz, mean_filter_npz, segments_csv=None):
+    def plot(self, ratio_npz, segments_csv=None):
         """
         Tạo biểu đồ CNV từ dữ liệu log2 ratio với segments
 
         Args:
             ratio_npz (str): Đường dẫn file NPZ chứa log2 ratio
-            mean_filter_npz (str): Đường dẫn file NPZ chứa mean đã lọc
             segments_csv (str): Đường dẫn file CSV chứa segments (tùy chọn)
             pipeline_obj (optional): Object CNVPipeline để truy cập các thuộc tính
 
@@ -47,20 +46,18 @@ class Plotter:
 
         # Đọc dữ liệu
         ratio_data = np.load(ratio_npz)
-        mean_data = np.load(mean_filter_npz)
 
         # Đọc segments nếu có
         segments_df = None
         if segments_csv and Path(segments_csv).exists():
             try:
                 segments_df = pd.read_csv(segments_csv)
-                print(f"Đã đọc {len(segments_df)} segments từ {segments_csv}")
             except Exception as e:
                 print(f"Lỗi khi đọc segments: {e}")
 
         # Tạo tên file output
-        ratio_name = Path(ratio_npz).stem.replace('_ratio_2', '')
-        plot_file = Path(output_dir) / f"{ratio_name}_cnv_plot.png"
+        ratio_name = Path(ratio_npz).stem.replace('_log2Ratio', '')
+        plot_file = Path(output_dir) / f"{ratio_name}_scatterChart.png"
 
         # Tạo figure chỉ với 1 subplot (loại bỏ boxplot)
         fig, ax1 = plt.subplots(1, 1, figsize=(20, 10))
@@ -82,9 +79,8 @@ class Plotter:
         current_pos = 0
 
         for chrom in chromosome_list:
-            if chrom in ratio_data.files and chrom in mean_data.files:
+            if chrom in ratio_data.files:
                 ratios = ratio_data[chrom]
-                means = mean_data[chrom]
 
                 # Tạo vị trí cho các bin
                 num_bins = len(ratios)
@@ -192,8 +188,6 @@ class Plotter:
         """
         if bin_size is None:
             bin_size = self.bin_size
-
-        print(f"Vẽ {len(segments_df)} segments...")
 
         # Tạo mapping từ chromosome position thực tế sang bin index
         chrom_bin_mapping = {}

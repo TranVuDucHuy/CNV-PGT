@@ -6,7 +6,7 @@ from pathlib import Path
 
 def cbs(ratio_file, temp_dir, bin_size, chromosome_list):
 
-    ratio_name = Path(ratio_file).stem.replace('_ratio_1', '')
+    ratio_name = Path(ratio_file).stem.replace('_log2Ratio', '')
     segments_file = Path(temp_dir) / f"{ratio_name}_segments.csv"
     temp_csv = prepare_cbs_data(ratio_file, ratio_name, temp_dir, bin_size, chromosome_list)
     cbs_script = Path(__file__).parent / "CBS.R"
@@ -18,12 +18,7 @@ def cbs(ratio_file, temp_dir, bin_size, chromosome_list):
         "--alpha", "0.001",
         "--nperm", "10000"
     ]
-    result = subprocess.run(
-        command,
-        check=True,
-        text=True,
-        capture_output=True
-    )
+    result = subprocess.run(command, check=True, text=True, capture_output=True)
     print(result.stdout)
     if temp_csv and Path(temp_csv).exists():
         Path(temp_csv).unlink()

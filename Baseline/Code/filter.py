@@ -33,35 +33,3 @@ def filter_bins(cv_file, filter_ratio, output_dir):
     blacklist_file = output_dir / "blacklist.npz"
     np.savez_compressed(blacklist_file, **keep_dict)
     return str(blacklist_file)
-
-def create_filter_files(mean_file, blacklist_file, output_dir):
-    """
-    Apply the boolean `blacklist` mask to the per-bin mean signals and write a filtered mean file.
-
-    Args:
-        mean_file (str): Path to `Mean.npz` (or any NPZ with per-chromosome mean arrays).
-        blacklist_file (str): Path to `blacklist.npz` containing boolean keep masks per chromosome.
-        output_dir (pathlib.Path): Directory to write `Mean_filtered.npz`.
-
-    Returns:
-        str: File path to the saved `Mean_filtered.npz` with filtered mean arrays per chromosome.
-    """
-    mean_data = np.load(mean_file)
-    blacklist_data = np.load(blacklist_file)
-
-    filtered_data = {}
-
-    for chromosome in mean_data.files:
-        mean_array = mean_data[chromosome]
-
-        if chromosome in blacklist_data.files:
-            mask = blacklist_data[chromosome].astype(bool)
-            filtered_array = mean_array[mask]
-        else:
-            filtered_array = mean_array
-
-        filtered_data[chromosome] = filtered_array
-
-    mean_filtered_file = output_dir / "Mean_filtered.npz"
-    np.savez_compressed(mean_filtered_file, **filtered_data)
-    return str(mean_filtered_file)

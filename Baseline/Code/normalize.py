@@ -7,14 +7,13 @@ try:
 except ImportError:
     HAS_STATSMODELS = False
 
-from estimate import CHROMOSOME_LENGTHS_GRCh37
 def nucleotide_content(pipeline_obj, fasta_file):
     """Return two separate dicts (gc_dict, n_dict) with counts per full bin (floor logic).
     Two NPZ cache files are written: *_gc.npz and *_n.npz.
     Trailing partial bins are ignored to stay consistent with readcount binning (floor).
     """
-    gc_file = pipeline_obj.work_directory / "Temporary" / "GC-content.npz"
-    n_file = pipeline_obj.work_directory / "Temporary" / "N-content.npz"
+    gc_file = pipeline_obj.work_directory / "Prepare" / "GC-content.npz"
+    n_file = pipeline_obj.work_directory / "Prepare" / "N-content.npz"
 
     if gc_file.exists() and n_file.exists():
         gc_loaded = np.load(gc_file)
@@ -25,7 +24,7 @@ def nucleotide_content(pipeline_obj, fasta_file):
     gc_counts = {}
     n_counts = {}
     for chromosome in pipeline_obj.chromosome_list:
-        chrom_len = CHROMOSOME_LENGTHS_GRCh37[str(chromosome)]
+        chrom_len = pipeline_obj.chromosome_lengths[str(chromosome)]
         num_bins = chrom_len // pipeline_obj.bin_size
         gc_counts[chromosome] = np.zeros(num_bins, dtype=np.int32)
         n_counts[chromosome] = np.zeros(num_bins, dtype=np.int32)
@@ -189,7 +188,7 @@ def lowess_normalize(raw_data, gc_data, n_data, max_n=0.1, min_rd=0.0001, frac=0
 def normalize_readcount(pipeline_obj, raw_readcount_file, output_dir):
 
     raw_name = Path(raw_readcount_file).stem
-    normalized_file = output_dir / f"{raw_name.replace('_raw', '_normalized')}.npz"
+    normalized_file = output_dir / f"{raw_name.replace('_rawCount', '_normalized')}.npz"
 
     if normalized_file.exists():
         return str(normalized_file)

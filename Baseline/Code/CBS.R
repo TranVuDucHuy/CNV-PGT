@@ -46,8 +46,6 @@ cat("Output file:", opt$output, "\n")
 cat("Sample name:", opt$sample, "\n")
 
 # Đọc dữ liệu CSV đã được chuẩn bị từ Python
-cat("Đang đọc dữ liệu từ file CSV...\n")
-
 if (!file.exists(opt$input)) {
   stop(paste("File input không tồn tại:", opt$input))
 }
@@ -68,7 +66,6 @@ if (length(missing_cols) > 0) {
 }
 
 # Tạo đối tượng CNA
-cat("Tạo đối tượng CNA...\n")
 CNA.object <- CNA(genomdat = cnv_data$log2_ratio,
                   chrom = cnv_data$chrom_numeric,
                   maploc = cnv_data$maploc,
@@ -76,18 +73,9 @@ CNA.object <- CNA(genomdat = cnv_data$log2_ratio,
                   sampleid = opt$sample)
 
 # Smooth the data (tùy chọn)
-cat("Smoothing dữ liệu...\n")
 smoothed.CNA.object <- smooth.CNA(CNA.object)
 
 # Thực hiện segmentation
-cat("Thực hiện CBS segmentation...\n")
-cat("  Alpha:", opt$alpha, "\n")
-cat("  Nperm:", opt$nperm, "\n")
-cat("  P-method:", opt$p.method, "\n")
-cat("  Min width:", opt$min.width, "\n")
-cat("  Undo splits:", opt$undo.splits, "\n")
-cat("  Undo SD:", opt$undo.SD, "\n")
-
 segment.result <- segment(smoothed.CNA.object, 
                          alpha = opt$alpha,
                          nperm = opt$nperm,
@@ -106,14 +94,4 @@ segments_df$chrom_original <- ifelse(segments_df$chrom == 23, "X",
                                          as.character(segments_df$chrom)))
 
 # Lưu kết quả
-cat("Lưu kết quả segmentation...\n")
 write.csv(segments_df, opt$output, row.names = FALSE)
-
-# In thống kê tóm tắt
-cat("\n=== Thống kê Segmentation ===\n")
-cat("Số segments:", nrow(segments_df), "\n")
-cat("Segments có gain (>0.2):", sum(segments_df$seg.mean > 0.2), "\n")
-cat("Segments có loss (<-0.2):", sum(segments_df$seg.mean < -0.2), "\n")
-cat("Segments normal:", sum(abs(segments_df$seg.mean) <= 0.2), "\n")
-
-cat("\nHoàn thành CBS segmentation!\n")
