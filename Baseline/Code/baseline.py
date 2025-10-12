@@ -7,6 +7,8 @@ from normalize import normalize_readcount
 from filter import filter_bins
 from segment import cbs
 from plot import Plotter
+from normalize import base_content
+from filter import filter_base
 
 CHROMOSOME_LENGTHS_GRCh37 = {
     "1": 249250621, "2": 243199373, "3": 198022430, "4": 191154276,
@@ -18,7 +20,7 @@ CHROMOSOME_LENGTHS_GRCh37 = {
 }
 
 class CNV:
-    def __init__(self, work_directory, bin_size = 200000, filter_ratio = 0.8):
+    def __init__(self, work_directory, bin_size = 400000, filter_ratio = 0.8):
         self.work_directory = Path(work_directory)
         self.bin_size = bin_size
         self.filter_ratio = filter_ratio
@@ -50,6 +52,10 @@ class CNV:
 
         print("=== START CNV DETECTION PIPELINE ===")
 
+        # Precompute base content caches and base filter
+        gc_file, n_file = base_content(self, self.work_directory / "Input" / "hg19.fa")
+        base_filter_file = filter_base(gc_file, n_file)
+
         print("\n1. Count reads train samples...")
         train_bam_list = list((self.work_directory / "Input" / "Train").glob('*.bam'))
         train_raw_list = []
@@ -60,7 +66,7 @@ class CNV:
         print("\n2. Normalized and calculate proportion for train samples...")
         train_normalized_list = []
         for raw_file in train_raw_list:
-            normalized_file = normalize_readcount(self, raw_file, self.work_directory / "Temporary" / "Train")
+            normalized_file = normalize_readcount(gc_file, raw_file, self.work_directory / "Temporary" / "Train", base_filter_file)
             train_normalized_list.append(normalized_file)
             control_proportion_file = self.estimator.calculate_proportion(normalized_file, self.work_directory / "Temporary" / "Train")
 
@@ -76,7 +82,7 @@ class CNV:
         test_normalized_list = []
         test_proportion_list = []
         for raw_file in test_raw_list:
-            normalized_file = normalize_readcount(self, raw_file, self.work_directory / "Temporary" / "Test")
+            normalized_file = normalize_readcount(gc_file, raw_file, self.work_directory / "Temporary" / "Test", base_filter_file)
             test_normalized_list.append(normalized_file)
             test_proportion_file = self.estimator.calculate_proportion(normalized_file, self.work_directory / "Temporary" / "Test")
             test_proportion_list.append(test_proportion_file)
@@ -119,12 +125,12 @@ class CNV:
 def main():
     parser = argparse.ArgumentParser(description = "CNV Pipeline (modular)")
     parser.add_argument('-o', '--work-directory', required = True, help = 'Path to work directory')
-    parser.add_argument('--bin-size', type = int, default = 200000, help = 'Size of bin')
+    parser.add_argument('--bin-size', type = int, default = 400000, help = 'Size of bin')
     parser.add_argument('--filter-ratio', type = float, default = 0.8, help = 'Filter ratio')
 
     args = parser.parse_args()
 
-    pipeline = CNV(work_directory = args.work_directory, bin_size = args.bin_size, filter_ratio = args.filter_ratio)
+    pipeline = CNV(args.work_directory, args.bin_size, args.filter_ratio)
 
     pipeline.run_pipeline()
 

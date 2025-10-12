@@ -196,8 +196,8 @@ class Estimator:
             mean_ratios = mean_data[chromosome]
             bin_mask = blacklist_data[chromosome]
 
-            # Initialize output with sentinel -2.0 for invalid/filtered bins
-            ratios_out = np.full_like(test_ratios, -2.0, dtype=np.float32)
+            # Initialize output with sentinel 0.0 for invalid/filtered bins
+            ratios_out = np.full_like(test_ratios, 0.0, dtype=np.float32)
 
             valid_bins = bin_mask == True
             valid_case = test_ratios > 0
@@ -314,7 +314,7 @@ class Estimator:
             mean_ratios = mean_data[chromosome]
             bin_mask = blacklist_data[chromosome]
 
-            log2_ratios = np.full_like(test_ratios, -2.0, dtype=np.float32)
+            log2_ratios = np.full_like(test_ratios, 0.0, dtype=np.float32)
 
             valid_bins = (bin_mask == True)
             valid_case = test_ratios > 0

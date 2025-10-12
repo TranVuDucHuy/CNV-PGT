@@ -233,11 +233,11 @@ class Plotter:
                 seg_value = float(np.power(2.0, segment['seg.mean'] + 1.0))
 
                 # Màu sắc segment dựa trên seg.mean ở thang log2
-                if seg_value > 2.5:
+                if seg_value > 2.45:
                     color = '#FF0000'  # Đỏ đậm cho gain
                     linewidth = 4
                     alpha = 0.9
-                elif seg_value < 1.5:
+                elif seg_value < 1.55:
                     color = '#0000FF'  # Xanh đậm cho loss
                     linewidth = 4
                     alpha = 0.9
