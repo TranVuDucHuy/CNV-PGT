@@ -2,312 +2,230 @@ from pathlib import Path
 import numpy as np
 import pysam
 
-CHROMOSOME_LENGTHS_GRCh37 = {
-    "1": 249250621, "2": 243199373, "3": 198022430, "4": 191154276,
-    "5": 180915260, "6": 171115067, "7": 159138663, "8": 146364022,
-    "9": 141213431, "10": 135534747, "11": 135006516, "12": 133851895,
-    "13": 115169878, "14": 107349540, "15": 102531392, "16": 90354753,
-    "17": 81195210, "18": 78077248, "19": 59128983, "20": 63025520,
-    "21": 48129895, "22": 51304566, "X": 155270560, "Y": 59373566,
-}
-
 class Estimator:
-    def __init__(self, bin_size = 200000, chromosome_list = None):
+    def __init__(self, bin_size = 400000, chromosome_list = None, chromosome_lengths = None):
         self.bin_size = int(bin_size)
         self.chromosome_list = (chromosome_list if chromosome_list is not None else [str(i) for i in range(1, 23)] + ["X", "Y"])
-
-    def save_bin_coordinates(self, output_dir):
-        """
-        Generate bin coordinate file (NPZ) based on chromosome lengths and bin size
-        Each chromosome -> Nx2 array [start, end]
-
-        Args:
-            output_dir (Path): Output directory to save NPZ file
-
-        Returns:
-            str: NPZ file path containing bin coordinates
-        """
-        bin_coordinate_file = output_dir / "binCoordinate.npz"
-        if bin_coordinate_file.exists():
-            print(f"Bin coordinate file already exists: {bin_coordinate_file}")
-            return str(bin_coordinate_file)
-
-        chromosome_bins = {}
-
-        for chromosome in self.chromosome_list:
-            chromosome_length = CHROMOSOME_LENGTHS_GRCh37[str(chromosome)]
-            num_bins = chromosome_length // self.bin_size
-
-            start_positions = np.arange(0, num_bins * self.bin_size, self.bin_size, dtype=np.int64)
-            end_positions = np.minimum(start_positions + self.bin_size, chromosome_length)
-
-            chromosome_bins[chromosome] = np.column_stack((start_positions, end_positions))
-
-        np.savez_compressed(bin_coordinate_file, **chromosome_bins)
-        return str(bin_coordinate_file)
+        if chromosome_lengths is None:
+            raise ValueError("chromosome_lengths must be provided to Estimator")
+        self.chromosome_lengths = chromosome_lengths
 
     def count_read(self, bam_file, output_dir):
         """
         Count the number of reads in bins on each chromosome (raw counts only)
-
-        Args:
-            bam_file (str): BAM file path
-            output_dir (Path): Output directory to save NPZ file
-
-        Returns:
-            str: NPZ file path containing raw read counts
         """
         print(f"Processing file: {bam_file}")
-
         bam_name = Path(bam_file).stem
-        output_file = output_dir / f"{bam_name}_raw_readCount.npz"
+        output_file = output_dir / f"{bam_name}_rawCount.npz"
 
         if output_file.exists():
             print(f"NPZ file already exists: {output_file}")
             return str(output_file)
 
         chromosome_data = {}
-
         bam = pysam.AlignmentFile(bam_file, "rb")
 
         for chromosome in self.chromosome_list:
             bam_chromosome_name = f"chr{chromosome}"
-
-            chromosome_length = CHROMOSOME_LENGTHS_GRCh37[str(chromosome)]
-            # Use floor division to exclude any trailing partial bin
+            chromosome_length = self.chromosome_lengths[str(chromosome)]
             num_bins = chromosome_length // self.bin_size
             read_counts = np.zeros(num_bins)
 
             for bin_index in range(num_bins):
                 start_pos = bin_index * self.bin_size
                 end_pos = min((bin_index + 1) * self.bin_size, chromosome_length)
-
                 count = bam.count(contig=bam_chromosome_name, start=start_pos, end=end_pos)
                 read_counts[bin_index] = count
 
             chromosome_data[chromosome] = read_counts
-
             print(f"  Chromosome {chromosome} ({bam_chromosome_name}): {num_bins} bins, {np.sum(read_counts)} reads")
 
         bam.close()
-
         np.savez_compressed(output_file, **chromosome_data)
-
         print(f"Saved raw read counts to: {output_file}")
-
         return str(output_file)
 
-    def build_mean_reference(self, train_dir, output_dir):
+    def calculate_frequency(self, normalized_file, output_dir):
         """
-        Build mean reference file from training read count samples.
-
-        For each chromosome, this function loads all training NPZ files containing
-        per-bin read counts, stacks them, and computes the mean read count per bin
-        across all training samples. The result is saved as a compressed NPZ file.
-
-        Args:
-            train_dir (Path): Directory containing training NPZ files
-                (each file named *_normalized_readCount.npz).
-            output_dir (Path): Output directory to save the mean reference file.
-
-        Returns:
-            str: File path to the saved mean reference NPZ file.
+        Calculate read frequency from read counts (read count / total reads across all bins)
         """
-        mean_reference_file = output_dir / "mean_ref.npz"
+        data = np.load(normalized_file)
+        name = Path(normalized_file).stem
+        frequency_file = output_dir / f"{name.replace('_normalized', '_frequency')}.npz"
+        frequency_file.parent.mkdir(parents=True, exist_ok=True)
 
-        readcount_file_list = sorted(train_dir.glob("*_normalized_readCount.npz"))
-
-        mean_dict = {}
-        data_per_chromosome = {}
-
-        for readcount_file in readcount_file_list:
-            data = np.load(readcount_file)
-            for chromosome in data.files:
-                arr = data[chromosome].astype(float)
-                data_per_chromosome.setdefault(chromosome, []).append(arr)
-
-        for chromosome, arrs in data_per_chromosome.items():
-            stacked = np.vstack(arrs)
-            mean = np.nanmean(stacked, axis = 0)
-            mean_dict[chromosome] = mean
-
-        np.savez_compressed(mean_reference_file, **mean_dict)
-        return str(mean_reference_file)
-
-    def calculate_proportion(self, readcount_file, mean_reference_file, output_dir):
-        """
-        Calculate read proportion for each chromosome based on total read counts.
-
-        This function computes normalized read proportions across all autosomes
-        by adjusting for chromosomes with abnormal copy numbers (high mosaicism).
-        Chromosomes with large deviations in estimated copy number (|CN - 2| ≥ 0.9)
-        are temporarily excluded when calculating total reads, and their expected
-        contribution is estimated from the mean reference.
-
-        Args:
-            readcount_file (str): Path to NPZ file containing per-bin raw read counts.
-            mean_reference_file (str): Path to NPZ mean reference file
-                (used to estimate expected reads for excluded chromosomes).
-            output_dir (Path): Output directory to save the resulting NPZ file.
-
-        Returns:
-            str: File path to the saved NPZ file containing read proportions
-                 per chromosome.
-        """
-        readcount_data = np.load(readcount_file)
-        mean_reference_data = np.load(mean_reference_file)
-
-        name = Path(readcount_file).stem
-        proportion_file = output_dir / f"{name.replace('_readCount', '_proportion')}.npz"
-        proportion_file.parent.mkdir(parents=True, exist_ok=True)
-
+        # Only count total reads from autosomes (1-22), excluding X and Y
         autosome_list = [str(i) for i in range(1, 23)]
-        total_reads_per_chromosome = {}
+        total_reads = 0.0
         for chromosome in autosome_list:
-            if chromosome in readcount_data.files:
-                total_reads_per_chromosome[chromosome] = np.sum(readcount_data[chromosome])
+            total_reads += np.sum(data[chromosome])
 
-        high_mosaicism_chromosomes = []
-        for chromosome, total_read in total_reads_per_chromosome.items():
-            if chromosome in mean_reference_data:
-                estimated_copy_number = (total_read / np.sum(mean_reference_data[chromosome])) * 2
-                if abs(estimated_copy_number - 2) >= 0.9:
-                    high_mosaicism_chromosomes.append(chromosome)
+        print(f"Total reads (autosomes only): {int(total_reads):,}")
 
-        proportion_result = {}
+        if total_reads == 0:
+            print(f"Warning: Total reads = 0!")
+            return None
+
+        frequency_dict = {}
+        for chromosome in self.chromosome_list:
+            counts = data[chromosome]
+            read_frequency = counts / total_reads
+            frequency_dict[chromosome] = read_frequency * self.bin_size 
+
+        np.savez_compressed(frequency_file, **frequency_dict)
+        print(f"Saved read frequency to: {output_dir}")
+        return str(frequency_file)
+
+    def calculate_proportion(self, normalized_file, output_dir, blacklist_file):
+        """
+        Calculate read proportion from normalized read counts.
+        Blacklisted bins are set to 0 and excluded from totals by using an in-memory masked copy.
+        """
+        name = Path(normalized_file).stem
+        proportion_file = output_dir / f"{name.replace('_normalized', '_proportion')}.npz"
+        data = np.load(normalized_file)
+        blacklist_data = np.load(blacklist_file)
+
+        # Build a masked copy with blacklist bins zeroed
+        masked = {}
+        for chromosome in self.chromosome_list:
+            arr = data[chromosome].copy()
+            arr[blacklist_data[chromosome]] = 0
+            masked[chromosome] = arr
+
+        # Only count total reads from autosomes (1-22), excluding X and Y
+        autosome_list = [str(i) for i in range(1, 23)]
+        total_reads = 0.0
+        total_counts_per_chromosome = {chromosome: 0.0 for chromosome in autosome_list}
+
+        # Sum totals on masked data
         for chromosome in autosome_list:
-            if chromosome not in readcount_data.files:
-                continue
-            chromosome_counts = readcount_data[chromosome].astype(float)
-            valid_mask = chromosome_counts != -1
+            counts = masked[chromosome]
+            chromosome_read_total = np.sum(counts)
+            total_counts_per_chromosome[chromosome] = chromosome_read_total
+            total_reads += chromosome_read_total
+        print(f"Total reads (autosomes only): {int(total_reads):,}")
 
-            total_included = 0.0
-            for other_chromosome, total_read in total_reads_per_chromosome.items():
-                if other_chromosome not in high_mosaicism_chromosomes and other_chromosome != chromosome:
-                    total_included += total_read
+        total_exclude = {chr_name: total_reads - total_counts_per_chromosome.get(chr_name, 0.0) for chr_name in autosome_list}
+        total_exclude["X"] = total_reads
+        total_exclude["Y"] = total_reads
 
-            expected_excluded = 0.0
+        proportion_dict = {}
+        for chromosome in self.chromosome_list:
+            counts = masked[chromosome]
+            denom = total_exclude.get(chromosome, total_reads)
+            read_proportion = (counts / denom * self.bin_size) if denom > 0 else np.zeros_like(counts)
+            proportion_dict[chromosome] = read_proportion
 
-            for high_chr in high_mosaicism_chromosomes:
-                if high_chr in mean_reference_data.files and high_chr != chromosome:
-                    expected_excluded += np.sum(mean_reference_data[high_chr])
-
-            effective_total = total_included + expected_excluded
-            if effective_total <= 0 or not np.isfinite(effective_total):
-                effective_total = 1.0
-
-            chromosome_proportion = np.full_like(chromosome_counts, -1.0)
-            chromosome_proportion[valid_mask] = chromosome_counts[valid_mask] / effective_total
-
-            proportion_result[chromosome] = chromosome_proportion
-
-        np.savez_compressed(proportion_file, **proportion_result)
-
+        np.savez_compressed(proportion_file, **proportion_dict)
         print(f"Saved read proportion to: {output_dir}")
-
         return str(proportion_file)
 
-    def statistics(self, control_npz_dir, output_dir):
-        """
-        Calculate statistics from train samples
-
-        Args:
-            control_npz_dir (str): Directory path containing NPZ files of train sample
-            output_dir (Path): Output directory
-
-        Returns:
-            tuple(mean_file, std_file, cv_file) - path of 3 NPZ files containing mean, std and cv
-        """
-        print("Calculating statistics from train samples...")
-
-        proportion_list = list(Path(control_npz_dir).glob("*_proportion.npz"))
-        # proportion_list = list(Path(control_npz_dir).glob("*_readCount.npz"))
-
+    def create_reference(self, train_dir, output_dir):
+        """Compute only the per-chromosome mean across train proportion files."""
+        proportion_list = list(Path(train_dir).glob("*_proportion.npz"))
         print(f"Found {len(proportion_list)} sample files")
 
-        all_data = {}
-
-        for npz_file in proportion_list:
-            data = np.load(npz_file)
+        stacks = {chromosome: [] for chromosome in self.chromosome_list}
+        for proportion_file in proportion_list:
+            data = np.load(proportion_file)
             for chromosome in self.chromosome_list:
-                if chromosome in data.files:
-                    if chromosome not in all_data:
-                        all_data[chromosome] = []
-                    all_data[chromosome].append(data[chromosome])
+                stacks[chromosome].append(data[chromosome])
 
-        mean_dict = {}
-        std_dict = {}
-        cv_dict = {}
+        reference_dict = {}
+        for chromosome, arrs in stacks.items():
+            reference_dict[chromosome] = np.mean(np.stack(arrs, axis=0), axis=0)
 
-        for chromosome in self.chromosome_list:
-            if chromosome in all_data and all_data[chromosome]:
-                chromosome_data = np.array(all_data[chromosome])
+        reference_file = output_dir / "Reference.npz"
+        np.savez_compressed(reference_file, **reference_dict)
+        print(f"Saved reference mean to: {reference_file}")
+        return str(reference_file)
 
-                mean_dict[chromosome] = np.mean(chromosome_data, axis=0)
-                std_dict[chromosome] = np.std(chromosome_data, axis=0)
-                with np.errstate(divide='ignore', invalid='ignore'):
-                    cv_dict[chromosome] = np.where(mean_dict[chromosome] != 0, std_dict[chromosome] / mean_dict[chromosome], 0)
-
-                print(f"  Chromosome {chromosome}: {chromosome_data.shape[1]} bins, {chromosome_data.shape[0]} samples")
-
-        mean_file = output_dir / "Mean.npz"
-        cv_file = output_dir / "CoefficientVariation.npz"
-
-        np.savez_compressed(mean_file, **mean_dict)
-        np.savez_compressed(cv_file, **cv_dict)
-
-        print(f"Statistics saved to: {output_dir}")
-
-        return str(mean_file), str(cv_file)
-
-    def calculate_ratio(self, test_file, mean_file, blacklist_file, output_dir):
-        """
-        Calculate log2 ratio between test and train samples
-
-        Args:
-            case_file (str): NPZ file path of test sample
-            mean_file (str): NPZ file path containing mean
-            blacklist_file (str): NPZ file path containing filter bins
-            output_dir: Output directory
-
-        Returns:
-            str: NPZ file path containing log2 ratio
-        """
+    def calculate_ratio(self, test_file, reference_file, output_dir):
+        """Calculate linear ratio (test/reference) using only bins where reference > 0."""
         test_data = np.load(test_file)
-        mean_data = np.load(mean_file)
-        bin_data = np.load(blacklist_file)
-
+        reference_data = np.load(reference_file)
         test_name = Path(test_file).stem.replace('_proportion', '_ratio')
-        # case_name = Path(case_file).stem.replace('_readCount', '_ratio')
         ratio_file = output_dir / f"{test_name}.npz"
 
         ratio_dict = {}
-
         for chromosome in self.chromosome_list:
-            if chromosome in test_data.files and chromosome in mean_data.files and chromosome in bin_data.files:
-                case_ratios = test_data[chromosome]
-                mean_ratios = mean_data[chromosome]
-                bin_mask = bin_data[chromosome]
+            test_ratios = test_data[chromosome]
+            reference_ratios = reference_data[chromosome]
 
-                log2_ratios = np.full_like(case_ratios, -2.0)
-
-                valid_bins = bin_mask == True
-                valid_case = case_ratios > 0
-                valid_mean = mean_ratios > 0
-                valid_mask = valid_bins & valid_case & valid_mean
-
-                if np.any(valid_mask):
-                    log2_ratios[valid_mask] = np.log2(case_ratios[valid_mask] / mean_ratios[valid_mask])
-
-                ratio_dict[chromosome] = log2_ratios
-
-                print(f" Chromosome {chromosome}: {np.sum(valid_mask)} stable bin")
-            else:
-                print(f"Warning: No data for chromosome {chromosome}")
-                ratio_dict[chromosome] = np.array([])
+            ratios_out = np.full_like(test_ratios, 0.0)
+            valid_mask = reference_ratios > 0
+            ratios_out[valid_mask] = (test_ratios[valid_mask] / reference_ratios[valid_mask])
+            ratio_dict[chromosome] = ratios_out
 
         np.savez_compressed(ratio_file, **ratio_dict)
-
-        print(f"Saved log2 ratio to: {ratio_file}")
-
+        print(f"Saved ratio to: {ratio_file}")
         return str(ratio_file)
+
+    def recalculate_ratio(self, normalized_file, ratio_file, reference_file, output_dir, aberration_threshold):
+        """Recalculate log2 ratio using aberration masking and scaling, aligning with new masking semantics.
+        """
+        normalized_data = np.load(normalized_file)
+        ratio_data = np.load(ratio_file)
+        reference_data = np.load(reference_file)
+        name = Path(normalized_file).stem
+        out_file = Path(output_dir) / f"{name.replace('_normalized', '_log2Ratio')}.npz"
+
+        autosome_list = [str(i) for i in range(1, 23)]
+        # 1) Aberration masks from linear ratios; consider only bins with reference>0 when computing fraction
+        aberration_mask = {}
+        for chromosome in self.chromosome_list:
+            valid_bins = reference_data[chromosome] > 0
+            aberration_bins = np.abs(ratio_data[chromosome] - 1.0) > aberration_threshold
+            if np.count_nonzero(valid_bins) == 0:
+                aberration_mask[chromosome] = np.zeros_like(aberration_bins, dtype=bool)
+                continue
+            fraction = np.count_nonzero(aberration_bins & valid_bins) / np.count_nonzero(valid_bins)
+            if fraction > 0.5:
+                aberration_bins[:] = True
+            aberration_mask[chromosome] = aberration_bins
+
+        # 2) Global scale across autosomes using valid (reference>0) and non-aberrant bins
+        sum_test = 0.0
+        sum_reference = 0.0
+        for chromosome in autosome_list:
+            include = (reference_data[chromosome] > 0) & (~aberration_mask[chromosome])
+            sum_test += np.sum(normalized_data[chromosome][include])
+            sum_reference += np.sum(reference_data[chromosome][include])
+        scale = (sum_test / sum_reference) if sum_reference > 0 else 1.0
+
+        # 3) Totals per chromosome (autosomes): replace aberrant bins with mean*scale
+        total_normalized = 0.0
+        total_per_chromosome = {chromosome: 0.0 for chromosome in autosome_list}
+        for chromosome in autosome_list:
+            reference_proportion = reference_data[chromosome]
+            aberration_bins = aberration_mask[chromosome]
+
+            adjusted = normalized_data[chromosome].copy()
+            adjusted[aberration_bins] = reference_proportion[aberration_bins] * scale
+            chromosome_total = np.sum(adjusted[adjusted >= 0])
+            total_per_chromosome[chromosome] = chromosome_total
+            total_normalized += chromosome_total
+
+        total_exclude = {chromosome: total_normalized - total_per_chromosome.get(chromosome, 0.0) for chromosome in autosome_list}
+        total_exclude["X"], total_exclude["Y"] = total_normalized, total_normalized
+
+        # 4) Recompute test proportions using adjusted totals (denominators)
+        proportion_dict = {}
+        for chromosome in self.chromosome_list:
+            denom = total_exclude.get(chromosome, total_normalized)
+            proportion_dict[chromosome] = (normalized_data[chromosome] / denom * self.bin_size)
+
+        # 5) Compute log2 ratio against reference; invalid -> -1
+        ratio_dict = {}
+        for chromosome in self.chromosome_list:
+            test_proportion = proportion_dict[chromosome]
+            reference_proportion = reference_data[chromosome]
+            out = np.full_like(test_proportion, -10.0)
+            valid = (test_proportion > 0) & (reference_proportion > 0)
+            out[valid] = np.log2(test_proportion[valid] / reference_proportion[valid])
+            ratio_dict[chromosome] = out
+
+        np.savez_compressed(out_file, **ratio_dict)
+        print(f"Saved recalculated log2 ratio to: {out_file}")
+        return str(out_file)

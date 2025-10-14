@@ -25,13 +25,12 @@ class Plotter:
         self.bin_size = bin_size
         self.output_dir = Path(output_dir)
 
-    def plot(self, ratio_npz, mean_filter_npz, segments_csv=None):
+    def plot(self, ratio_npz, segments_csv=None):
         """
         Tạo biểu đồ CNV từ dữ liệu log2 ratio với segments
 
         Args:
             ratio_npz (str): Đường dẫn file NPZ chứa log2 ratio
-            mean_filter_npz (str): Đường dẫn file NPZ chứa mean đã lọc
             segments_csv (str): Đường dẫn file CSV chứa segments (tùy chọn)
             pipeline_obj (optional): Object CNVPipeline để truy cập các thuộc tính
 
@@ -47,42 +46,41 @@ class Plotter:
 
         # Đọc dữ liệu
         ratio_data = np.load(ratio_npz)
-        mean_data = np.load(mean_filter_npz)
 
         # Đọc segments nếu có
         segments_df = None
         if segments_csv and Path(segments_csv).exists():
             try:
                 segments_df = pd.read_csv(segments_csv)
-                print(f"Đã đọc {len(segments_df)} segments từ {segments_csv}")
             except Exception as e:
                 print(f"Lỗi khi đọc segments: {e}")
 
         # Tạo tên file output
-        ratio_name = Path(ratio_npz).stem.replace('_ratio', '')
-        plot_file = Path(output_dir) / f"{ratio_name}_cnv_plot.png"
+        ratio_name = Path(ratio_npz).stem.replace('_log2Ratio', '')
+        plot_file = Path(output_dir) / f"{ratio_name}_scatterChart.png"
 
-        # Tạo figure với 2 subplot
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(20, 14))
+        # Tạo figure chỉ với 1 subplot (loại bỏ boxplot)
+        fig, ax1 = plt.subplots(1, 1, figsize=(20, 10))
 
         # Chuẩn bị dữ liệu cho plotting
         all_positions = []
-        all_ratios = []
+        all_copy_numbers = []
         all_colors = []
         all_chroms = []
         chromosome_boundaries = []
+        chromosome_centers = []
+        chromosome_labels = []
 
-        # Đường giới hạn cho các trạng thái ploidy
-        constitutional_3n = np.log2(3 / 2)  # ≈ 0.58
-        constitutional_2n = 0.0
-        constitutional_1n = np.log2(1 / 2)  # ≈ -1.0
+        # Đường giới hạn cho các trạng thái ploidy (thang copy number)
+        constitutional_3n_cn = 3.0
+        constitutional_2n_cn = 2.0
+        constitutional_1n_cn = 1.0
 
         current_pos = 0
 
         for chrom in chromosome_list:
-            if chrom in ratio_data.files and chrom in mean_data.files:
+            if chrom in ratio_data.files:
                 ratios = ratio_data[chrom]
-                means = mean_data[chrom]
 
                 # Tạo vị trí cho các bin
                 num_bins = len(ratios)
@@ -94,6 +92,8 @@ class Plotter:
                 if np.any(valid_mask):
                     valid_positions = bin_positions[valid_mask]
                     valid_ratios = ratios[valid_mask]
+                    # Chuyển đổi từ log2(ratio) sang copy number: CN = 2^(log2 + 1)
+                    valid_copy_numbers = np.power(2.0, valid_ratios + 1.0)
 
                     # Phân loại màu sắc theo giá trị log2 ratio
                     colors = []
@@ -101,7 +101,7 @@ class Plotter:
                         colors.append('#888888')  # Xám cho normal
 
                     all_positions.extend(valid_positions)
-                    all_ratios.extend(valid_ratios)
+                    all_copy_numbers.extend(valid_copy_numbers)
                     all_colors.extend(colors)
                     all_chroms.extend([chrom] * len(valid_positions))
 
@@ -109,11 +109,15 @@ class Plotter:
                 if current_pos > 0:
                     chromosome_boundaries.append(current_pos)
 
+                # Tính center cho nhãn chromosome trên trục X
+                chromosome_centers.append(current_pos + num_bins / 2.0)
+                chromosome_labels.append(chrom)
+
                 current_pos += num_bins
 
         # Chuyển thành array
         all_positions = np.array(all_positions)
-        all_ratios = np.array(all_ratios)
+        all_copy_numbers = np.array(all_copy_numbers)
         all_colors = np.array(all_colors)
 
         # Kiểm tra xem có dữ liệu hợp lệ không
@@ -122,79 +126,48 @@ class Plotter:
             # Tạo biểu đồ trống với thông báo
             ax1.text(0.5, 0.5, 'Không có dữ liệu hợp lệ',
                      transform=ax1.transAxes, ha='center', va='center', fontsize=14)
-            ax2.text(0.5, 0.5, 'Không có dữ liệu hợp lệ',
-                     transform=ax2.transAxes, ha='center', va='center', fontsize=14)
         else:
-            # Vẽ scatter plot (subplot 1) - theo style WisecondorX
-            ax1.scatter(all_positions, all_ratios, c=all_colors, alpha=0.7, s=15, edgecolors='none')
+            # Vẽ scatter plot (subplot 1) theo thang copy number
+            ax1.scatter(all_positions, all_copy_numbers, c=all_colors, alpha=0.7, s=15, edgecolors='none')
 
             # Vẽ đường segments nếu có
             if segments_df is not None:
                 self._plot_segments(ax1, segments_df, ratio_data, bin_size)
 
-            # Vẽ đường giới hạn
-            ax1.axhline(y=constitutional_3n, color='lightcoral', linestyle='--', alpha=0.8, linewidth=1.5,
-                        label='Constitutional 3n')
-            ax1.axhline(y=constitutional_1n, color='lightblue', linestyle='--', alpha=0.8, linewidth=1.5,
-                        label='Constitutional 1n')
+            # Vẽ đường giới hạn (copy number)
+            ax1.axhline(y=constitutional_3n_cn, color='lightcoral', linestyle='--', alpha=0.8, linewidth=1.5,
+                        label='Constitutional 3n (CN=3)')
+            ax1.axhline(y=constitutional_1n_cn, color='lightblue', linestyle='--', alpha=0.8, linewidth=1.5,
+                        label='Constitutional 1n (CN=1)')
+            ax1.axhline(y=constitutional_2n_cn, color='darkgray', linestyle='-', alpha=0.8, linewidth=1.5,
+                        label='Diploid baseline (CN=2)')
 
             # Vẽ đường phân chia chromosome
             for boundary in chromosome_boundaries:
-                ax1.axvline(x=boundary, color='lightgray', linestyle='-', alpha=0.5, linewidth=0.8)
+                ax1.axvline(x=boundary, color='darkgray', linestyle='-', alpha=0.5, linewidth=0.8)
 
-        ax1.set_ylabel('log2(ratio)', fontsize=12)
+        ax1.set_ylabel('Copy number', fontsize=12)
         ax1.set_title(f'Copy Number Variation Analysis - {ratio_name}', fontsize=14, fontweight='bold')
         ax1.legend(loc='upper right')
-        ax1.grid(True, alpha=0.3)
-        ax1.set_ylim(-2, 2)  # Giới hạn trục y như WisecondorX
+        # Chỉ hiển thị grid theo trục Y
+        ax1.grid(True, axis='y', alpha=0.3)
+        # Ẩn spine (đường trục) của trục X và tắt grid trục X
+        ax1.xaxis.grid(False)
+        ax1.spines['bottom'].set_visible(False)
+        ax1.spines['top'].set_visible(False)
+        # Ẩn vạch tick của trục X nhưng giữ nhãn NST
+        ax1.tick_params(axis='x', which='both', length=0)
+        ax1.set_ylim(0, 4)  # Giới hạn trục y cho copy number
+        # Thiết lập các mức trên trục Y mỗi 0.2 để hiển thị đường mức dày hơn
+        ax1.set_yticks(np.arange(0, 4.1, 0.2))
 
-        # Vẽ box plot theo chromosome (subplot 2)
-        if len(all_positions) > 0:
-            box_data = []
-            box_labels = []
-            box_colors = []
+        # Thiết lập nhãn trục X theo chromosome (1..22, X, Y) thay cho số
+        if len(chromosome_centers) > 0:
+            ax1.set_xlim(0, current_pos)
+            ax1.set_xticks(chromosome_centers)
+            ax1.set_xticklabels(chromosome_labels, fontsize=10)
 
-            for chrom in chromosome_list:
-                if chrom in ratio_data.files and chrom in mean_data.files:
-                    ratios = ratio_data[chrom]
-                    means = mean_data[chrom]
-
-                    # Chỉ lấy các giá trị hợp lệ
-                    valid_mask = ratios != -2
-                    if np.any(valid_mask):
-                        valid_ratios = ratios[valid_mask]
-                        box_data.append(valid_ratios)
-                        box_labels.append(f'chr{chrom}')
-
-                        # Định màu cho box dựa trên median
-                        median_ratio = np.median(valid_ratios)
-                        if median_ratio > 0.2:
-                            box_colors.append('#FF4444')  # Đỏ cho gain
-                        elif median_ratio < -0.2:
-                            box_colors.append('#4444FF')  # Xanh cho loss
-                        else:
-                            box_colors.append('#888888')  # Xám cho normal
-
-            if box_data:
-                bp = ax2.boxplot(box_data, labels=box_labels, patch_artist=True,
-                                 boxprops=dict(alpha=0.7), medianprops=dict(linewidth=2))
-
-                # Tô màu cho box plot
-                for patch, color in zip(bp['boxes'], box_colors):
-                    patch.set_facecolor(color)
-
-            # Vẽ đường giới hạn cho box plot
-            ax2.axhline(y=constitutional_3n, color='lightcoral', linestyle='--', alpha=0.8, linewidth=1.5)
-            ax2.axhline(y=constitutional_2n, color='black', linestyle='-', alpha=0.8, linewidth=1.5)
-            ax2.axhline(y=constitutional_1n, color='lightblue', linestyle='--', alpha=0.8, linewidth=1.5)
-
-        ax2.set_ylabel('log2(ratio)', fontsize=12)
-        ax2.set_xlabel('Chromosome', fontsize=12)
-        ax2.grid(True, alpha=0.3)
-        ax2.set_ylim(-2, 2)
-
-        # Xoay label cho box plot
-        plt.setp(ax2.get_xticklabels(), rotation=45, ha='right')
+        # Đã loại bỏ phần vẽ boxplot (subplot 2)
 
         plt.tight_layout()
         plt.savefig(plot_file, dpi=300, bbox_inches='tight')
@@ -215,8 +188,6 @@ class Plotter:
         """
         if bin_size is None:
             bin_size = self.bin_size
-
-        print(f"Vẽ {len(segments_df)} segments...")
 
         # Tạo mapping từ chromosome position thực tế sang bin index
         chrom_bin_mapping = {}
@@ -258,13 +229,15 @@ class Plotter:
                 plot_start = max(chrom_info['start_bin'], plot_start)
                 plot_end = min(chrom_info['end_bin'], plot_end)
 
-                # Màu sắc segment
-                seg_mean = segment['seg.mean']
-                if seg_mean > 0.2:
+                # Xác định giá trị y vẽ segment theo scale
+                seg_value = float(np.power(2.0, segment['seg.mean'] + 1.0))
+
+                # Màu sắc segment dựa trên seg.mean ở thang log2
+                if seg_value > 2.45:
                     color = '#FF0000'  # Đỏ đậm cho gain
                     linewidth = 4
                     alpha = 0.9
-                elif seg_mean < -0.2:
+                elif seg_value < 1.55:
                     color = '#0000FF'  # Xanh đậm cho loss
                     linewidth = 4
                     alpha = 0.9
@@ -274,455 +247,5 @@ class Plotter:
                     alpha = 0.7
 
                 # Vẽ đường segment
-                ax.plot([plot_start, plot_end], [seg_mean, seg_mean],
+                ax.plot([plot_start, plot_end], [seg_value, seg_value],
                         color=color, linewidth=linewidth, alpha=alpha, solid_capstyle='round')
-
-    def plot_readcount_per_bin(self, case_dir, output_name="readcount_per_bin", use_normalized=False):
-        """
-        Vẽ biểu đồ readcount trên từng bin của mỗi mẫu test
-
-        Args:
-            case_dir (str): Thư mục chứa file NPZ của các mẫu test
-            output_name (str): Tên file output
-            use_normalized (bool): True nếu dùng file normalized, False dùng raw counts
-        """
-        plot_type = "normalized readcount" if use_normalized else "raw readcount"
-        print(f"Đang tạo biểu đồ {plot_type} per bin...")
-
-        # Tìm file NPZ theo loại - TÌM FILE NORMALIZED (nhưng KHÔNG phải ratio)
-        case_files = []
-        for file_path in glob.glob(f"{case_dir}/*.npz"):
-            filename = Path(file_path).name
-            if use_normalized:
-                # Tìm file normalized nhưng KHÔNG phải ratio và chắc chắn có "_normalized"
-                if '_normalized' in filename and '_ratio' not in filename:
-                    case_files.append(file_path)
-            else:
-                # Tìm file raw readcount
-                if '_normalized' not in filename and '_ratio' not in filename and 'readcount' in filename:
-                    case_files.append(file_path)
-
-        if not case_files:
-            print(f"Không tìm thấy file NPZ {plot_type} nào trong {case_dir}")
-            return
-
-        # Tạo figure
-        fig, axes = plt.subplots(len(case_files), 1, figsize=(20, 5 * len(case_files)))
-        if len(case_files) == 1:
-            axes = [axes]
-
-        for idx, case_file in enumerate(case_files):
-            sample_name = Path(case_file).stem
-            print(f"Đang xử lý: {sample_name}")
-
-            data = np.load(case_file)
-
-            # Chuẩn bị dữ liệu cho plotting
-            all_positions = []
-            all_counts = []
-            current_pos = 0
-            chromosome_boundaries = []
-            chr_ticks = []
-            chr_labels = []
-
-            for chrom in self.chromosome_list:
-                if chrom in data.files:
-                    counts = data[chrom]
-                    num_bins = len(counts)
-                    bin_positions = np.arange(num_bins) + current_pos
-
-                    # Lọc các điểm hợp lệ
-                    if use_normalized:
-                        valid_mask = ~np.isnan(counts) & (counts >= 0)
-                    else:
-                        valid_mask = (counts != -1) & (counts >= 0)
-
-                    if np.any(valid_mask):
-                        valid_positions = bin_positions[valid_mask]
-                        valid_counts = counts[valid_mask]
-
-                        all_positions.extend(valid_positions)
-                        all_counts.extend(valid_counts)
-
-                    # Lưu boundary của chromosome
-                    if current_pos > 0:
-                        chromosome_boundaries.append(current_pos)
-
-                    # Tick giữa chromosome để ghi tên
-                    chr_ticks.append(current_pos + num_bins // 2)
-                    chr_labels.append(f'chr{chrom}')
-
-                    current_pos += num_bins
-
-            # Vẽ scatter plot
-            if all_positions:
-                color = 'green' if use_normalized else 'blue'
-                axes[idx].scatter(all_positions, all_counts, alpha=0.6, s=8, color=color)
-
-                # Vẽ đường phân chia chromosome - ĐỎ ĐẬM
-                for boundary in chromosome_boundaries:
-                    axes[idx].axvline(x=boundary, color='red', linestyle='-', alpha=0.8, linewidth=2)
-
-                ylabel = 'Normalized Read Count' if use_normalized else 'Raw Read Count'
-                title = f'{ylabel} per Bin - {sample_name}'
-
-                axes[idx].set_ylabel(ylabel, fontsize=10)
-                axes[idx].set_title(title, fontsize=12)
-                axes[idx].grid(True, alpha=0.3)
-                axes[idx].set_ylim(0, 200)  # Giới hạn 0-200
-
-                # Thêm tên chromosome dưới trục x
-                if chr_ticks:
-                    axes[idx].set_xticks(chr_ticks)
-                    axes[idx].set_xticklabels(chr_labels, rotation=45, fontsize=8)
-
-        plt.xlabel('Bin Position', fontsize=10)
-        plt.tight_layout()
-
-        plot_file = self.output_dir / f"{output_name}.png"
-        plt.savefig(plot_file, dpi=300, bbox_inches='tight')
-        plt.close()
-
-        print(f"Đã lưu biểu đồ vào: {plot_file}")
-        return str(plot_file)
-
-    def plot_gccount_per_bin(self, gc_file, output_name="gccount_per_bin"):
-        """
-        Vẽ biểu đồ GC percentage trên từng bin của reference genome
-
-        Args:
-            gc_file (str): Đường dẫn file NPZ chứa GC count
-            output_name (str): Tên file output
-        """
-        print(f"Đang tạo biểu đồ GC percentage per bin...")
-
-        if not Path(gc_file).exists():
-            print(f"File GC không tồn tại: {gc_file}")
-            return
-
-        data = np.load(gc_file)
-
-        # Tạo figure - chỉ 1 subplot cho GC percentage
-        fig, ax = plt.subplots(1, 1, figsize=(20, 6))
-
-        # Chuẩn bị dữ liệu cho plotting
-        all_positions = []
-        all_gc_percentages = []
-        current_pos = 0
-        chromosome_boundaries = []
-        chr_ticks = []
-        chr_labels = []
-
-        for chrom in self.chromosome_list:
-            if chrom in data.files:
-                gc_counts = data[chrom]
-                num_bins = len(gc_counts)
-                bin_positions = np.arange(num_bins) + current_pos
-
-                # Tính GC percentage
-                gc_percentages = (gc_counts / self.bin_size) * 100
-
-                all_positions.extend(bin_positions)
-                all_gc_percentages.extend(gc_percentages)
-
-                # Lưu boundary của chromosome
-                if current_pos > 0:
-                    chromosome_boundaries.append(current_pos)
-
-                # Tick giữa chromosome để ghi tên
-                chr_ticks.append(current_pos + num_bins // 2)
-                chr_labels.append(f'chr{chrom}')
-
-                current_pos += num_bins
-
-        # Vẽ GC Percentage
-        ax.scatter(all_positions, all_gc_percentages, alpha=0.6, s=8, color='purple')
-
-        # Vẽ đường phân chia chromosome - ĐỎ ĐẬM
-        for boundary in chromosome_boundaries:
-            ax.axvline(x=boundary, color='red', linestyle='-', alpha=0.8, linewidth=2)
-
-        ax.set_ylabel('GC Percentage (%)', fontsize=12)
-        ax.set_ylim(0, 100)
-        ax.set_title('GC Percentage per Bin', fontsize=14)
-        ax.grid(True, alpha=0.3)
-
-        # Thêm tên chromosome dưới trục x
-        if chr_ticks:
-            ax.set_xticks(chr_ticks)
-            ax.set_xticklabels(chr_labels, rotation=45, fontsize=8)
-
-        plt.tight_layout()
-
-        plot_file = self.output_dir / f"{output_name}.png"
-        plt.savefig(plot_file, dpi=300, bbox_inches='tight')
-        plt.close()
-
-        print(f"Đã lưu biểu đồ vào: {plot_file}")
-        return str(plot_file)
-
-    def plot_readcount_vs_gc(self, case_dir, control_dir, gc_file, output_name="readcount_vs_gc"):
-        """
-        Vẽ biểu đồ readcount vs GC percentage cho từng mẫu riêng biệt (như hình S2 trong paper)
-
-        Args:
-            case_dir (str): Thư mục chứa file NPZ của các mẫu test
-            control_dir (str): Thư mục chứa file NPZ của các mẫu control
-            gc_file (str): Đường dẫn file NPZ chứa GC content
-            output_name (str): Tên file output
-        """
-        print(f"Đang tạo biểu đồ readcount vs GC percentage...")
-
-        if not Path(gc_file).exists():
-            print(f"File GC không tồn tại: {gc_file}")
-            return
-
-        # Đọc GC data
-        gc_data = np.load(gc_file)
-
-        # Tìm tất cả file mẫu RAW READCOUNT (không có _normalized, _ratio)
-        case_files = []
-        control_files = []
-
-        for file_path in glob.glob(f"{case_dir}/*.npz"):
-            filename = Path(file_path).name
-            if '_normalized' not in filename and '_ratio' not in filename and 'readcount' in filename:
-                case_files.append(file_path)
-
-        for file_path in glob.glob(f"{control_dir}/*.npz"):
-            filename = Path(file_path).name
-            if '_normalized' not in filename and '_ratio' not in filename and 'readcount' in filename:
-                control_files.append(file_path)
-
-        all_files = case_files + control_files
-        if not all_files:
-            print("Không tìm thấy file mẫu raw readcount nào")
-            return
-
-        # Debug: In ra số lượng file tìm được
-        print(f"Tìm được {len(case_files)} case files và {len(control_files)} control files")
-
-        # Tạo một biểu đồ riêng cho từng mẫu
-        created_plots = 0
-        for sample_file in all_files:
-            sample_name = Path(sample_file).stem
-            sample_data = np.load(sample_file)
-
-            print(f"Đang xử lý: {sample_name}")
-
-            # Tập hợp tất cả dữ liệu từ các chromosome
-            all_gc_percentages = []
-            all_read_counts = []
-
-            for chrom in self.chromosome_list:
-                if chrom in sample_data.files and chrom in gc_data.files:
-                    read_counts = sample_data[chrom]
-                    gc_counts = gc_data[chrom]
-
-                    # Tính GC percentage
-                    gc_percentages = (gc_counts / self.bin_size) * 100
-
-                    # Lọc dữ liệu hợp lệ
-                    valid_mask = (read_counts != -1) & (gc_counts > 0)
-                    if np.any(valid_mask):
-                        all_read_counts.extend(read_counts[valid_mask])
-                        all_gc_percentages.extend(gc_percentages[valid_mask])
-
-            print(f"Mẫu {sample_name}: {len(all_gc_percentages)} điểm dữ liệu")
-
-            if all_gc_percentages and all_read_counts:
-                # Tạo figure cho mẫu này
-                fig, ax = plt.subplots(1, 1, figsize=(8, 6))
-
-                # Chuyển thành array để dễ xử lý
-                all_gc_percentages = np.array(all_gc_percentages)
-                all_read_counts = np.array(all_read_counts)
-
-                # Lọc GC từ 20-60% như yêu cầu và read count hợp lý
-                mask_gc = (all_gc_percentages >= 20) & (all_gc_percentages <= 60)
-                mask_count = all_read_counts <= 200
-                mask_combined = mask_gc & mask_count
-                filtered_gc = all_gc_percentages[mask_combined]
-                filtered_counts = all_read_counts[mask_combined]
-
-                print(f"Sau khi lọc GC 20-60% và read count <=200: {len(filtered_gc)} điểm")
-
-                if len(filtered_gc) > 0:
-                    # Vẽ scatter plot
-                    ax.scatter(filtered_gc, filtered_counts,
-                               alpha=0.5, s=1, color='blue')
-
-                    ax.set_xlabel('GC Content (%)', fontsize=12)
-                    ax.set_ylabel('Read Count', fontsize=12)
-                    ax.set_title(f'{sample_name}', fontsize=14)
-                    ax.grid(True, alpha=0.3)
-                    ax.set_xlim(20, 60)  # GC range 20-60%
-                    ax.set_ylim(0, 200)  # Read count 0-200
-
-                    # Lưu biểu đồ riêng cho mỗi mẫu
-                    individual_plot_file = self.output_dir / f"{sample_name}_readcount_vs_gc.png"
-                    plt.tight_layout()
-                    plt.savefig(individual_plot_file, dpi=300, bbox_inches='tight')
-                    plt.close()
-
-                    print(f"Đã lưu biểu đồ: {individual_plot_file}")
-                    created_plots += 1
-                else:
-                    print(f"Không có dữ liệu GC <= 60% cho mẫu {sample_name}")
-                    plt.close()
-            else:
-                print(f"Không có dữ liệu hợp lệ cho mẫu {sample_name}")
-
-        print(f"Hoàn thành tạo {created_plots} biểu đồ readcount vs GC")
-        return f"Đã tạo biểu đồ riêng cho {created_plots} mẫu"
-
-    def create_additional_plots(self, pipeline_obj):
-        """
-        Tạo các biểu đồ bổ sung cho phân tích chi tiết
-
-        Args:
-            pipeline_obj: Object CNVPipeline để truy cập các thuộc tính
-
-        Returns:
-            list: Danh sách đường dẫn các file biểu đồ đã tạo
-        """
-        print("\n=== CREATING ADDITIONAL PLOTS ===")
-
-        additional_plots = []
-
-        # 1. Biểu đồ readcount per bin (raw)
-        print("\n1. Tạo biểu đồ readcount per bin...")
-        try:
-            plot_file = self.plot_readcount_per_bin(
-                str(pipeline_obj.temp_dir / 'case_npz'),
-                "readcount_per_bin"
-            )
-            if plot_file:
-                additional_plots.append(plot_file)
-        except Exception as e:
-            print(f"Lỗi khi tạo biểu đồ readcount per bin: {e}")
-
-        # 2. Biểu đồ normalized readcount per bin
-        print("\n2. Tạo biểu đồ normalized readcount per bin...")
-        try:
-            plot_file = self.plot_readcount_per_bin(
-                str(pipeline_obj.temp_dir / 'case_npz'),
-                "normalized_readcount_per_bin",
-                use_normalized=True
-            )
-            if plot_file:
-                additional_plots.append(plot_file)
-        except Exception as e:
-            print(f"Lỗi khi tạo biểu đồ normalized readcount per bin: {e}")
-
-        # 3. Biểu đồ GC count per bin
-        print("\n3. Tạo biểu đồ GC count per bin...")
-        try:
-            gc_file = str(pipeline_obj.temp_dir / f"gc_content_bin_size_{pipeline_obj.bin_size}.npz")
-            plot_file = self.plot_gccount_per_bin(gc_file, "gccount_per_bin")
-            if plot_file:
-                additional_plots.append(plot_file)
-        except Exception as e:
-            print(f"Lỗi khi tạo biểu đồ GC count per bin: {e}")
-
-        # 4. Biểu đồ readcount vs GC (như Figure S2)
-        print("\n4. Tạo biểu đồ readcount vs GC percentage...")
-        try:
-            gc_file = str(pipeline_obj.temp_dir / f"gc_content_bin_size_{pipeline_obj.bin_size}.npz")
-            plot_file = self.plot_readcount_vs_gc(
-                str(pipeline_obj.temp_dir / 'case_npz'),
-                str(pipeline_obj.temp_dir / 'control_npz'),
-                gc_file,
-                "readcount_vs_gc"
-            )
-            if plot_file:
-                additional_plots.append(plot_file)
-        except Exception as e:
-            print(f"Lỗi khi tạo biểu đồ readcount vs GC: {e}")
-
-        # 5. Tạo biểu đồ segments without normalization...
-        print("\n5. Tạo biểu đồ segments without normalization...")
-        try:
-            # Import các module cần thiết
-            import glob
-            import shutil
-            from normalize import calculate_raw_statistics, calculate_read_ratios
-            from filter import filter
-            from segment import cbs
-
-            # Tìm file raw case và control
-            case_raw_files = []
-            for file_path in glob.glob(f"{pipeline_obj.temp_dir}/case_npz/*.npz"):
-                filename = Path(file_path).name
-                if '_normalized' not in filename and '_ratio' not in filename and 'readcount' in filename:
-                    case_raw_files.append(file_path)
-
-            control_raw_files = []
-            for file_path in glob.glob(f"{pipeline_obj.temp_dir}/control_npz/*.npz"):
-                filename = Path(file_path).name
-                if '_normalized' not in filename and '_ratio' not in filename and 'readcount' in filename:
-                    control_raw_files.append(file_path)
-
-            if case_raw_files and control_raw_files:
-                print(f"Tìm được {len(case_raw_files)} case raw files và {len(control_raw_files)} control raw files")
-
-                # Bước 1: Chuyển đổi raw read count sang ratio cho tất cả files
-                print("Chuyển đổi raw read count sang ratio...")
-                control_ratio_files = []
-                case_ratio_files = []
-
-                # Chuyển đổi control files
-                for control_file in control_raw_files:
-                    ratio_file = calculate_read_ratios(pipeline_obj, control_file,
-                                                       pipeline_obj.temp_dir / 'control_npz')
-                    if ratio_file:
-                        control_ratio_files.append(ratio_file)
-
-                # Chuyển đổi case files
-                for case_file in case_raw_files:
-                    ratio_file = calculate_read_ratios(pipeline_obj, case_file, pipeline_obj.temp_dir / 'case_npz')
-                    if ratio_file:
-                        case_ratio_files.append(ratio_file)
-
-                print(
-                    f"Chuyển đổi được {len(control_ratio_files)} control ratio files và {len(case_ratio_files)} case ratio files")
-
-                # Bước 2: Tính thống kê từ control ratio files
-                print("Tính thống kê từ control ratio files...")
-
-                # Tính mean và std từ control ratio files
-                mean_raw_file, std_raw_file = calculate_raw_statistics(pipeline_obj, control_ratio_files)
-                filtered_raw_mean_file = filter(mean_raw_file, std_raw_file, pipeline_obj=pipeline_obj)
-
-                # Bước 3: Tính raw ratio và chạy CBS cho từng case
-                for case_ratio_file in case_ratio_files:
-                    sample_name = Path(case_ratio_file).stem
-                    print(f"Xử lý mẫu ratio: {sample_name}")
-
-                    # Tính raw ratio (sử dụng hàm ratio từ pipeline_obj)
-                    raw_ratio_file = pipeline_obj.ratio(case_ratio_file, filtered_raw_mean_file)
-
-                    if raw_ratio_file:
-                        # Chạy CBS trên raw ratio
-                        raw_segments_file = cbs(raw_ratio_file, pipeline_obj=pipeline_obj)
-
-                        # Tạo biểu đồ với raw segments
-                        plot_file = self.plot(raw_ratio_file, filtered_raw_mean_file, raw_segments_file,
-                                              pipeline_obj=pipeline_obj)
-
-                        if plot_file:
-                            # Đổi tên để phân biệt với normalized plot
-                            new_name = Path(plot_file).stem.replace('_cnv_plot',
-                                                                    '_cnv_plot_without_normalization') + '.png'
-                            new_plot_file = pipeline_obj.output_dir / new_name
-                            shutil.move(plot_file, new_plot_file)
-                            additional_plots.append(str(new_plot_file))
-                            print(f"Đã tạo biểu đồ raw với segments: {new_plot_file}")
-            else:
-                print("Không tìm thấy đủ file raw case hoặc control")
-
-        except Exception as e:
-            print(f"Lỗi khi tạo biểu đồ segments without normalization: {e}")
-
-        print(f"\n=== HOÀN THÀNH TẠO {len(additional_plots)} BIỂU ĐỒ BỔ SUNG ===")
-        return additional_plots

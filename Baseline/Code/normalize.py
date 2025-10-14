@@ -1,203 +1,111 @@
 import numpy as np
 from pathlib import Path
+from statsmodels.nonparametric.smoothers_lowess import lowess
+import pysam
 
-try:
-    from statsmodels.nonparametric.smoothers_lowess import lowess
-    HAS_STATSMODELS = True
-except ImportError:
-    HAS_STATSMODELS = False
-
-from estimate import CHROMOSOME_LENGTHS_GRCh37
-def nucleotide_content(pipeline_obj, fasta_file):
-    """Return two separate dicts (gc_dict, n_dict) with counts per full bin (floor logic).
-    Two NPZ cache files are written: *_gc.npz and *_n.npz.
-    Trailing partial bins are ignored to stay consistent with readcount binning (floor).
+def base_content(pipeline_obj, fasta_file):
+    """Compute per-bin GC and N contents using pysam and cache them to NPZ files.
+    Returns two file paths: (GC-content.npz, N-content.npz).
     """
-    gc_file = pipeline_obj.work_directory / "Temporary" / "GC-content.npz"
-    n_file = pipeline_obj.work_directory / "Temporary" / "N-content.npz"
+    gc_file = pipeline_obj.work_directory / "Prepare" / "GC-content.npz"
+    n_file = pipeline_obj.work_directory / "Prepare" / "N-content.npz"
 
     if gc_file.exists() and n_file.exists():
-        gc_loaded = np.load(gc_file)
-        n_loaded = np.load(n_file)
-        return ({k: gc_loaded[k] for k in gc_loaded.files}, {k: n_loaded[k] for k in n_loaded.files})
+        return str(gc_file), str(n_file)
 
-    # Pre-allocate arrays per chromosome like readcount: num_bins = chrom_length // bin_size
+    fasta_path = Path(fasta_file)
+    fasta = pysam.FastaFile(str(fasta_path))
+
     gc_counts = {}
     n_counts = {}
+
     for chromosome in pipeline_obj.chromosome_list:
-        chrom_len = CHROMOSOME_LENGTHS_GRCh37[str(chromosome)]
+        chrom_len = min(pipeline_obj.chromosome_lengths[chromosome], fasta.get_reference_length(chromosome))
         num_bins = chrom_len // pipeline_obj.bin_size
-        gc_counts[chromosome] = np.zeros(num_bins, dtype=np.int32)
-        n_counts[chromosome] = np.zeros(num_bins, dtype=np.int32)
 
-    current_chromosome = None
-    current_pos = 0
-    gc_count = 0
-    n_count = 0
-    bin_filled = 0
+        # Fetch full chromosome sequence once, uppercase for stable counting
+        seqU = fasta.fetch(chromosome, 0, chrom_len).upper()
+        valid_len = num_bins * pipeline_obj.bin_size
+        buf = memoryview(seqU.encode('ascii'))[:valid_len]
+        arr = np.frombuffer(buf, dtype=np.uint8).reshape(num_bins, pipeline_obj.bin_size)
 
-    def finish_bin(bin_index):
-        nonlocal gc_count, n_count
-        # Only write counts if within allocated bins
-        if current_chromosome is not None:
-            arr = gc_counts[current_chromosome]
-            if 0 <= bin_index < arr.shape[0]:
-                gc_counts[current_chromosome][bin_index] = gc_count
-                n_counts[current_chromosome][bin_index] = n_count
-            else:
-                # bin_index out of range: skip or log
-                pass
-        # reset counters
-        gc_count = 0
-        n_count = 0
+        # Vectorized counting
+        is_G = (arr == ord('G'))
+        is_C = (arr == ord('C'))
+        is_N = (arr == ord('N'))
+        gc_counts[chromosome] = (is_G | is_C).sum(axis=1, dtype=np.int64).astype(np.int32)
+        n_counts[chromosome] = is_N.sum(axis=1, dtype=np.int64).astype(np.int32)
 
-    try:
-        with open(fasta_file, 'r') as f:
-            for raw_line in f:
-                line = raw_line.strip()
-                if not line:
-                    continue
-                if line.startswith('>'):
-                    # Bắt đầu chromosome mới: bỏ tiền tố 'chr', chỉ xử lý nếu nằm trong danh sách interest
-                    current_pos = 0
-                    header_raw = line[1:].split()[0]
-                    header = header_raw[3:]  # cắt bỏ 'chr'
-                    if header in pipeline_obj.chromosome_list:
-                        current_chromosome = header
-                    else:
-                        current_chromosome = None
-                    continue
-                if current_chromosome is None:
-                    continue
-                for base in line.upper():
-                    bin_index = current_pos // pipeline_obj.bin_size
-                    # Only count bases for full bins; once bin fills, finalize
-                    if base in ('G', 'C'):
-                        gc_count += 1
-                    if base == 'N':
-                        n_count += 1
-                    current_pos += 1
-                    bin_filled += 1
-                    if bin_filled == pipeline_obj.bin_size:
-                        finish_bin(bin_index)
-                        bin_filled = 0
-    except Exception as e:
-        print(f"Lỗi khi đọc file FASTA: {e}")
-        return None, None
-
-    # Save raw counts for potential debugging
-    np.savez_compressed(gc_file, **gc_counts)
-    np.savez_compressed(n_file, **n_counts)
-    # Compute GC content and N ratio per bin for LOWESS
+    # Compute GC content and N ratio per bin
     gc_content = {}
     n_content = {}
     for chromosome in pipeline_obj.chromosome_list:
         counts_gc = gc_counts[chromosome]
         counts_n = n_counts[chromosome]
-        # N ratio = n_count / bin_size
+
         n_content[chromosome] = counts_n.astype(float) / pipeline_obj.bin_size
-        # DEBUG: print computed N ratio
-        print(f"[DEBUG N_CONTENT:{chromosome}] len={len(n_content[chromosome])}, sample[:5]={n_content[chromosome][:5]}")
-        # GC fraction = gc_count / (bin_size - n_count)
         total_bases = pipeline_obj.bin_size - counts_n
-        gc_content[chromosome] = np.where(total_bases > 0,
-                                  counts_gc.astype(float) / total_bases,
-                                  0.0)
-        # DEBUG: print computed GC fraction
-        print(f"[DEBUG GC_CONTENT:{chromosome}] len={len(gc_content[chromosome])}, sample[:5]={gc_content[chromosome][:5]}")
-    return gc_content, n_content
+        gc_frac = np.zeros_like(counts_gc, dtype=float)
+        np.divide(counts_gc.astype(float), total_bases, out=gc_frac, where=total_bases > 0)
+        gc_content[chromosome] = gc_frac
+    
+    # Save contents (fractions/ratios) to caches
+    np.savez_compressed(gc_file, **gc_content)
+    np.savez_compressed(n_file, **n_content)
 
-def lowess_normalize(raw_data, gc_data, n_data, max_n=0.1, min_rd=0.0001, frac=0.1):
+    return str(gc_file), str(n_file)
 
-    all_gc = []
-    all_reads = []
-    for chrom in raw_data:
-        read_count = raw_data[chrom]
-        gc_content = gc_data[chrom]
-        n_content_list = n_data[chrom]
-        # mask các bin hợp lệ: N ratio thấp, read > min_rd, GC fraction > 0
-        mask = (n_content_list < max_n) & (read_count > min_rd) & (gc_content > 0)
-        if mask.any():
-            all_gc.extend(gc_content[mask].tolist())
-            all_reads.extend(read_count[mask].tolist())
+def lowess_normalize(raw_data, gc_data, base_filter, min_rd=0.0001, frac=0.1):
+    """
+    Chuẩn hoá read count theo GC bằng LOWESS.
+    """
+    chromosome_list = list(raw_data.keys())
+    length_list = [len(raw_data[chromosome]) for chromosome in chromosome_list]
 
-    all_gc = np.array(all_gc)
-    all_reads = np.array(all_reads)
+    # Nối toàn bộ thành mảng 1D lớn để tạo một mask toàn cục rõ ràng
+    all_reads = np.concatenate([raw_data[chromosome] for chromosome in chromosome_list])
+    all_gc = np.concatenate([gc_data[chromosome] for chromosome in chromosome_list])
+    all_base = np.concatenate([base_filter[chromosome] for chromosome in chromosome_list])
 
-    if HAS_STATSMODELS:
-        try:
-            # Trả về mảng smoothed values có cùng thứ tự với input
-            smoothed_reads = lowess(all_reads, all_gc, frac=frac, return_sorted=False)
-        except Exception as e:
-            print(f"Lỗi khi sử dụng statsmodels LOWESS: {e}")
-            return raw_data.copy()
-    else:
-        print("Cảnh báo: statsmodels không có sẵn, không thể thực hiện LOWESS normalization")
+    # 2) Tạo mask hợp lệ toàn cục theo đúng quy tắc
+    valid = (all_reads > min_rd) & (~all_base)
+    corrected_full = np.zeros_like(all_reads, dtype=all_reads.dtype)
+
+    # 3) Tính LOWESS trên các bin hợp lệ theo thứ tự đã gom (giữ nguyên thứ tự)
+    try:
+        smoothed = lowess(all_reads[valid], all_gc[valid], frac=frac, return_sorted=False)
+    except Exception as e:
+        print(f"Lỗi khi sử dụng statsmodels LOWESS: {e}")
         return raw_data.copy()
 
-    # Áp dụng correction cho sample data sử dụng smoothed values
+    # 4) Gán expected cho đúng vị trí hợp lệ (scatter)
+    expected_full = np.zeros_like(all_reads, dtype=float)
+    expected_full[valid] = smoothed
+    corrected_valid = np.where(expected_full[valid] > 0, all_reads[valid] / expected_full[valid], all_reads[valid])
+    corrected_full[valid] = corrected_valid.astype(corrected_full.dtype, copy=False)
+
+    # 5) Chia lại theo từng chromosome (bin không hợp lệ đã là 0)
     corrected_data = {}
-
-    # Index để theo dõi vị trí trong mảng all_gc và smoothed_reads
-    global_index = 0
-
-    # Duyệt qua tất cả chromosome để áp dụng normalization
-    for chromosome in raw_data.keys():
-        # Keys in raw_data, gc_data and n_data are guaranteed aligned
-        read_count_list = raw_data[chromosome]
-        gc_content_list = gc_data[chromosome]
-        n_content_list = n_data[chromosome]
-
-        length = len(read_count_list)
-        corrected_counts = np.zeros(length, dtype=read_count_list.dtype)
-
-        for bin_index in range(length):
-            read_count = read_count_list[bin_index]
-            gc_content = gc_content_list[bin_index]
-            n_content = n_content_list[bin_index]
-
-            # Kiểm tra bin có hợp lệ để áp dụng correction không
-            if (n_content < max_n and read_count > min_rd and gc_content > 0):
-                # Lấy giá trị expected từ smoothed values tại vị trí global_index
-                try:
-                    # Kiểm tra xem global_index có hợp lệ không
-                    if global_index < len(smoothed_reads):
-                        expected_value = float(smoothed_reads[global_index])
-
-                        if expected_value > 0:
-                            corrected_value = read_count_list[bin_index] / expected_value
-                        else:
-                            corrected_value = read_count_list[bin_index]
-
-                        corrected_counts[bin_index] = corrected_value
-                        global_index += 1
-                    else:
-                        # Nếu vượt quá số lượng smoothed values, giữ nguyên giá trị gốc
-                        corrected_counts[bin_index] = read_count_list[bin_index]
-                except Exception as e:
-                    # Nếu có lỗi, giữ nguyên giá trị gốc
-                    corrected_counts[bin_index] = read_count_list[bin_index]
-            else:
-                # Bin không hợp lệ thì giữ nguyên giá trị gốc
-                # corrected_counts[bin_index] = read_count_list[bin_index]
-                corrected_counts[bin_index] = 0
-
-        # Lưu kết quả đã correction cho chromosome này
-        corrected_data[chromosome] = corrected_counts
+    start = 0
+    for chromosome, length in zip(chromosome_list, length_list):
+        sl = corrected_full[start:start+length]
+        corrected_data[chromosome] = sl.astype(raw_data[chromosome].dtype, copy=False)
+        start += length
 
     return corrected_data
 
-def normalize_readcount(pipeline_obj, raw_readcount_file, output_dir):
+def normalize_readcount(gc_file, raw_file, output_dir, filter_file):
 
-    raw_name = Path(raw_readcount_file).stem
-    normalized_file = output_dir / f"{raw_name.replace('_raw', '_normalized')}.npz"
+    raw_name = Path(raw_file).stem
+    normalized_file = output_dir / f"{raw_name.replace('_rawCount', '_normalized')}.npz"
 
     if normalized_file.exists():
         return str(normalized_file)
 
-    raw_data = np.load(raw_readcount_file)
-    gc_data, n_data = nucleotide_content(pipeline_obj, pipeline_obj.work_directory / "Input" / "hg19.fa")
-    chromosome_data = lowess_normalize(raw_data, gc_data, n_data)
+    raw_data = np.load(raw_file)
+    gc_data = np.load(gc_file)
+    base_filter = np.load(filter_file)
+    chromosome_data = lowess_normalize(raw_data, gc_data, base_filter)
 
     np.savez_compressed(normalized_file, **chromosome_data)
 
