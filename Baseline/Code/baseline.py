@@ -1,14 +1,17 @@
-import os
-import sys
 import argparse
 from pathlib import Path
+
 from estimate import Estimator
-from normalize import normalize_readcount
-from filter import filter_bins
-from segment import cbs
+from normalize import base_content, normalize_readcount
+from filter import (
+    combine_filters,
+    create_blacklist,
+    filter_base,
+    filter_bins,
+    filter_import,
+)
 from plot import Plotter
-from normalize import base_content
-from filter import filter_base
+from segment import cbs
 
 CHROMOSOME_LENGTHS_GRCh37 = {
     "1": 249250621, "2": 243199373, "3": 198022430, "4": 191154276,
@@ -55,6 +58,8 @@ class CNV:
         # Precompute base content caches and base filter
         gc_file, n_file = base_content(self, self.work_directory / "Input" / "hg19.fa")
         base_filter_file = filter_base(gc_file, n_file)
+        _ = filter_import(self.work_directory / "Input" / "consensusBlacklist.bed", self)
+        combined_filter_file = combine_filters(self.work_directory / "Prepare")
 
         print("\n1. Count reads train samples...")
         train_bam_list = list((self.work_directory / "Input" / "Train").glob('*.bam'))
@@ -63,56 +68,67 @@ class CNV:
             raw_file = self.estimator.count_read(str(bam_file), self.work_directory / "Temporary" / "Train")
             train_raw_list.append(raw_file)
 
-        print("\n2. Normalized and calculate proportion for train samples...")
-        train_normalized_list = []
-        for raw_file in train_raw_list:
-            normalized_file = normalize_readcount(gc_file, raw_file, self.work_directory / "Temporary" / "Train", base_filter_file)
-            train_normalized_list.append(normalized_file)
-            control_proportion_file = self.estimator.calculate_proportion(normalized_file, self.work_directory / "Temporary" / "Train")
-
-
-        print("\n3. Count reads for test samples...")
+        print("\n2. Count reads for test samples...")
         test_bam_list = list((self.work_directory / "Input" / "Test").glob('*.bam'))
         test_raw_list = []
         for bam_file in test_bam_list:
             raw_file = self.estimator.count_read(str(bam_file), self.work_directory / "Temporary" / "Test")
             test_raw_list.append(raw_file)
 
-        print("\n4. Normalize test and calculate proportion for samples...")
+        print("\n3. Normalized and calculate frequency for train samples...")
+        train_normalized_list = []
+        for raw_file in train_raw_list:
+            normalized_file = normalize_readcount(gc_file, raw_file, self.work_directory / "Temporary" / "Train", combined_filter_file)
+            train_normalized_list.append(normalized_file)
+            control_frequency_file = self.estimator.calculate_frequency(normalized_file, self.work_directory / "Temporary" / "Train")
+
+        print("\n4. Create blacklist...")
+        blacklist = create_blacklist(self.work_directory / "Temporary" / "Train", combined_filter_file)
+
+        print("\n5. Calculate proportion for train samples...")
+        for normalized_file in train_normalized_list:
+            control_proportion_file = self.estimator.calculate_proportion(
+                normalized_file,
+                self.work_directory / "Temporary" / "Train",
+                blacklist,
+            )
+
+        print("\n6. Normalize test and calculate proportion for samples...")
         test_normalized_list = []
         test_proportion_list = []
         for raw_file in test_raw_list:
-            normalized_file = normalize_readcount(gc_file, raw_file, self.work_directory / "Temporary" / "Test", base_filter_file)
+            normalized_file = normalize_readcount(gc_file, raw_file, self.work_directory / "Temporary" / "Test", combined_filter_file)
             test_normalized_list.append(normalized_file)
-            test_proportion_file = self.estimator.calculate_proportion(normalized_file, self.work_directory / "Temporary" / "Test")
+            test_proportion_file = self.estimator.calculate_proportion(
+                normalized_file,
+                self.work_directory / "Temporary" / "Test",
+                blacklist,
+            )
             test_proportion_list.append(test_proportion_file)
 
+        print("\n7. Calculate statistics from train samples and filter out unstable bins...")
+        reference = self.estimator.create_reference(self.work_directory / "Temporary" / "Train", self.work_directory / "Temporary")
 
-        print("\n5. Calculate statistics from train samples and filter out unstable bins...")
-        mean, cv = self.estimator.statistics(self.work_directory / "Temporary" / "Train", self.work_directory / "Temporary")
-        blacklist = filter_bins(cv, self.filter_ratio, self.work_directory / "Temporary")
-
-        print("\n6. Calculate ratio for test samples ...")
+        print("\n8. Calculate ratio for test samples ...")
         ratio_list = []
         for test_proportion_file in test_proportion_list:
-            ratio_file = self.estimator.calculate_ratio(test_proportion_file, mean, blacklist, self.work_directory / "Temporary" / "Test")
+            ratio_file = self.estimator.calculate_ratio(test_proportion_file, reference, self.work_directory / "Temporary" / "Test")
             ratio_list.append(ratio_file)
 
-        # 7 Recalculate ratio using aberration-based scaling and use it for segmentation
-        print("\n7. Recalculate ratio using aberration masking and scaling...")
+        print("\n9. Recalculate ratio using aberration masking and scaling...")
         recalculated_ratio_list = []
         for i, ratio_file in enumerate(ratio_list):
             normalized_file = test_normalized_list[i]
-            refined_ratio_file = self.estimator.recalculate_ratio(normalized_file, ratio_file, mean, blacklist, self.work_directory / "Output", 0.3)
+            refined_ratio_file = self.estimator.recalculate_ratio(normalized_file, ratio_file, reference, self.work_directory / "Output", 0.35)
             recalculated_ratio_list.append(refined_ratio_file)
 
-        print("\n8. Performing CBS segmentation...")
+        print("\n10. Performing CBS segmentation...")
         segments_list = []
         for refined_ratio_file in recalculated_ratio_list:
             segments_file = cbs(refined_ratio_file, self.work_directory / "Output", self.bin_size, self.chromosome_list)
             segments_list.append(segments_file)
 
-        print("\n9. Create chart with segments ...")
+        print("\n11. Create chart with segments ...")
 
         for i, refined_ratio_file in enumerate(recalculated_ratio_list):
             segments_file = segments_list[i]
@@ -126,7 +142,7 @@ def main():
     parser = argparse.ArgumentParser(description = "CNV Pipeline (modular)")
     parser.add_argument('-o', '--work-directory', required = True, help = 'Path to work directory')
     parser.add_argument('--bin-size', type = int, default = 400000, help = 'Size of bin')
-    parser.add_argument('--filter-ratio', type = float, default = 0.8, help = 'Filter ratio')
+    parser.add_argument('--filter-ratio', type = float, default = 0.9, help = 'Filter ratio')
 
     args = parser.parse_args()
 

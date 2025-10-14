@@ -94,7 +94,7 @@ def lowess_normalize(raw_data, gc_data, base_filter, min_rd=0.0001, frac=0.1):
 
     return corrected_data
 
-def normalize_readcount(gc_file, raw_file, output_dir, base_filter_file):
+def normalize_readcount(gc_file, raw_file, output_dir, filter_file):
 
     raw_name = Path(raw_file).stem
     normalized_file = output_dir / f"{raw_name.replace('_rawCount', '_normalized')}.npz"
@@ -104,7 +104,7 @@ def normalize_readcount(gc_file, raw_file, output_dir, base_filter_file):
 
     raw_data = np.load(raw_file)
     gc_data = np.load(gc_file)
-    base_filter = np.load(base_filter_file)
+    base_filter = np.load(filter_file)
     chromosome_data = lowess_normalize(raw_data, gc_data, base_filter)
 
     np.savez_compressed(normalized_file, **chromosome_data)

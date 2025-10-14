@@ -38,7 +38,8 @@ def prepare_cbs_data(ratio_file, sample_name, temp_dir, bin_size, chromosome_lis
             num_bins = len(ratios)
             bin_positions = [i * bin_size + bin_size // 2 for i in range(num_bins)]
             for i, ratio in enumerate(ratios):
-                if ratio != -2:
+                # Skip bins marked as filtered (<= -10)
+                if ratio > -10:
                     all_data.append({
                         "sample.name": sample_name,
                         "chrom": chromosome,
