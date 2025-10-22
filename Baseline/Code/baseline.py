@@ -12,6 +12,7 @@ from filter import (
 )
 from plot import Plotter
 from segment import cbs
+from smooth import mean_smooth, median_smooth
 
 CHROMOSOME_LENGTHS_GRCh37 = {
     "1": 249250621, "2": 243199373, "3": 198022430, "4": 191154276,
@@ -23,10 +24,11 @@ CHROMOSOME_LENGTHS_GRCh37 = {
 }
 
 class CNV:
-    def __init__(self, work_directory, bin_size = 400000, filter_ratio = 0.8):
+    def __init__(self, work_directory, bin_size = 400000, filter_ratio = 0.8, smooth: int = 1):
         self.work_directory = Path(work_directory)
         self.bin_size = bin_size
         self.filter_ratio = filter_ratio
+        self.smooth = int(smooth) if smooth is not None else 1
 
         self.create_directories()
 
@@ -122,18 +124,28 @@ class CNV:
             refined_ratio_file = self.estimator.recalculate_ratio(normalized_file, ratio_file, reference, self.work_directory / "Output", 0.35)
             recalculated_ratio_list.append(refined_ratio_file)
 
+        # Optional median smoothing before segmentation
+        log2_ratio_list = recalculated_ratio_list
+        if self.smooth > 1:
+            print(f"\n9b. Median smoothing log2 ratios with window = {self.smooth} ...")
+            smoothed_list = []
+            for refined_ratio_file in recalculated_ratio_list:
+                smoothed_file = mean_smooth(refined_ratio_file, self.work_directory / "Output", self.smooth)
+                smoothed_list.append(smoothed_file)
+            log2_ratio_list = smoothed_list
+
         print("\n10. Performing CBS segmentation...")
         segments_list = []
-        for refined_ratio_file in recalculated_ratio_list:
-            segments_file = cbs(refined_ratio_file, self.work_directory / "Output", self.bin_size, self.chromosome_list)
+        for ratio_file_for_seg in log2_ratio_list:
+            segments_file = cbs(ratio_file_for_seg, self.work_directory / "Output", self.bin_size, self.chromosome_list)
             segments_list.append(segments_file)
 
         print("\n11. Create chart with segments ...")
 
-        for i, refined_ratio_file in enumerate(recalculated_ratio_list):
+        for i, ratio_file_for_plot in enumerate(log2_ratio_list):
             segments_file = segments_list[i]
             plotter = Plotter(self.chromosome_list, self.bin_size, self.work_directory / "Output")
-            plot_file = plotter.plot(refined_ratio_file, segments_file)
+            plot_file = plotter.plot(ratio_file_for_plot, segments_file)
 
         print(f"\n=== COMPLETED PIPELINE ===")
 
@@ -143,10 +155,11 @@ def main():
     parser.add_argument('-o', '--work-directory', required = True, help = 'Path to work directory')
     parser.add_argument('--bin-size', type = int, default = 400000, help = 'Size of bin')
     parser.add_argument('--filter-ratio', type = float, default = 0.9, help = 'Filter ratio')
+    parser.add_argument('--smooth', type = int, default = 1, help = 'Median smooth window (1 to disable)')
 
     args = parser.parse_args()
 
-    pipeline = CNV(args.work_directory, args.bin_size, args.filter_ratio)
+    pipeline = CNV(args.work_directory, args.bin_size, args.filter_ratio, args.smooth)
 
     pipeline.run_pipeline()
 

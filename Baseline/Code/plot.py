@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 import glob
 import shutil
+import argparse
 
 plt.rcParams['font.family'] = ['DejaVu Sans', 'sans-serif']
 
@@ -25,39 +26,24 @@ class Plotter:
         self.bin_size = bin_size
         self.output_dir = Path(output_dir)
 
-    def plot(self, ratio_npz, segments_csv=None):
+    def plot(self, log2_ratio_file, segments_csv=None):
         """
         Tạo biểu đồ CNV từ dữ liệu log2 ratio với segments
-
-        Args:
-            ratio_npz (str): Đường dẫn file NPZ chứa log2 ratio
-            segments_csv (str): Đường dẫn file CSV chứa segments (tùy chọn)
-            pipeline_obj (optional): Object CNVPipeline để truy cập các thuộc tính
-
-        Returns:
-            str: Đường dẫn file PNG chứa biểu đồ
         """
         # Sử dụng pipeline_obj nếu có để lấy các thuộc tính
         chromosome_list = self.chromosome_list
         bin_size = self.bin_size
         output_dir = self.output_dir
-
-        print(f"Đang tạo biểu đồ cho: {ratio_npz}")
-
-        # Đọc dữ liệu
-        ratio_data = np.load(ratio_npz)
-
-        # Đọc segments nếu có
-        segments_df = None
-        if segments_csv and Path(segments_csv).exists():
-            try:
-                segments_df = pd.read_csv(segments_csv)
-            except Exception as e:
-                print(f"Lỗi khi đọc segments: {e}")
-
-        # Tạo tên file output
-        ratio_name = Path(ratio_npz).stem.replace('_log2Ratio', '')
-        plot_file = Path(output_dir) / f"{ratio_name}_scatterChart.png"
+        ratio_data = np.load(log2_ratio_file)
+        segments_df = pd.read_csv(segments_csv) if segments_csv else None
+        ratio_name = Path(log2_ratio_file).stem.replace('_log2Ratio', '')
+        # Đặt tên file:
+        # - Trường hợp bình thường: vẽ tất cả chromosome => dùng tên rút gọn "{ratio_name}_scatterChart.png"
+        # - Nếu chỉ vẽ 1 NST trong nhóm 1..22 thì thêm nhãn chromosome để phân biệt
+        if len(chromosome_list) == 1:
+            plot_file = Path(output_dir) / f"{ratio_name}_chr{str(chromosome_list[0])}_scatterChart.png"
+        else:
+            plot_file = Path(output_dir) / f"{ratio_name}_scatterChart.png"
 
         # Tạo figure chỉ với 1 subplot (loại bỏ boxplot)
         fig, ax1 = plt.subplots(1, 1, figsize=(20, 10))
@@ -86,19 +72,17 @@ class Plotter:
                 num_bins = len(ratios)
                 bin_positions = np.arange(num_bins) + current_pos
 
-                # Lọc các điểm hợp lệ (không phải -2)
-                valid_mask = ratios != -2
+                # Lọc các điểm hợp lệ: không phải -2 và không bị đánh dấu lọc (<= -10)
+                valid_mask = ratios > -10
 
                 if np.any(valid_mask):
                     valid_positions = bin_positions[valid_mask]
                     valid_ratios = ratios[valid_mask]
-                    # Chuyển đổi từ log2(ratio) sang copy number: CN = 2^(log2 + 1)
                     valid_copy_numbers = np.power(2.0, valid_ratios + 1.0)
 
-                    # Phân loại màu sắc theo giá trị log2 ratio
                     colors = []
                     for ratio in valid_ratios:
-                        colors.append('#888888')  # Xám cho normal
+                        colors.append('#888888')
 
                     all_positions.extend(valid_positions)
                     all_copy_numbers.extend(valid_copy_numbers)
@@ -249,3 +233,35 @@ class Plotter:
                 # Vẽ đường segment
                 ax.plot([plot_start, plot_end], [seg_value, seg_value],
                         color=color, linewidth=linewidth, alpha=alpha, solid_capstyle='round')
+
+
+def _build_arg_parser():
+    parser = argparse.ArgumentParser(description='Vẽ biểu đồ CNV cho 1 chromosome từ log2Ratio.npz và segments.tsv')
+    parser.add_argument('--ratio', required=True, help='Đường dẫn tới tệp log2Ratio.npz')
+    parser.add_argument('--segments', required=False, help='Đường dẫn tới tệp segments (TSV/CSV)')
+    parser.add_argument('--chrom', required=True, help='Chromosome cần vẽ (ví dụ: 1..22, X, Y)')
+    parser.add_argument('--bin-size', type=int, required=True, help='Kích thước bin (bp) dùng để quy đổi vị trí')
+    return parser
+
+
+def main():
+    parser = _build_arg_parser()
+    args = parser.parse_args()
+
+    ratio_path = Path(args.ratio)
+    if not ratio_path.exists():
+        raise FileNotFoundError(f"Không tìm thấy tệp ratio: {ratio_path}")
+
+    out_dir = ratio_path.parent
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    # Khởi tạo Plotter với chỉ 1 chromosome
+    plotter = Plotter(chromosome_list=[str(args.chrom)], bin_size=int(args.bin_size), output_dir=out_dir)
+
+    # Vẽ và in đường dẫn file ảnh
+    img_path = plotter.plot(str(ratio_path), segments_csv=args.segments)
+    print(img_path)
+
+
+if __name__ == '__main__':
+    main()
