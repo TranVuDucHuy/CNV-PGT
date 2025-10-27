@@ -18,7 +18,13 @@ option_list = list(
   make_option(c("--nperm"), type="integer", default=10000, 
               help="Số permutations cho CBS [default= %default]", metavar="number"),
   make_option(c("--p.method"), type="character", default="hybrid", 
-              help="P-value method [default= %default]", metavar="character")
+              help="P-value method [default= %default]", metavar="character"),
+  make_option(c("--min.width"), type="integer", default=2,
+              help="Số markers tối thiểu cho một segment (min.width) [default= %default]", metavar="number"),
+  make_option(c("--undo.splits"), type="character", default="none",
+              help="Phương pháp undo splits (none, prune, sdundo) [default= %default]", metavar="character"),
+  make_option(c("--undo.SD"), type="double", default=3.0,
+              help="Ngưỡng SD cho phương pháp sdundo (undo.SD) [default= %default]", metavar="number")
 )
 
 opt_parser = OptionParser(option_list=option_list)
@@ -40,8 +46,6 @@ cat("Output file:", opt$output, "\n")
 cat("Sample name:", opt$sample, "\n")
 
 # Đọc dữ liệu CSV đã được chuẩn bị từ Python
-cat("Đang đọc dữ liệu từ file CSV...\n")
-
 if (!file.exists(opt$input)) {
   stop(paste("File input không tồn tại:", opt$input))
 }
@@ -62,7 +66,6 @@ if (length(missing_cols) > 0) {
 }
 
 # Tạo đối tượng CNA
-cat("Tạo đối tượng CNA...\n")
 CNA.object <- CNA(genomdat = cnv_data$log2_ratio,
                   chrom = cnv_data$chrom_numeric,
                   maploc = cnv_data$maploc,
@@ -70,19 +73,16 @@ CNA.object <- CNA(genomdat = cnv_data$log2_ratio,
                   sampleid = opt$sample)
 
 # Smooth the data (tùy chọn)
-cat("Smoothing dữ liệu...\n")
 smoothed.CNA.object <- smooth.CNA(CNA.object)
 
 # Thực hiện segmentation
-cat("Thực hiện CBS segmentation...\n")
-cat("  Alpha:", opt$alpha, "\n")
-cat("  Nperm:", opt$nperm, "\n")
-cat("  P-method:", opt$p.method, "\n")
-
 segment.result <- segment(smoothed.CNA.object, 
                          alpha = opt$alpha,
                          nperm = opt$nperm,
                          p.method = opt$p.method,
+                         min.width = opt$min.width,
+                         undo.splits = opt$undo.splits,
+                         undo.SD = opt$undo.SD,
                          verbose = 1)
 
 # Lấy kết quả segmentation
@@ -94,14 +94,4 @@ segments_df$chrom_original <- ifelse(segments_df$chrom == 23, "X",
                                          as.character(segments_df$chrom)))
 
 # Lưu kết quả
-cat("Lưu kết quả segmentation...\n")
 write.csv(segments_df, opt$output, row.names = FALSE)
-
-# In thống kê tóm tắt
-cat("\n=== Thống kê Segmentation ===\n")
-cat("Số segments:", nrow(segments_df), "\n")
-cat("Segments có gain (>0.2):", sum(segments_df$seg.mean > 0.2), "\n")
-cat("Segments có loss (<-0.2):", sum(segments_df$seg.mean < -0.2), "\n")
-cat("Segments normal:", sum(abs(segments_df$seg.mean) <= 0.2), "\n")
-
-cat("\nHoàn thành CBS segmentation!\n")
