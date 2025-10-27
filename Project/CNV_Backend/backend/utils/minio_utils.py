@@ -1,24 +1,23 @@
-from __future__ import annotations
-
+"""MinIO utilities for file storage."""
 import io
 from typing import Optional
-
-from flask import current_app
+from django.conf import settings
 from minio import Minio
 from minio.error import S3Error
 
 
 def _get_minio_client() -> Minio:
-    cfg = current_app.config
+    """Get MinIO client instance."""
     return Minio(
-        cfg["MINIO_ENDPOINT"],
-        access_key=cfg["MINIO_ACCESS_KEY"],
-        secret_key=cfg["MINIO_SECRET_KEY"],
-        secure=cfg["MINIO_USE_SSL"],
+        settings.MINIO_ENDPOINT,
+        access_key=settings.MINIO_ACCESS_KEY,
+        secret_key=settings.MINIO_SECRET_KEY,
+        secure=settings.MINIO_USE_SSL,
     )
 
 
 def ensure_bucket_exists(bucket_name: str) -> None:
+    """Ensure the MinIO bucket exists."""
     client = _get_minio_client()
     found = client.bucket_exists(bucket_name)
     if not found:
@@ -30,8 +29,7 @@ def save_file(file_stream: io.BytesIO, object_name: str, content_type: Optional[
 
     Returns a path like "minio://bucket/object" for storing in DB.
     """
-    cfg = current_app.config
-    bucket = cfg["MINIO_BUCKET"]
+    bucket = settings.MINIO_BUCKET
     client = _get_minio_client()
 
     ensure_bucket_exists(bucket)
@@ -65,6 +63,7 @@ def delete_file(object_uri: str) -> None:
     except S3Error:
         # Ignore if not found
         pass
+
 
 def get_file(object_uri: str) -> Optional[io.BytesIO]:
     """Retrieve a file from MinIO by its stored URI path (minio://bucket/object)."""
