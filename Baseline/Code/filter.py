@@ -332,6 +332,10 @@ def create_blacklist(train_dir, combined_filter_file, z_score=3.0, cv_threshold=
     """
 
     frequency_list = list(Path(train_dir).glob("*_frequency.npz"))
+    blacklist_file = Path(train_dir).parent / "Blacklist.npz"
+    if blacklist_file.exists():
+        print(f"Blacklist file already exists: {blacklist_file}")
+        return str(blacklist_file)
 
     # 2) Tải dữ liệu tần suất (frequency) của từng mẫu -> gom theo chromosome
     all_data = {}
@@ -392,6 +396,5 @@ def create_blacklist(train_dir, combined_filter_file, z_score=3.0, cv_threshold=
             final_mask[chromosome] = base_mask
 
     # 8) Lưu Blacklist.npz cùng chỗ với combined_filter
-    out_path = Path(train_dir).parent / "Blacklist.npz"
-    np.savez_compressed(out_path, **final_mask)
-    return str(out_path)
+    np.savez_compressed(blacklist_file, **final_mask)
+    return str(blacklist_file)

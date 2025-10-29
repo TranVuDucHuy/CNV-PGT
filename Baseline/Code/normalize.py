@@ -100,6 +100,7 @@ def normalize_readcount(gc_file, raw_file, output_dir, filter_file):
     normalized_file = output_dir / f"{raw_name.replace('_rawCount', '_normalized')}.npz"
 
     if normalized_file.exists():
+        print(f"Normalized file already exists: {normalized_file}")
         return str(normalized_file)
 
     raw_data = np.load(raw_file)

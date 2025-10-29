@@ -16,11 +16,11 @@ class Estimator:
         """
         print(f"Processing file: {bam_file}")
         bam_name = Path(bam_file).stem
-        output_file = output_dir / f"{bam_name}_rawCount.npz"
+        raw_file = output_dir / f"{bam_name}_rawCount.npz"
 
-        if output_file.exists():
-            print(f"NPZ file already exists: {output_file}")
-            return str(output_file)
+        if raw_file.exists():
+            print(f"Raw count file already exists: {raw_file}")
+            return str(raw_file)
 
         chromosome_data = {}
         bam = pysam.AlignmentFile(bam_file, "rb")
@@ -41,9 +41,9 @@ class Estimator:
             print(f"  Chromosome {chromosome} ({bam_chromosome_name}): {num_bins} bins, {np.sum(read_counts)} reads")
 
         bam.close()
-        np.savez_compressed(output_file, **chromosome_data)
-        print(f"Saved raw read counts to: {output_file}")
-        return str(output_file)
+        np.savez_compressed(raw_file, **chromosome_data)
+        print(f"Saved raw read counts to: {raw_file}")
+        return str(raw_file)
 
     def calculate_frequency(self, normalized_file, output_dir):
         """
@@ -53,6 +53,10 @@ class Estimator:
         name = Path(normalized_file).stem
         frequency_file = output_dir / f"{name.replace('_normalized', '_frequency')}.npz"
         frequency_file.parent.mkdir(parents=True, exist_ok=True)
+
+        if frequency_file.exists():
+            print(f"Frequency file already exists: {frequency_file}")
+            return str(frequency_file)
 
         # Only count total reads from autosomes (1-22), excluding X and Y
         autosome_list = [str(i) for i in range(1, 23)]
@@ -85,6 +89,10 @@ class Estimator:
         proportion_file = output_dir / f"{name.replace('_normalized', '_proportion')}.npz"
         data = np.load(normalized_file)
         blacklist_data = np.load(blacklist_file)
+
+        if proportion_file.exists():
+            print(f"Proportion file already exists: {proportion_file}")
+            return str(proportion_file)
 
         # Build a masked copy with blacklist bins zeroed
         masked = {}
@@ -125,7 +133,12 @@ class Estimator:
         """Compute only the per-chromosome mean across train proportion files."""
         proportion_list = list(Path(train_dir).glob("*_proportion.npz"))
         print(f"Found {len(proportion_list)} sample files")
+        reference_file = output_dir / "Reference.npz"
 
+        if reference_file.exists():
+            print(f"Reference file already exists: {reference_file}")
+            return str(reference_file)
+        
         stacks = {chromosome: [] for chromosome in self.chromosome_list}
         for proportion_file in proportion_list:
             data = np.load(proportion_file)
@@ -136,7 +149,6 @@ class Estimator:
         for chromosome, arrs in stacks.items():
             reference_dict[chromosome] = np.mean(np.stack(arrs, axis=0), axis=0)
 
-        reference_file = output_dir / "Reference.npz"
         np.savez_compressed(reference_file, **reference_dict)
         print(f"Saved reference mean to: {reference_file}")
         return str(reference_file)
@@ -148,6 +160,10 @@ class Estimator:
         test_name = Path(test_file).stem.replace('_proportion', '_ratio')
         ratio_file = output_dir / f"{test_name}.npz"
 
+        if ratio_file.exists():
+            print(f"Ratio file already exists: {ratio_file}")
+            return str(ratio_file)
+        
         ratio_dict = {}
         for chromosome in self.chromosome_list:
             test_ratios = test_data[chromosome]
@@ -171,6 +187,10 @@ class Estimator:
         name = Path(normalized_file).stem
         out_file = Path(output_dir) / f"{name.replace('_normalized', '_log2Ratio')}.npz"
 
+        if out_file.exists():
+            print(f"Recalculated ratio file already exists: {out_file}")
+            return str(out_file)
+        
         autosome_list = [str(i) for i in range(1, 23)]
         # 1) Aberration masks from linear ratios; consider only bins with reference>0 when computing fraction
         aberration_mask = {}

@@ -12,7 +12,7 @@ from filter import (
 )
 from plot import Plotter
 from segment import cbs
-from smooth import mean_smooth, median_smooth
+from smooth import mean_smooth, median_smooth, bilateral_smooth
 
 CHROMOSOME_LENGTHS_GRCh37 = {
     "1": 249250621, "2": 243199373, "3": 198022430, "4": 191154276,
@@ -108,7 +108,7 @@ class CNV:
             )
             test_proportion_list.append(test_proportion_file)
 
-        print("\n7. Calculate statistics from train samples and filter out unstable bins...")
+        print("\n7. Calculate reference from train samples")
         reference = self.estimator.create_reference(self.work_directory / "Temporary" / "Train", self.work_directory / "Temporary")
 
         print("\n8. Calculate ratio for test samples ...")
@@ -124,13 +124,13 @@ class CNV:
             refined_ratio_file = self.estimator.recalculate_ratio(normalized_file, ratio_file, reference, self.work_directory / "Output", 0.35)
             recalculated_ratio_list.append(refined_ratio_file)
 
-        # Optional median smoothing before segmentation
+        # Optional bilateral smoothing before segmentation
         log2_ratio_list = recalculated_ratio_list
         if self.smooth > 1:
-            print(f"\n9b. Median smoothing log2 ratios with window = {self.smooth} ...")
+            print(f"\n9b. Bilateral smoothing log2 ratios with window = {self.smooth} ...")
             smoothed_list = []
             for refined_ratio_file in recalculated_ratio_list:
-                smoothed_file = mean_smooth(refined_ratio_file, self.work_directory / "Output", self.smooth)
+                smoothed_file = bilateral_smooth(refined_ratio_file, self.work_directory / "Output", self.smooth)
                 smoothed_list.append(smoothed_file)
             log2_ratio_list = smoothed_list
 
@@ -155,7 +155,7 @@ def main():
     parser.add_argument('-o', '--work-directory', required = True, help = 'Path to work directory')
     parser.add_argument('--bin-size', type = int, default = 400000, help = 'Size of bin')
     parser.add_argument('--filter-ratio', type = float, default = 0.9, help = 'Filter ratio')
-    parser.add_argument('--smooth', type = int, default = 1, help = 'Median smooth window (1 to disable)')
+    parser.add_argument('--smooth', type = int, default = 1, help = 'Bilateral smoothing window (1 to disable)')
 
     args = parser.parse_args()
 

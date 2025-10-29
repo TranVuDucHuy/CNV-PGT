@@ -15,8 +15,8 @@ def cbs(ratio_file, temp_dir, bin_size, chromosome_list):
         "--input", temp_csv,
         "--output", str(segments_file),
         "--sample", ratio_name,
-        "--alpha", "0.001",
-        "--nperm", "10000"
+        "--alpha", "0.00001",
+        "--nperm", "20000"
     ]
     result = subprocess.run(command, check=True, text=True, capture_output=True)
     print(result.stdout)
