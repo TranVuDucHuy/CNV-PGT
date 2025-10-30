@@ -1,6 +1,8 @@
-Django==5.0.4
-mysqlclient==2.2.3
-django-cors-headers==4.3.1
-minio==7.2.12
-python-dotenv==1.0.1
-cryptography==41.0.3
+fastapi[all]
+uvicorn
+sqlalchemy
+alembic
+pydantic
+minio
+python-dotenv
+pymysql
