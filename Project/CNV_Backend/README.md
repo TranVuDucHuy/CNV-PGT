@@ -18,8 +18,10 @@ uvicorn main:app
 
 1. Create plugin:
 
+   - Create `__init__.py`
    - Create metadata.json
    - Create a python file implementing the algorithm plugin. For example, see `plugin_example/algorithm.py`.
+   - In the python file, `import` the necessary base classes from `algorithm` package.
    - In metadata.json, specify the input class, output class, and exe class in the format `module_name:ClassName`.
    - Include any additional files required by your plugin.
 
