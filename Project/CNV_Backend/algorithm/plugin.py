@@ -1,0 +1,21 @@
+from abc import ABC, abstractmethod
+from pydantic import BaseModel
+from typing import List
+
+class SampleSegment(BaseModel):
+    chromosome: str
+    start: int
+    end: int
+    copy_number: float
+    confidence: float
+
+class BaseInput(BaseModel):
+    bam: bytes
+
+class BaseOutput(BaseModel):
+    segments: List[SampleSegment]
+
+class AlgorithmPlugin(ABC):
+    @abstractmethod
+    def run(self, data: BaseInput, **kwargs) -> BaseOutput:
+        pass

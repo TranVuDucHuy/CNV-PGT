@@ -1,0 +1,8 @@
+{
+  "name": "plugin_example",
+  "version": "1.0.0",
+  "description": "An example plugin for demonstration purposes.",
+  "input_class": "algorithm:InputClass",
+  "output_class": "algorithm:OutputClass",
+  "exe_class": "algorithm:ExeClass"
+}

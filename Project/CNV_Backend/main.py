@@ -1,11 +1,40 @@
-from fastapi import FastAPI
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, Request
 import sample
+import algorithm
+import shutil
+from pathlib import Path
+import asyncio
+from database import Base, engine
 
-app = FastAPI(title="CNV PGT Backend", root_path="/api/v1")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    plugin_dir = Path("plugins_runtime")
+    plugin_dir.mkdir(exist_ok=True)
+    (plugin_dir / "__init__.py").touch(exist_ok=True)
+    app.state.plugin_dir = plugin_dir
+
+    print(f"✅ Created plugin runtime dir: {plugin_dir}")
+
+    try:
+        yield
+    except asyncio.CancelledError:
+        # Handle uvicorn shutdown gracefully
+        print("⚠️ Lifespan cancelled — cleaning up...")
+    finally:
+        if plugin_dir.exists():
+            shutil.rmtree(plugin_dir, ignore_errors=True)
+            print(f"🧹 Cleaned up runtime dir: {plugin_dir}")
+
+
+Base.metadata.create_all(bind=engine)
+
+app = FastAPI(title="CNV PGT Backend", root_path="/api/v1", lifespan=lifespan)
 
 app.include_router(sample.router, prefix="/samples", tags=["samples"])
-
+app.include_router(algorithm.router, prefix="/algorithms", tags=["algorithms"])
 
 @app.get("/")
-def read_root():
-    return {"msg": "Welcome to the CNV PGT Backend!"}
+def read_root(request: Request):
+    return {"msg": "Welcome to the CNV PGT Backend!", "status": "running", "plugin_dir": str(request.app.state.plugin_dir)}

@@ -6,3 +6,4 @@ pydantic
 minio
 python-dotenv
 pymysql
+cryptography

@@ -26,7 +26,7 @@ class MinioUtil:
             client.make_bucket(bucket_name)
 
     @staticmethod
-    def save_file(file_stream: io.BytesIO, object_name: str, content_type: Optional[str] = None) -> str:
+    def save_file(file_stream: bytes, object_name: str, content_type: Optional[str] = None) -> str:
         """Save a file to MinIO and return the object URL path.
 
         Returns a path like "minio://bucket/object" for storing in DB.
@@ -36,6 +36,7 @@ class MinioUtil:
 
         MinioUtil.ensure_bucket_exists(bucket)
 
+        file_stream = io.BytesIO(file_stream)
         file_stream.seek(0, io.SEEK_END)
         size = file_stream.tell()
         file_stream.seek(0)
@@ -67,7 +68,7 @@ class MinioUtil:
             pass
 
     @staticmethod
-    def get_file(object_uri: str) -> Optional[io.BytesIO]:
+    def get_file(object_uri: str) -> Optional[bytes]:
         """Retrieve a file from MinIO by its stored URI path (minio://bucket/object)."""
         if not object_uri.startswith("minio://"):
             return None
@@ -80,6 +81,6 @@ class MinioUtil:
             data = response.read()
             response.close()
             response.release_conn()
-            return io.BytesIO(data)
+            return data
         except S3Error:
             return None

@@ -1,23 +1,31 @@
-from sqlalchemy import Column, String,  Enum, Date
+from sqlalchemy import Column, String, Date, ForeignKey
+from sqlalchemy.orm import relationship
+
 from database import Base
+import datetime
 
-class CellType(Enum):
-    """ Includes "Polar body 1", "Polar body 2", "Blastomere", "Trophectoderm", "GenomicDNA", "Other" """
-    POLAR_BODY_1 = "Polar body 1"
-    POLAR_BODY_2 = "Polar body 2"
-    BLASTOMERE = "Blastomere"
-    TROPHOECTODERM = "Trophectoderm"
-    GENOMIC_DNA = "GenomicDNA"
-    OTHER = "Other"
+class Algorithm(Base):
+    __tablename__ = "algorithms"
 
-class Sample(Base):
-    __tablename__ = "samples"
+    id = Column(String(64), primary_key=True, index=True, nullable=False)
+    name = Column(String(128), index=True, nullable=False)
+    version = Column(String(64), nullable=False)
+    description = Column(String(1024), nullable=True)
+    upload_date = Column(Date, nullable=False, default=datetime.datetime.now)
+    url = Column(String(256), nullable=False)
+    input_class = Column(String(256), nullable=False)
+    output_class = Column(String(256), nullable=False)
+    exe_class = Column(String(256), nullable=False)
 
-    id = Column(String, primary_key=True, index=True, nullable=False)
-    flowcell_id = Column(String, index=True, nullable=False)
-    cycle_id = Column(String, index=True, nullable=False)
-    embryo_id = Column(String, index=True, nullable=False)
-    bam_url = Column(String, nullable=False)
-    bai_url = Column(String, nullable=False)
-    cell_type = Column(Enum(CellType), nullable=False)
-    date = Column(Date, nullable=False)
+    parameters = relationship("AlgorithmParameter", back_populates="algorithm", cascade="all, delete-orphan", lazy="joined")
+
+class AlgorithmParameter(Base):
+    __tablename__ = "algorithm_parameters"
+
+    id = Column(String(64), primary_key=True, index=True, nullable=False)
+    algorithm_id = Column(String(64), ForeignKey("algorithms.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String(128), nullable=False)
+    type = Column(String(256), nullable=False)
+    description = Column(String(256), nullable=True)
+
+    algorithm = relationship("Algorithm", back_populates="parameters")

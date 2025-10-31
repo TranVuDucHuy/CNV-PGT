@@ -6,3 +6,4 @@ class BasicResponse(BaseModel):
 
 class EditRequest(BaseModel):
     cell_type: str
+    date: str

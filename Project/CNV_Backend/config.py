@@ -5,7 +5,8 @@ class DatabaseConfig:
     PORT = os.getenv("DB_PORT", "3306")
     USER = os.getenv("DB_USER", "root")
     PASSWORD = os.getenv("DB_PASSWORD", "root")
-    DATA_SOURCE = f"mysql+pymysql://{USER}:{PASSWORD}@{HOST}:{PORT}/cnv_pgt_db"
+    DATABASE = os.getenv("DB_NAME", "cnv_pgt_db")
+    DATA_SOURCE = f"mysql+pymysql://{USER}:{PASSWORD}@{HOST}:{PORT}/{DATABASE}"
 
 class MinioConfig:
     ENDPOINT = os.getenv("MINIO_ENDPOINT", "localhost:9000")

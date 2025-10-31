@@ -9,8 +9,6 @@ Base = declarative_base()
 engine = create_engine(DatabaseConfig.DATA_SOURCE)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-Base.metadata.create_all(bind=engine) # Create database tables
-
 def get_db():
     db = SessionLocal()
     try:
