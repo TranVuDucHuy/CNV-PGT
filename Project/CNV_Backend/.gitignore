@@ -79,4 +79,5 @@ instance/
 
 # Local env files
 .env
-.env.*
+
+plugins_runtime/
