@@ -1,7 +1,8 @@
 import io
-from typing import List, Optional
+from typing import List, Optional, Tuple
 import uuid
 import datetime
+import re
 
 from utils.minio_util import MinioUtil
 from .models import Sample, CellType
@@ -9,6 +10,29 @@ from sqlalchemy.orm import Session
 
 
 class SampleService:
+    @staticmethod
+    def parse_filename(filename: str) -> Tuple[str, str, str]:
+        """
+        Parse BAM filename to extract IDs.
+        
+        Args:
+            filename: BAM filename (with or without .bam extension)
+
+        Returns:
+            Tuple of (flowcell_id, cycle_id, embryo_id)
+        """
+        filename = filename.replace('.bam', '')
+        pattern = r'^([A-Z0-9]+)-([A-Z0-9-]+)-([A-Z0-9]+)_([A-Z0-9]+)$'
+        match = re.match(pattern, filename)
+        
+        if not match:
+            raise ValueError(
+                f"Filename '{filename}' doesn't match expected pattern: "
+                "[Flowcell ID]-[Cycle ID]-[Embryo ID]_[Plate ID].bam"
+            )
+        
+        flowcell_id, cycle_id, embryo_id, plate_id = match.groups()
+        return flowcell_id, cycle_id, embryo_id
     @staticmethod
     def _create_sample(file_stream: bytes) -> Sample:
         id = str(uuid.uuid4())
