@@ -1,16 +1,20 @@
 from enum import Enum
-from sqlalchemy import Column, String,  Enum as SqlEnum, Date
+from sqlalchemy import Column, String, Enum as SqlEnum, Date
+from sqlalchemy.orm import relationship
 from database import Base
 import datetime
 
+
 class CellType(Enum):
-    """ Includes "Polar body 1", "Polar body 2", "Blastomere", "Trophectoderm", "GenomicDNA", "Other" """
+    """Includes "Polar body 1", "Polar body 2", "Blastomere", "Trophectoderm", "GenomicDNA", "Other" """
+
     POLAR_BODY_1 = "Polar body 1"
     POLAR_BODY_2 = "Polar body 2"
     BLASTOMERE = "Blastomere"
     TROPHOECTODERM = "Trophectoderm"
     GENOMIC_DNA = "GenomicDNA"
     OTHER = "Other"
+
 
 class Sample(Base):
     __tablename__ = "samples"
@@ -22,3 +26,7 @@ class Sample(Base):
     bam_url = Column(String(256), nullable=False)
     cell_type = Column(SqlEnum(CellType), nullable=False, default=CellType.OTHER)
     date = Column(Date, nullable=False, default=datetime.datetime.now)
+
+    results = relationship(
+        "Result", back_populates="sample", cascade="all, delete-orphan"
+    )
