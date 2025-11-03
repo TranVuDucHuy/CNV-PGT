@@ -20,14 +20,14 @@ class SampleBin(BaseModel):
     gc_content: float
 
 
-class BaseInput(BaseModel):
-    bam: bytes
-
-
 class BaseOutput(BaseModel):
     reference_genome: str
     segments: List[SampleSegment]
     bins: List[SampleBin]
+
+
+class BaseInput(BaseModel):
+    bam: bytes
 
 
 class AlgorithmPlugin(ABC):
