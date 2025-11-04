@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, status
 from fastapi.responses import StreamingResponse
 from typing import List
 from .service import SampleService
-from .schemas import BasicResponse, EditRequest
+from .schemas import EditRequest
+from common.schemas import BasicResponse
 from database import get_db
 from sqlalchemy.orm import Session
 

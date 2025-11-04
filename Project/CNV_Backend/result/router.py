@@ -4,7 +4,8 @@ from typing import List
 from sqlalchemy.orm import Session
 from database import get_db
 from .service import ResultService
-from .schemas import BasicResponse, ResultSummary
+from .schemas import ResultSummary
+from common.schemas import BasicResponse
 
 router = APIRouter()
 
