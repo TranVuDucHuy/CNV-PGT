@@ -1,35 +1,22 @@
 /**
- * Types cho Algorithm Management
+ * Types cho Algorithm Management (phù hợp backend hiện tại)
  */
 
-export interface AlgorithmParam {
-  id?: number;
-  name: string;
-  type: 'string' | 'integer' | 'float' | 'boolean';
-  default_value?: string | number | boolean;
-  required: boolean;
-  description?: string;
+export interface AlgorithmParameterDto {
+  id: string;
+  value: Record<string, any>;
 }
 
+// Thuật toán trả về dạng tóm tắt từ backend
 export interface Algorithm {
-  id?: number;
+  id: string; // ví dụ: "Name_Version"
   name: string;
+  version: string;
   description?: string;
-  module_path?: string;
-  is_usable: boolean;
-  parameters: AlgorithmParam[];
-  created_at?: string;
-  updated_at?: string;
+  parameters: AlgorithmParameterDto[];
 }
 
-export interface AlgorithmFormData {
-  name: string;
-  description: string;
-  module_path: string;
-  parameters: AlgorithmParam[];
-}
-
-export interface ValidationResult {
-  valid: boolean;
+// Upload response cơ bản
+export interface BasicResponse {
   message: string;
 }

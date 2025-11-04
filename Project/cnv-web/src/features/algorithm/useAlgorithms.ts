@@ -32,29 +32,21 @@ export function useAlgorithms() {
     }
   };
 
-  const addAlgorithm = async (data: any) => {
+  const addAlgorithm = async (file: File) => {
     try {
-      const newAlgorithm = await algorithmAPI.create(data);
-      setAlgorithms([...algorithms, newAlgorithm]);
-      return newAlgorithm;
+      await algorithmAPI.upload(file);
+      // Reload list to reflect new upload
+      await loadAlgorithms();
+      return true;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create algorithm';
+      const message = err instanceof Error ? err.message : 'Failed to upload algorithm';
       throw new Error(message);
     }
   };
 
-  const updateAlgorithm = async (id: number, data: any) => {
-    try {
-      const updated = await algorithmAPI.update(id, data);
-      setAlgorithms(algorithms.map(a => a.id === id ? updated : a));
-      return updated;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to update algorithm';
-      throw new Error(message);
-    }
-  };
+  // Backend hiện tại không hỗ trợ update algorithm, bỏ qua
 
-  const deleteAlgorithm = async (id: number) => {
+  const deleteAlgorithm = async (id: string) => {
     if (!confirm('Are you sure you want to delete this algorithm?')) {
       return false;
     }
@@ -76,7 +68,6 @@ export function useAlgorithms() {
     error,
     loadAlgorithms,
     addAlgorithm,
-    updateAlgorithm,
     deleteAlgorithm,
   };
 }

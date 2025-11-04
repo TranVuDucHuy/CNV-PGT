@@ -6,23 +6,15 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Plus, Minus, Edit3, StepForward } from 'lucide-react';
+import { Plus, Minus, StepForward } from 'lucide-react';
 import { useAlgorithms } from './useAlgorithms';
-import { Algorithm } from '@/types/algorithm';
 import AlgorithmDialog from '@/components/AlgorithmDialog';
 
 export default function AlgorithmPane() {
   const { algorithms, loading, deleteAlgorithm } = useAlgorithms();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingAlgorithm, setEditingAlgorithm] = useState<Algorithm | null>(null);
 
   const handleAdd = () => {
-    setEditingAlgorithm(null);
-    setDialogOpen(true);
-  };
-
-  const handleEdit = (algorithm: Algorithm) => {
-    setEditingAlgorithm(algorithm);
     setDialogOpen(true);
   };
 
@@ -62,17 +54,7 @@ export default function AlgorithmPane() {
             >
               <Minus size={16} />
             </button>
-            <button
-              onClick={() => {
-                if (algorithms.length > 0) {
-                  handleEdit(algorithms[algorithms.length - 1]);
-                }
-              }}
-              title="Edit Last"
-              className="p-1 bg-blue-500 hover:bg-blue-600 text-white rounded"
-            >
-              <Edit3 size={16} />
-            </button>
+            {/* Edit is not supported by backend currently */}
             <button
               onClick={handleRun}
               title="Run Algorithm"
@@ -96,16 +78,10 @@ export default function AlgorithmPane() {
             algorithms.map((algo) => (
               <div
                 key={algo.id}
-                className="border p-2 rounded bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => handleEdit(algo)}
+                className="border p-2 rounded bg-white shadow-sm"
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-medium">{algo.name}</span>
-                  {algo.is_usable && (
-                    <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
-                      Usable ✓
-                    </span>
-                  )}
+                  <span className="font-medium">{algo.name} <span className="text-xs text-gray-500">v{algo.version}</span></span>
                 </div>
                 {algo.description && (
                   <p className="text-xs text-gray-600 mt-1">{algo.description}</p>
@@ -122,7 +98,6 @@ export default function AlgorithmPane() {
       {/* Algorithm Dialog */}
       <AlgorithmDialog
         open={dialogOpen}
-        algorithm={editingAlgorithm}
         onClose={() => setDialogOpen(false)}
         onSuccess={() => {
           // Hook tự động reload

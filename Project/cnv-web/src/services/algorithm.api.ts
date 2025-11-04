@@ -1,10 +1,10 @@
 /**
  * Algorithm API Service
- * Tất cả API calls liên quan đến algorithms
+ * Tất cả API calls liên quan đến algorithms (đồng bộ với backend hiện tại)
  */
 
-import { fetchAPI } from './api-client';
-import { Algorithm, AlgorithmFormData, ValidationResult } from '@/types/algorithm';
+import { fetchAPI, getApiUrl } from './api-client';
+import { Algorithm, BasicResponse } from '@/types/algorithm';
 
 export const algorithmAPI = {
   /**
@@ -15,56 +15,31 @@ export const algorithmAPI = {
   },
 
   /**
-   * Lấy chi tiết một algorithm
+   * Upload algorithm mới (file .zip chứa metadata.json và mã)
    */
-  async getById(id: number): Promise<Algorithm> {
-    return fetchAPI<Algorithm>(`/algorithms/${id}`);
-  },
+  async upload(file: File): Promise<BasicResponse> {
+    const form = new FormData();
+    form.append('file', file);
 
-  /**
-   * Tạo algorithm mới
-   */
-  async create(data: AlgorithmFormData): Promise<Algorithm> {
-    return fetchAPI<Algorithm>('/algorithms', {
+    const res = await fetch(getApiUrl('/algorithms'), {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: form,
+      // Không set Content-Type để trình duyệt tự thêm boundary cho multipart/form-data
     });
-  },
 
-  /**
-   * Cập nhật algorithm
-   */
-  async update(id: number, data: Partial<AlgorithmFormData>): Promise<Algorithm> {
-    return fetchAPI<Algorithm>(`/algorithms/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Unknown error' }));
+      throw new Error(err.detail || `HTTP ${res.status}: ${res.statusText}`);
+    }
+    return res.json();
   },
 
   /**
    * Xóa algorithm
    */
-  async delete(id: number): Promise<void> {
-    return fetchAPI<void>(`/algorithms/${id}`, {
+  async delete(id: string): Promise<BasicResponse> {
+    return fetchAPI<BasicResponse>(`/algorithms/${id}`, {
       method: 'DELETE',
     });
-  },
-
-  /**
-   * Validate module path
-   * Kiểm tra xem đường dẫn module có hợp lệ không
-   */
-  async validateModule(modulePath: string): Promise<ValidationResult> {
-    try {
-      return await fetchAPI<ValidationResult>('/algorithms/validate-module', {
-        method: 'POST',
-        body: JSON.stringify({ module_path: modulePath }),
-      });
-    } catch (error) {
-      return {
-        valid: false,
-        message: error instanceof Error ? error.message : 'Validation failed',
-      };
-    }
   },
 };

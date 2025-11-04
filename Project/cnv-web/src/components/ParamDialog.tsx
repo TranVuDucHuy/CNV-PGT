@@ -6,7 +6,14 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { AlgorithmParam } from '@/types/algorithm';
+// Legacy local type to avoid coupling; component is currently unused
+type AlgorithmParam = {
+  name: string;
+  type: 'string' | 'integer' | 'float' | 'boolean';
+  default_value?: string | number | boolean;
+  required: boolean;
+  description?: string;
+};
 import { X } from 'lucide-react';
 
 interface ParamDialogProps {
