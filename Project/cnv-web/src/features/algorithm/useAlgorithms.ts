@@ -32,18 +32,6 @@ export function useAlgorithms() {
     }
   };
 
-  const addAlgorithm = async (file: File) => {
-    try {
-      await algorithmAPI.upload(file);
-      // Reload list to reflect new upload
-      await loadAlgorithms();
-      return true;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to upload algorithm';
-      throw new Error(message);
-    }
-  };
-
   // Backend hiện tại không hỗ trợ update algorithm, bỏ qua
 
   const deleteAlgorithm = async (id: string) => {
@@ -67,7 +55,6 @@ export function useAlgorithms() {
     loading,
     error,
     loadAlgorithms,
-    addAlgorithm,
     deleteAlgorithm,
   };
 }

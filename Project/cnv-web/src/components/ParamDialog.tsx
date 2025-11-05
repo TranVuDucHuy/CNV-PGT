@@ -1,49 +1,32 @@
 /**
  * ParamDialog Component
- * Dialog để thêm/sửa từng parameter của algorithm
+ * Dialog để thêm/sửa từng parameter của algorithm theo backend (name, type, default, value)
  */
 
 "use client";
 
 import React, { useState, useEffect } from 'react';
-// Legacy local type to avoid coupling; component is currently unused
-type AlgorithmParam = {
-  name: string;
-  type: 'string' | 'integer' | 'float' | 'boolean';
-  default_value?: string | number | boolean;
-  required: boolean;
-  description?: string;
-};
+import { AlgorithmParameterCreateRequest } from '@/types/algorithm';
 import { X } from 'lucide-react';
 
 interface ParamDialogProps {
   open: boolean;
-  param?: AlgorithmParam | null;
+  param?: AlgorithmParameterCreateRequest | null;
   onClose: () => void;
-  onSave: (param: AlgorithmParam) => void;
+  onSave: (param: AlgorithmParameterCreateRequest) => void;
 }
 
 export default function ParamDialog({ open, param, onClose, onSave }: ParamDialogProps) {
-  const [formData, setFormData] = useState<AlgorithmParam>({
+  const [formData, setFormData] = useState<AlgorithmParameterCreateRequest>({
     name: '',
     type: 'string',
-    default_value: '',
-    required: false,
-    description: '',
+    default: '',
+    value: ''
   });
 
   useEffect(() => {
-    if (param) {
-      setFormData(param);
-    } else {
-      setFormData({
-        name: '',
-        type: 'string',
-        default_value: '',
-        required: false,
-        description: '',
-      });
-    }
+    if (param) setFormData(param);
+    else setFormData({ name: '', type: 'string', default: '', value: '' });
   }, [param, open]);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -101,12 +84,11 @@ export default function ParamDialog({ open, param, onClose, onSave }: ParamDialo
             </label>
             <select
               value={formData.type}
-              onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
+              onChange={(e) => setFormData({ ...formData, type: e.target.value })}
               className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="string">String</option>
-              <option value="integer">Integer</option>
-              <option value="float">Float</option>
+              <option value="number">Number</option>
               <option value="boolean">Boolean</option>
             </select>
           </div>
@@ -118,11 +100,8 @@ export default function ParamDialog({ open, param, onClose, onSave }: ParamDialo
             </label>
             {formData.type === 'boolean' ? (
               <select
-                value={String(formData.default_value)}
-                onChange={(e) => setFormData({ 
-                  ...formData, 
-                  default_value: e.target.value === 'true' 
-                })}
+                value={String(formData.default)}
+                onChange={(e) => setFormData({ ...formData, default: e.target.value === 'true' })}
                 className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">-- None --</option>
@@ -131,50 +110,55 @@ export default function ParamDialog({ open, param, onClose, onSave }: ParamDialo
               </select>
             ) : (
               <input
-                type={formData.type === 'integer' || formData.type === 'float' ? 'number' : 'text'}
-                step={formData.type === 'float' ? 'any' : undefined}
-                value={String(formData.default_value || '')}
+                type={formData.type === 'number' ? 'number' : 'text'}
+                step={formData.type === 'number' ? 'any' : undefined}
+                value={String(formData.default ?? '')}
                 onChange={(e) => {
-                  let value: string | number = e.target.value;
-                  if (formData.type === 'integer') {
-                    value = parseInt(value) || 0;
-                  } else if (formData.type === 'float') {
-                    value = parseFloat(value) || 0;
+                  const v = e.target.value;
+                  let value: any = v;
+                  if (formData.type === 'number') {
+                    value = v === '' ? '' : Number(v);
                   }
-                  setFormData({ ...formData, default_value: value });
+                  setFormData({ ...formData, default: value });
                 }}
                 className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder={`e.g., ${formData.type === 'integer' ? '100' : formData.type === 'float' ? '0.5' : 'default_value'}`}
+                placeholder={formData.type === 'number' ? 'e.g., 0.5' : 'default value'}
               />
             )}
           </div>
 
-          {/* Required Checkbox */}
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="required"
-              checked={formData.required}
-              onChange={(e) => setFormData({ ...formData, required: e.target.checked })}
-              className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-            />
-            <label htmlFor="required" className="ml-2 text-sm font-medium">
-              Required Parameter
-            </label>
-          </div>
-
-          {/* Description */}
+          {/* Runtime Value */}
           <div>
             <label className="block text-sm font-medium mb-1">
-              Description
+              Current Value
             </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              rows={3}
-              placeholder="Describe this parameter..."
-            />
+            {formData.type === 'boolean' ? (
+              <select
+                value={String(formData.value)}
+                onChange={(e) => setFormData({ ...formData, value: e.target.value === 'true' })}
+                className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">-- None --</option>
+                <option value="true">True</option>
+                <option value="false">False</option>
+              </select>
+            ) : (
+              <input
+                type={formData.type === 'number' ? 'number' : 'text'}
+                step={formData.type === 'number' ? 'any' : undefined}
+                value={String(formData.value ?? '')}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  let value: any = v;
+                  if (formData.type === 'number') {
+                    value = v === '' ? '' : Number(v);
+                  }
+                  setFormData({ ...formData, value });
+                }}
+                className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder={formData.type === 'number' ? 'e.g., 0.5' : 'value'}
+              />
+            )}
           </div>
 
           {/* Action Buttons */}

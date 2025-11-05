@@ -8,10 +8,10 @@
 import React, { useState } from 'react';
 import { Plus, Minus, StepForward } from 'lucide-react';
 import { useAlgorithms } from './useAlgorithms';
-import AlgorithmDialog from '@/components/AlgorithmDialog';
+import AlgorithmDetail from '@/components/AlgorithmDetail';
 
 export default function AlgorithmPane() {
-  const { algorithms, loading, deleteAlgorithm } = useAlgorithms();
+  const { algorithms, loading, deleteAlgorithm, loadAlgorithms } = useAlgorithms();
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const handleAdd = () => {
@@ -95,12 +95,13 @@ export default function AlgorithmPane() {
         </div>
       </details>
 
-      {/* Algorithm Dialog */}
-      <AlgorithmDialog
+      {/* Algorithm Detail Dialog */}
+      <AlgorithmDetail
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
         onSuccess={() => {
-          // Hook tự động reload
+          // Refresh list after creation
+          loadAlgorithms();
         }}
       />
     </>

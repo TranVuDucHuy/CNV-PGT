@@ -20,3 +20,23 @@ export interface Algorithm {
 export interface BasicResponse {
   message: string;
 }
+
+// Backend input types for creating/registering algorithms
+export interface AlgorithmParameterCreateRequest {
+  name: string;
+  type: string;
+  default: any;
+  value: any;
+}
+
+export interface AlgorithmMetadata {
+  name: string;
+  version: string;
+  description?: string;
+  parameters?: AlgorithmParameterCreateRequest[];
+  url?: string; // optional field for algorithm source URL
+}
+
+export interface RegisterAlgorithmResponse extends BasicResponse {
+  algorithm_id: string;
+}
