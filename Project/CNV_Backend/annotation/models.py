@@ -1,23 +1,27 @@
-from sqlalchemy import Column, String,  Enum, Date
+from sqlalchemy import Column, String, Enum, Date, Integer
 from database import Base
+from common.models import Chromosome, ReferenceGenome
+from datetime import date
 
-class CellType(Enum):
-    """ Includes "Polar body 1", "Polar body 2", "Blastomere", "Trophectoderm", "GenomicDNA", "Other" """
-    POLAR_BODY_1 = "Polar body 1"
-    POLAR_BODY_2 = "Polar body 2"
-    BLASTOMERE = "Blastomere"
-    TROPHOECTODERM = "Trophectoderm"
-    GENOMIC_DNA = "GenomicDNA"
-    OTHER = "Other"
 
-class Sample(Base):
-    __tablename__ = "samples"
+class Annotation(Base):
+    __tablename__ = "annotations"
 
-    id = Column(String, primary_key=True, index=True, nullable=False)
-    flowcell_id = Column(String, index=True, nullable=False)
-    cycle_id = Column(String, index=True, nullable=False)
-    embryo_id = Column(String, index=True, nullable=False)
-    bam_url = Column(String, nullable=False)
-    bai_url = Column(String, nullable=False)
-    cell_type = Column(Enum(CellType), nullable=False)
-    date = Column(Date, nullable=False)
+    id = Column(String(64), primary_key=True, index=True)
+    database_id = Column(String(64), index=True, nullable=False)
+    chromosome = Column(Enum(Chromosome), nullable=False)
+    start = Column(Integer, nullable=False)
+    end = Column(Integer, nullable=False)
+    name_for_tooltip = Column(String(256), nullable=True)
+    url = Column(String(512), nullable=True)
+
+
+class AnnotationDatabase(Base):
+    __tablename__ = "annotation_databases"
+
+    id = Column(String(64), primary_key=True, index=True)
+    name = Column(String(128), nullable=False)
+    date = Column(Date, nullable=False, default=date.today)
+    reference_genome = Column(Enum(ReferenceGenome), nullable=False)
+    description = Column(String(2048), nullable=True)
+    annotation_url = Column(String(512), nullable=False)

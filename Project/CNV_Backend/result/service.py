@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from uuid import uuid4
 from sqlalchemy.orm import Session
-from .models import Result, SampleSegment, SampleBin, Chromosome, ReferenceGenome
+from .models import Result, SampleSegment, SampleBin
 from algorithm.plugin import (
     BaseOutput,
     SampleSegment as AlgoSampleSegment,
@@ -9,6 +9,7 @@ from algorithm.plugin import (
 )
 from algorithm.models import Algorithm
 from .schemas import ResultDto, ResultSummary
+from common.models import ReferenceGenome, Chromosome
 
 
 class ResultService:
