@@ -53,12 +53,9 @@ class MinioUtil:
         return f"minio://{bucket}/{object_name}"
 
     @staticmethod
-    def delete_file(object_uri: Optional[str]) -> None:
-        """Delete a file in MinIO by its stored URI path (minio://bucket/object).
-
-        Accepts None or non-minio URIs and no-ops safely.
-        """
-        if not object_uri or not object_uri.startswith("minio://"):
+    def delete_file(object_uri: str) -> None:
+        """Delete a file in MinIO by its stored URI path (minio://bucket/object)."""
+        if not object_uri.startswith("minio://"):
             return
         _, remainder = object_uri.split("://", 1)
         bucket, object_name = remainder.split("/", 1)
@@ -71,12 +68,9 @@ class MinioUtil:
             pass
 
     @staticmethod
-    def get_file(object_uri: Optional[str]) -> Optional[bytes]:
-        """Retrieve a file from MinIO by its stored URI path (minio://bucket/object).
-
-        Accepts None or non-minio URIs and returns None.
-        """
-        if not object_uri or not object_uri.startswith("minio://"):
+    def get_file(object_uri: str) -> Optional[bytes]:
+        """Retrieve a file from MinIO by its stored URI path (minio://bucket/object)."""
+        if not object_uri.startswith("minio://"):
             return None
         _, remainder = object_uri.split("://", 1)
         bucket, object_name = remainder.split("/", 1)

@@ -13,18 +13,39 @@ import AlgorithmDetail from '@/components/AlgorithmDetail';
 export default function AlgorithmPane() {
   const { algorithms, loading, deleteAlgorithm, loadAlgorithms } = useAlgorithms();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string | number>>(new Set());
 
   const handleAdd = () => {
     setDialogOpen(true);
   };
 
   const handleDelete = async () => {
-    if (algorithms.length > 0) {
-      const lastAlgo = algorithms[algorithms.length - 1];
-      if (lastAlgo.id) {
-        await deleteAlgorithm(lastAlgo.id);
+    if (selectedIds.size === 0) return;
+    const idsToDelete = Array.from(selectedIds);
+    await Promise.all(
+      idsToDelete
+        .filter((id) => id !== undefined && id !== null)
+        .map(async (id) => {
+          // delete one by one to let hook/state stay in sync
+          await deleteAlgorithm(id as any);
+        })
+    );
+    setSelectedIds(new Set());
+    // Ensure list is fresh
+    await loadAlgorithms();
+  };
+
+  const toggleSelect = (id: string | number | undefined) => {
+    if (id === undefined || id === null) return;
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
       }
-    }
+      return next;
+    });
   };
 
   const handleRun = () => {
@@ -49,7 +70,7 @@ export default function AlgorithmPane() {
             </button>
             <button
               onClick={handleDelete}
-              title="Remove Last"
+              title="Delete Selected"
               className="p-1 bg-red-500 hover:bg-red-600 text-white rounded"
             >
               <Minus size={16} />
@@ -75,13 +96,23 @@ export default function AlgorithmPane() {
               No algorithms yet. Click + to add one.
             </div>
           ) : (
-            algorithms.map((algo) => (
+            algorithms.map((algo) => {
+              const isSelected = algo.id !== undefined && selectedIds.has(algo.id);
+              return (
               <div
                 key={algo.id}
-                className="border p-2 rounded bg-white shadow-sm"
+                role="button"
+                onClick={() => toggleSelect(algo.id)}
+                aria-pressed={isSelected}
+                className={`border p-2 rounded shadow-sm cursor-pointer transition-colors ${
+                  isSelected ? 'bg-blue-100 border-blue-500' : 'bg-white hover:bg-gray-50'
+                }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-medium">{algo.name} <span className="text-xs text-gray-500">v{algo.version}</span></span>
+                  <span className="font-medium">
+                    {algo.name} <span className="text-xs text-gray-500">v{algo.version}</span>
+                    {isSelected && <span className="ml-2 text-xs text-blue-700">(selected)</span>}
+                  </span>
                 </div>
                 {algo.description && (
                   <p className="text-xs text-gray-600 mt-1">{algo.description}</p>
@@ -90,7 +121,7 @@ export default function AlgorithmPane() {
                   {algo.parameters.length} parameter(s)
                 </div>
               </div>
-            ))
+            );})
           )}
         </div>
       </details>
