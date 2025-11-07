@@ -1,0 +1,35 @@
+Metadata-Version: 2.4
+Name: huycnv
+Version: 0.2.0
+Summary: CNV plugin interface definitions for PGT workflows
+Author: CNV-PGT Team
+License: MIT License
+Project-URL: Homepage, https://example.com/huycnv
+Project-URL: Repository, https://example.com/huycnv.git
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: pydantic>=1.10
+Dynamic: license-file
+
+# huycnv
+
+`huycnv` provides shared data models and an abstract plugin base class for CNV algorithm integrations.
+
+## Installation
+
+```bash
+pip install huycnv
+```
+
+## Usage
+
+```python
+from huycnv.plugin import AlgorithmPlugin, BaseInput, BaseOutput
+```
+
+Define a custom plugin by subclassing `AlgorithmPlugin` and implementing the `run` method.

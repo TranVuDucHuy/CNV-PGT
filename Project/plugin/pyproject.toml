@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "huycnv"
+version = "0.2.0"
+description = "CNV plugin interface definitions for PGT workflows"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT License"}
+authors = [
+    {name = "CNV-PGT Team"}
+]
+dependencies = [
+    "pydantic>=1.10",
+]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+]
+
+[project.urls]
+Homepage = "https://example.com/huycnv"
+Repository = "https://example.com/huycnv.git"
+
+[tool.setuptools.packages.find]
+include = ["huycnv*"]
+
