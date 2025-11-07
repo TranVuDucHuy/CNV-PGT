@@ -1,3 +1,5 @@
+from enum import Enum
+
 class ReferenceGenome(Enum):
     HG19 = "GRCh37/hg19"
     HG38 = "GRCh38/hg38"

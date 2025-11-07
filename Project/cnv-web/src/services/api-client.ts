@@ -8,17 +8,21 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v
 /**
  * Generic fetch wrapper với error handling
  */
-export async function fetchAPI<T>(
-  endpoint: string,
-  options?: RequestInit
-): Promise<T> {
+export async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
   try {
+    const headers: Record<string, string> = {};
+
+    if (!(options?.body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json';
+    }
+
+    if (options?.headers) {
+      Object.assign(headers, options.headers as Record<string, string>);
+    }
+
     const response = await fetch(`${API_BASE}${endpoint}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
       ...options,
+      headers,
     });
 
     if (!response.ok) {
@@ -32,6 +36,7 @@ export async function fetchAPI<T>(
     throw error;
   }
 }
+
 
 /**
  * Helper để build full URL

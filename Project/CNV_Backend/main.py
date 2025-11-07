@@ -6,6 +6,7 @@ import shutil
 from pathlib import Path
 import asyncio
 from database import Base, engine
+from fastapi.middleware.cors import CORSMiddleware
 
 
 @asynccontextmanager
@@ -31,6 +32,14 @@ async def lifespan(app: FastAPI):
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="CNV PGT Backend", root_path="/api/v1", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # frontend của bạn
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(sample.router, prefix="/samples", tags=["samples"])
 app.include_router(algorithm.router, prefix="/algorithms", tags=["algorithms"])
