@@ -15,7 +15,3 @@ class ResultSummary(BaseModel):
 class ResultDto(ResultSummary):
     segments: List[SampleSegment]
     bins: List[SampleBin]
-
-
-class BasicResponse(BaseModel):
-    message: str

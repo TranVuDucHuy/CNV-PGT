@@ -1,17 +1,25 @@
+import os
 import shutil
+import subprocess
+from multiprocessing import Pool
 from sqlalchemy.orm import Session
 from zipfile import ZipFile
 import io
-from pydantic import BaseModel
-from typing import Optional, List
+from typing import List
 from uuid import uuid4
+import json
 
 from .models import Algorithm, AlgorithmParameter
 from utils.minio_util import MinioUtil
 import importlib.util
 from pathlib import Path
 from .plugin import BaseInput, BaseOutput, AlgorithmPlugin
-from .schemas import AlgorithmSummary, AlgorithmParameterDto
+from .schemas import (
+    AlgorithmSummary,
+    AlgorithmParameterDto,
+    AlgorithmMetadata,
+    AlgorithmDto,
+)
 from result.service import ResultService
 from sample.service import SampleService
 
@@ -41,22 +49,15 @@ def _load_module_from_path(module_name: str, plugin_dir: Path):
     return module
 
 
-class AlgorithmMetadata(BaseModel):
-    name: str
-    version: str
-    description: Optional[str] = None
-    input_class: str  # For example: main:ExampleInput -> class ExampleInput in main.py
-    output_class: (
-        str  # For example: main:ExampleOutput -> class ExampleOutput in main.py
-    )
-    exe_class: str  # For example: main:ExamplePlugin -> class ExamplePlugin in main.py
-    parameters: list[dict] = None
-
-
 class AlgorithmService:
     @staticmethod
-    def save(db: Session, plugin_dir: Path, algorithm_zip: bytes):
+    def save_zip(
+        db: Session, plugin_dir: Path, algorithm_id: str, algorithm_zip: bytes
+    ):
         """Save a new algorithm from the provided zip file."""
+        algorithm = db.query(Algorithm).filter(Algorithm.id == algorithm_id).first()
+        if not algorithm:
+            raise ValueError(f"Algorithm with id {algorithm_id} not found")
         # Extract zip file
         with ZipFile(io.BytesIO(algorithm_zip)) as z:
             # Assume the zip contains 'metadata.json', else raise Error
@@ -64,22 +65,19 @@ class AlgorithmService:
                 raise ValueError("metadata.json not found in the zip file")
 
             metadata = z.read("metadata.json").decode("utf-8")
+            # Convert metadata json to dict
+            algorithm_metadata = json.loads(metadata)
 
-            # Parse metadata, will raise ValidationError if invalid
-            algorithm_metadata = AlgorithmMetadata.model_validate_json(metadata)
-
-            plugin_dir = (
-                plugin_dir / f"{algorithm_metadata.name}_{algorithm_metadata.version}"
-            )
+            plugin_dir = plugin_dir / f"{algorithm.name}_{algorithm.version}"
             plugin_dir.mkdir(parents=True, exist_ok=True)
 
             _extract_files_from_zip(algorithm_zip, plugin_dir)
 
             # Validate classes
             modules_classes = [
-                [algorithm_metadata.input_class, BaseInput],
-                [algorithm_metadata.output_class, BaseOutput],
-                [algorithm_metadata.exe_class, AlgorithmPlugin],
+                [algorithm_metadata["input_class"], BaseInput],
+                [algorithm_metadata["output_class"], BaseOutput],
+                [algorithm_metadata["exe_class"], AlgorithmPlugin],
             ]
 
             for module_class, base_class in modules_classes:
@@ -95,31 +93,40 @@ class AlgorithmService:
 
             algorithm_url = MinioUtil.save_file(
                 algorithm_zip,
-                object_name=f"{algorithm_metadata.name}_{algorithm_metadata.version}.zip",
+                object_name=f"{algorithm.name}_{algorithm.version}.zip",
                 content_type="application/zip",
             )
 
             # If all checks pass, we can proceed to upload the algorithm
-            algorithm = Algorithm(
-                id=f"{algorithm_metadata.name}_{algorithm_metadata.version}",
-                name=algorithm_metadata.name,
-                version=algorithm_metadata.version,
-                description=algorithm_metadata.description,
-                url=algorithm_url,
-                input_class=algorithm_metadata.input_class,
-                output_class=algorithm_metadata.output_class,
-                exe_class=algorithm_metadata.exe_class,
-                parameters=[
-                    AlgorithmParameter(
-                        id=uuid4().hex,
-                        value=param,
-                    )
-                    for param in algorithm_metadata.parameters
-                ],
-            )
+            algorithm.input_class = algorithm_metadata["input_class"]
+            algorithm.output_class = algorithm_metadata["output_class"]
+            algorithm.exe_class = algorithm_metadata["exe_class"]
+            algorithm.url = algorithm_url
 
             db.add(algorithm)
             db.commit()
+
+    @staticmethod
+    def register(db: Session, algorithm_metadata: AlgorithmMetadata):
+        """Save algorithm metadata without uploading zip file."""
+        init_params = {}
+        for param in algorithm_metadata.parameters:
+            init_params[param.name] = {
+                "default": param.default,
+                "value": param.value,
+                "type": param.type,
+            }
+        algorithm = Algorithm(
+            id=f"{algorithm_metadata.name}_{algorithm_metadata.version}",
+            name=algorithm_metadata.name,
+            version=algorithm_metadata.version,
+            description=algorithm_metadata.description,
+            parameters=[AlgorithmParameter(id=uuid4().hex, value=init_params)],
+        )
+
+        db.add(algorithm)
+        db.commit()
+        return algorithm.id
 
     @staticmethod
     def get_all(db: Session) -> List[AlgorithmSummary]:
@@ -157,6 +164,32 @@ class AlgorithmService:
             plugin_dir.mkdir(parents=True, exist_ok=True)
             algorithm_zip = MinioUtil.get_file(algorithm.url)
             _extract_files_from_zip(algorithm_zip, plugin_dir)
+
+        venv_dir = plugin_dir / ".venv"
+        python_bin = (
+            venv_dir / "Scripts" / "python.exe"
+            if os.name == "nt"
+            else venv_dir / "bin" / "python"
+        )
+        if not venv_dir.exists():
+            # Create virtual environment
+            import venv
+
+            venv.EnvBuilder(with_pip=True).create(venv_dir)
+            # Install requirements if requirements.txt exists
+            requirements_path = plugin_dir / "requirements.txt"
+            if requirements_path.exists():
+                subprocess.run(
+                    [
+                        str(python_bin),
+                        "-m",
+                        "pip",
+                        "install",
+                        "-r",
+                        str(requirements_path),
+                    ],
+                    check=True,
+                )
 
         names = [algorithm.input_class, algorithm.exe_class]
         classes = []
@@ -196,8 +229,17 @@ class AlgorithmService:
             kwargs.update(params.value)
 
         print("Running algorithm...")
-        input_instance = input_class(**input_data)
-        output_instance = exe_class().run(input_instance, **kwargs)
+
+        # Run in a separate process
+        with Pool(processes=1) as pool:
+
+            def _target():
+                input_instance = input_class(**input_data)
+                output_instance = exe_class().run(input_instance, **kwargs)
+                return output_instance
+
+            result = pool.apply(_target)
+            output_instance = result
 
         ResultService.add_from_algorithm_output(
             db=db,
@@ -215,7 +257,8 @@ class AlgorithmService:
             raise ValueError(f"Algorithm with id {algorithm_id} not found")
 
         # Delete from Minio
-        MinioUtil.delete_file(algorithm.url)
+        if algorithm.url:
+            MinioUtil.delete_file(algorithm.url)
 
         # Delete from DB
         db.delete(algorithm)
@@ -228,3 +271,23 @@ class AlgorithmService:
             raise ValueError(f"Algorithm with id {algorithm_id} not found")
 
         return MinioUtil.get_file(algorithm.url)
+
+    @staticmethod
+    def get_by_id(db: Session, algorithm_id: str) -> AlgorithmDto:
+        algorithm = db.query(Algorithm).filter(Algorithm.id == algorithm_id).first()
+        if not algorithm:
+            raise ValueError(f"Algorithm with id {algorithm_id} not found")
+
+        algo_dto = AlgorithmDto(
+            id=algorithm.id,
+            name=algorithm.name,
+            version=algorithm.version,
+            description=algorithm.description,
+            upload_date=str(algorithm.upload_date),
+            url=algorithm.url,
+            parameters=[
+                AlgorithmParameterDto(id=param.id, value=param.value)
+                for param in algorithm.parameters
+            ],
+        )
+        return algo_dto

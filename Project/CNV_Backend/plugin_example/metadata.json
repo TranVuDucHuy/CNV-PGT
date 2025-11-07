@@ -5,16 +5,14 @@
   "input_class": "algorithm:InputClass",
   "output_class": "algorithm:OutputClass",
   "exe_class": "algorithm:ExeClass",
-  "parameters": [
-    {
-      "param1": "default_value1",
-      "param2": 10,
-      "param3": true
+  "parameters": {
+    "param_1": {
+      "default": true,
+      "value": true
     },
-    {
-      "param1": "default_value2",
-      "param2": 20,
-      "param3": false
+    "param_2": {
+      "default": 1.5,
+      "value": 1.5
     }
-  ]
+  }
 }
