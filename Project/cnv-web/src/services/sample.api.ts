@@ -4,13 +4,8 @@
  */
 
 import { fetchAPI } from './api-client';
+import { Sample } from '@/types/sample';
 
-// TODO: Định nghĩa Sample types
-export interface Sample {
-  id: number;
-  name: string;
-  // ... thêm fields khác
-}
 
 export const sampleAPI = {
   /**
@@ -30,11 +25,16 @@ export const sampleAPI = {
   /**
    * Tạo sample mới
    */
-  async create(data: Partial<Sample>): Promise<Sample> {
-    return fetchAPI<Sample>('/samples', {
+  async create(file: File): Promise<void> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await fetchAPI<void>('/samples', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: formData, // browser tự set multipart/form-data
     });
+
+    return res;
   },
 
   /**
@@ -56,3 +56,5 @@ export const sampleAPI = {
     });
   },
 };
+
+export type { Sample };

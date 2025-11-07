@@ -257,7 +257,8 @@ class AlgorithmService:
             raise ValueError(f"Algorithm with id {algorithm_id} not found")
 
         # Delete from Minio
-        MinioUtil.delete_file(algorithm.url)
+        if algorithm.url:
+            MinioUtil.delete_file(algorithm.url)
 
         # Delete from DB
         db.delete(algorithm)
