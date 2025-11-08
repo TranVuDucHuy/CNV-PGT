@@ -1,8 +1,11 @@
 /** Kiểu tế bào tương ứng với enum CellType bên backend */
 export enum CellType {
-  ICM = "ICM",
-  TE = "TE",
-  OTHER = "OTHER",
+  POLAR_BODY_1 = "Polar body 1",
+  POLAR_BODY_2 = "Polar body 2",
+  BLASTOMERE = "Blastomere",
+  TROPHOECTODERM = "Trophectoderm",
+  GENOMIC_DNA = "GenomicDNA",
+  OTHER = "Other"
 }
 
 /** Mẫu sample đầy đủ (dùng khi get theo id) */

@@ -4,15 +4,15 @@
  */
 
 import { fetchAPI } from './api-client';
-import { Sample } from '@/types/sample';
+import { Sample, SampleSummary } from '@/types/sample';
 
 
 export const sampleAPI = {
   /**
    * Lấy danh sách tất cả samples
    */
-  async getAll(): Promise<Sample[]> {
-    return fetchAPI<Sample[]>('/samples');
+  async getAll(): Promise<SampleSummary[]> {
+    return fetchAPI<SampleSummary[]>('/samples');
   },
 
   /**
@@ -38,6 +38,24 @@ export const sampleAPI = {
   },
 
   /**
+   * Tạo sample mới
+   */
+  async createMany(files: File[]): Promise<void> {
+    const formData = new FormData();
+    files.forEach((file) => {
+      formData.append("files", file, file.name);
+    });
+    
+
+    const res = await fetchAPI<void>('/samples/many', {
+      method: 'POST',
+      body: formData, // browser tự set multipart/form-data
+    });
+
+    return res;
+  },
+
+  /**
    * Cập nhật sample
    */
   async update(id: number, data: Partial<Sample>): Promise<Sample> {
@@ -50,7 +68,7 @@ export const sampleAPI = {
   /**
    * Xóa sample
    */
-  async delete(id: number): Promise<void> {
+  async delete(id: string): Promise<void> {
     return fetchAPI<void>(`/samples/${id}`, {
       method: 'DELETE',
     });
