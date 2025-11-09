@@ -84,7 +84,7 @@ def get_algorithm_details(
     db: Session = Depends(get_db),
 ):
     try:
-        algorithm = AlgorithmService.get_details(db=db, algorithm_id=algorithm_id)
+        algorithm = AlgorithmService.get_by_id(db=db, algorithm_id=algorithm_id)
         return algorithm
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
