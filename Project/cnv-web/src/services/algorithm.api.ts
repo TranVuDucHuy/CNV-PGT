@@ -1,70 +1,56 @@
 /**
  * Algorithm API Service
- * Tất cả API calls liên quan đến algorithms
+ * Tất cả API calls liên quan đến algorithms (đồng bộ với backend hiện tại)
  */
 
-import { fetchAPI } from './api-client';
-import { Algorithm, AlgorithmFormData, ValidationResult } from '@/types/algorithm';
+import { fetchAPI, getApiUrl } from './api-client';
+import { Algorithm, BasicResponse, AlgorithmMetadata, RegisterAlgorithmResponse } from '@/types/algorithm';
 
 export const algorithmAPI = {
   /**
    * Lấy danh sách tất cả algorithms
    */
   async getAll(): Promise<Algorithm[]> {
-    return fetchAPI<Algorithm[]>('/algorithms');
+    return fetchAPI<Algorithm[]>('/algorithms/');
   },
 
   /**
-   * Lấy chi tiết một algorithm
+   * Đăng ký thuật toán (metadata only) → trả về algorithm_id
    */
-  async getById(id: number): Promise<Algorithm> {
-    return fetchAPI<Algorithm>(`/algorithms/${id}`);
-  },
-
-  /**
-   * Tạo algorithm mới
-   */
-  async create(data: AlgorithmFormData): Promise<Algorithm> {
-    return fetchAPI<Algorithm>('/algorithms', {
+  async register(metadata: AlgorithmMetadata): Promise<RegisterAlgorithmResponse> {
+    return fetchAPI<RegisterAlgorithmResponse>('/algorithms/', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(metadata),
     });
   },
 
   /**
-   * Cập nhật algorithm
+   * Upload ZIP cho thuật toán đã đăng ký
    */
-  async update(id: number, data: Partial<AlgorithmFormData>): Promise<Algorithm> {
-    return fetchAPI<Algorithm>(`/algorithms/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
+  async uploadZip(algorithmId: string, file: File): Promise<BasicResponse> {
+    const form = new FormData();
+    form.append('file', file);
+    const res = await fetch(getApiUrl(`/algorithms/${algorithmId}/upload`), {
+      method: 'POST',
+      body: form,
     });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Unknown error' }));
+      throw new Error(err.detail || `HTTP ${res.status}: ${res.statusText}`);
+    }
+    return res.json();
   },
+
+  // Note: `upload(file)` removed. Use `register(metadata)` then `uploadZip(id, file)`.
 
   /**
    * Xóa algorithm
    */
-  async delete(id: number): Promise<void> {
-    return fetchAPI<void>(`/algorithms/${id}`, {
+  async delete(id: string): Promise<BasicResponse> {
+    const response = await fetch(getApiUrl(`/algorithms/${id}`), {
       method: 'DELETE',
     });
-  },
-
-  /**
-   * Validate module path
-   * Kiểm tra xem đường dẫn module có hợp lệ không
-   */
-  async validateModule(modulePath: string): Promise<ValidationResult> {
-    try {
-      return await fetchAPI<ValidationResult>('/algorithms/validate-module', {
-        method: 'POST',
-        body: JSON.stringify({ module_path: modulePath }),
-      });
-    } catch (error) {
-      return {
-        valid: false,
-        message: error instanceof Error ? error.message : 'Validation failed',
-      };
-    }
+    console.log(`API Response [/algorithms/${id}]:`, response);
+    return response.json();
   },
 };

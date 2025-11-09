@@ -7,3 +7,4 @@ minio
 python-dotenv
 pymysql
 cryptography
+huycnv
