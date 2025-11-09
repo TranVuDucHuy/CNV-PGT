@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, status, Request
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, status, Request, Form
+from fastapi.responses import StreamingResponse, JSONResponse
 from typing import List
 from sqlalchemy.orm import Session
 from database import get_db
@@ -14,18 +14,39 @@ router = APIRouter()
 def upload_result(
     bins_tsv: UploadFile = File(...),
     segments_tsv: UploadFile = File(...),
+    algorithm_id: str = Form(...),
+    reference_genome: str = Form(...),
     db: Session = Depends(get_db),
 ):
     try:
+        # basic filename checks
+        seg_fname = segments_tsv.filename or ""
+        bin_fname = bins_tsv.filename or ""
+        if not (seg_fname.lower().endswith("_segments.tsv") and bin_fname.lower().endswith("_bins.tsv")):
+            raise ValueError("Uploaded files must be named correctly with _segments.tsv and _bins.tsv suffixes.")
+
+        sample_id = seg_fname.rsplit("_segments.tsv", 1)[0]
+
         bins_data = bins_tsv.file.read()
         segments_data = segments_tsv.file.read()
-        ResultService.add_from_files(
-            db=db, bins_tsv=bins_data, segments_tsv=segments_data
+        result = ResultService.add_from_files(
+            db=db,
+            bins_tsv=bins_data,
+            segments_tsv=segments_data,
+            sample_id=sample_id,
+            algorithm_id=algorithm_id,
+            reference_genome=reference_genome,
         )
-        return BasicResponse(message="Result uploaded successfully")
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
+        return JSONResponse(status_code=201, content={
+            "message": "Result uploaded successfully",
+            "result_id": result.id
+        })
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        # log.exception(e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal error")
 
 @router.get("/", response_model=List[ResultSummary])
 def get_all_results(db: Session = Depends(get_db)):
