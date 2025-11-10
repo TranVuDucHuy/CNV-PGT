@@ -6,6 +6,9 @@ from database import get_db
 from .service import ResultService
 from .schemas import ResultSummary
 from common.schemas import BasicResponse
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -15,6 +18,7 @@ def upload_result(
     bins_tsv: UploadFile = File(...),
     segments_tsv: UploadFile = File(...),
     algorithm_id: str = Form(...),
+    algorithm_parameter_id: str = Form(...),
     reference_genome: str = Form(...),
     db: Session = Depends(get_db),
 ):
@@ -35,6 +39,7 @@ def upload_result(
             segments_tsv=segments_data,
             sample_id=sample_id,
             algorithm_id=algorithm_id,
+            algorithm_parameter_id=algorithm_parameter_id,
             reference_genome=reference_genome,
         )
 
@@ -45,7 +50,7 @@ def upload_result(
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
-        # log.exception(e)
+        logger.exception("Unhandled error in upload_result")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal error")
 
 @router.get("/", response_model=List[ResultSummary])

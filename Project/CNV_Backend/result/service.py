@@ -10,7 +10,7 @@ from algorithm.plugin import (
     SampleSegment as AlgoSampleSegment,
     SampleBin as AlgoSampleBin,
 )
-from algorithm.models import Algorithm
+from algorithm.models import Algorithm, AlgorithmParameter
 from .schemas import ResultDto, ResultSummary
 from common.models import ReferenceGenome, Chromosome
 from sample.models import Sample
@@ -61,21 +61,38 @@ class ResultService:
         segments_tsv: bytes,
         sample_id: str,
         algorithm_id: str,
+        algorithm_parameter_id: str,
         reference_genome: str,
     ):
         # 0. Kiểm tra Algorithm và Sample tồn tại
-        alg = db.query(Algorithm).filter(Algorithm.id == algorithm_id).first()
-        if not alg:
-            raise ValueError(f"Algorithm {algorithm_id} not found")
         sample_obj = db.query(Sample).filter(Sample.id == sample_id).first()
         if not sample_obj:
             raise ValueError(f"Sample {sample_id} not found")
-
-        # 1. Kiểm tra trùng result_id
-        result_id = f"{sample_id}_{algorithm_id}"
-        existing = db.query(Result).filter(Result.id == result_id).first()
+        
+        alg = db.query(Algorithm).filter(Algorithm.id == algorithm_id).first()
+        if not alg:
+            raise ValueError(f"Algorithm {algorithm_id} not found")
+        
+        alg_param = (db.query(AlgorithmParameter).filter(AlgorithmParameter.id == algorithm_parameter_id).first())
+        if not alg_param:
+            raise ValueError(f"AlgorithmParameter {algorithm_parameter_id} not found")
+        
+        # 1. Kiểm tra trùng
+        existing = (
+            db.query(Result)
+            .filter(
+                Result.sample_id == sample_id,
+                Result.algorithm_id == algorithm_id,
+                Result.algorithm_parameter_id == algorithm_parameter_id,
+            )
+            .first()
+        )
         if existing:
-            raise ValueError(f"Result {result_id} already exists")
+            raise ValueError(
+                f"Result for sample={sample_id}, algorithm={algorithm_id}, parameter={algorithm_parameter_id} already exists"
+            )
+
+        result_id = uuid4().hex
 
         # 2. Parse segments
         segments_objs: list[SampleSegment] = []
@@ -133,6 +150,7 @@ class ResultService:
             id=result_id,
             sample_id=sample_id,
             algorithm_id=algorithm_id,
+            algorithm_parameter_id=algorithm_parameter_id,
             reference_genome=ReferenceGenome(reference_genome),
         )
         result.segments = segments_objs
@@ -154,12 +172,29 @@ class ResultService:
         db: Session,
         sample_id: str,
         algorithm_id: str,
+        algorithm_parameter_id: str,
         algorithm_output: BaseOutput,
     ):
+        # Kiểm tra trùng
+        existing = (
+            db.query(Result)
+            .filter(
+                Result.sample_id == sample_id,
+                Result.algorithm_id == algorithm_id,
+                Result.algorithm_parameter_id == algorithm_parameter_id,
+            )
+            .first()
+        )
+        if existing:
+            raise ValueError(
+                f"Result for sample={sample_id}, algorithm={algorithm_id}, parameter={algorithm_parameter_id} already exists"
+            )
+
         result = Result(
-            id=f"{sample_id}_{algorithm_id}",
+            id=uuid4().hex,
             sample_id=sample_id,
             algorithm_id=algorithm_id,
+            algorithm_parameter_id=algorithm_parameter_id,
             reference_genome=ReferenceGenome(algorithm_output.reference_genome),
         )
 

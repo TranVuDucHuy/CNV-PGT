@@ -1,13 +1,4 @@
-from sqlalchemy import (
-    Column,
-    ForeignKey,
-    String,
-    Enum as SqlEnum,
-    DateTime,
-    Integer,
-    Float,
-    Boolean,
-)
+from sqlalchemy import Column, ForeignKey, String, Enum as SqlEnum, DateTime, Integer, Float, Boolean
 from database import Base
 from enum import Enum
 from datetime import datetime
@@ -33,19 +24,22 @@ class Result(Base):
         nullable=False,
         name="fk_algorithms_results",
     )
-    reference_genome = Column(
-        SqlEnum(ReferenceGenome), nullable=False, default=ReferenceGenome.HG19
+    algorithm_parameter_id = Column(
+        String(64),
+        ForeignKey("algorithm_parameters.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+        name="fk_algorithm_parameters_results",
     )
+
+    reference_genome = Column(SqlEnum(ReferenceGenome), nullable=False, default=ReferenceGenome.HG19)
     created_at = Column(DateTime, default=datetime.now, nullable=False)
 
     sample = relationship("Sample", back_populates="results")
     algorithm = relationship("Algorithm", back_populates="results")
-    segments = relationship(
-        "SampleSegment", back_populates="result", cascade="all, delete-orphan"
-    )
-    bins = relationship(
-        "SampleBin", back_populates="result", cascade="all, delete-orphan"
-    )
+    algorithm_parameter = relationship("AlgorithmParameter", back_populates="results")
+    segments = relationship("SampleSegment", back_populates="result", cascade="all, delete-orphan")
+    bins = relationship("SampleBin", back_populates="result", cascade="all, delete-orphan")
 
 
 class SampleSegment(Base):
