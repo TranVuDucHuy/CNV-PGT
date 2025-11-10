@@ -7,7 +7,6 @@ from filter import (
     combine_filters,
     create_blacklist,
     filter_base,
-    filter_bins,
     filter_import,
 )
 from plot import Plotter
