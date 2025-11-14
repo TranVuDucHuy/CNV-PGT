@@ -1,25 +1,11 @@
-/**
- * ViewPane Component
- * Checkbox options cho việc hiển thị views
- */
-
+// ViewPane.tsx
 "use client";
 
-import React, { useState } from 'react';
+import React from "react";
+import { useViewHandle } from "./viewHandle";
 
 export default function ViewPane() {
-  const [checked, setChecked] = useState({
-    bin: false,
-    segment: false,
-    aberration: false,
-    trash: false,
-    report: false,
-  });
-
-  const toggleCheck = (key: keyof typeof checked) => {
-    setChecked({ ...checked, [key]: !checked[key] });
-    console.log(`Toggled ${key}:`, !checked[key]);
-  };
+  const { checked, toggle } = useViewHandle();
 
   return (
     <details open className="border rounded-md">
@@ -27,17 +13,17 @@ export default function ViewPane() {
         View
       </summary>
       <div className="p-3 space-y-2">
-        {Object.keys(checked).map((key) => (
+        {(
+          Object.keys(checked) as Array<keyof typeof checked>
+        ).map((key) => (
           <label key={key} className="block">
             <input
               type="checkbox"
-              checked={checked[key as keyof typeof checked]}
-              onChange={() => toggleCheck(key as keyof typeof checked)}
+              checked={checked[key]}
+              onChange={() => toggle(key)}
               className="mr-2"
             />
-            {key
-              .replace(/([A-Z])/g, " $1")
-              .replace(/^./, (c) => c.toUpperCase())}
+            {key.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase())}
           </label>
         ))}
       </div>

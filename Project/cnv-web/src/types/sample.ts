@@ -11,6 +11,7 @@ export enum CellType {
 /** Mẫu sample đầy đủ (dùng khi get theo id) */
 export interface Sample {
   id: string;
+  name: string;
   flowcell_id: string;
   cycle_id: string;
   embryo_id: string;
@@ -22,6 +23,7 @@ export interface Sample {
 /** Mẫu sample rút gọn, dùng trong get_all */
 export interface SampleSummary {
   id: string;
+  name: string;
   bam_url: string;
   cell_type: string; // backend trả về .value (string)
   date: string;

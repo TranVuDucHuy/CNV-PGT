@@ -3,6 +3,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 import sample
 import algorithm
+import result
 import shutil
 from pathlib import Path
 import asyncio
@@ -56,6 +57,7 @@ app.add_middleware(
 
 app.include_router(sample.router, prefix="/samples", tags=["samples"])
 app.include_router(algorithm.router, prefix="/algorithms", tags=["algorithms"])
+app.include_router(result.router, prefix="/results", tags=["results"])
 
 @app.get("/")
 def read_root(request: Request):

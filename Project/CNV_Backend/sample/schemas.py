@@ -8,6 +8,7 @@ class EditRequest(BaseModel):
 
 class SampleSummary(BaseModel):
     id: str
+    name: str
     bam_url: str
     cell_type: str
     date: str

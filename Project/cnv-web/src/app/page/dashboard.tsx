@@ -10,6 +10,8 @@ import SamplePane from "@/features/sample/SamplePane";
 import AlgorithmPane from "@/features/algorithm/AlgorithmPane";
 import ResultPane from "@/features/result/ResultPane";
 import ViewPane from "@/features/view/ViewPane";
+import ContentPane from "@/features/content/ContentPane";
+import { ViewProvider } from "@/features/view/viewHandle";
 
 const DashboardView: React.FC = () => {
 
@@ -24,23 +26,26 @@ const DashboardView: React.FC = () => {
       {/* Split Pane */}
       <div className="flex flex-1">
 
-        {/* Left Pane - Sidebar với các feature panes */}
-        <div className="w-60 border-r border-gray-300 bg-gray-50 p-3 overflow-y-auto space-y-3">
-          <SamplePane />
-          <AlgorithmPane />
-          <ResultPane />
-          <ViewPane />
-        </div>
-
-        {/* Right Pane - Content Area */}
-        <div className="flex-1 bg-gray-100 flex items-center justify-center">
-          <div
-            id="contentArea"
-            className="w-full h-full bg-gray-200 border rounded-lg flex items-center justify-center"
-          >
-            <span className="text-gray-600">Content Area</span>
+        <ViewProvider>
+          {/* Left Pane - Sidebar với các feature panes */}
+          <div className="w-60 border-r border-gray-300 bg-gray-50 p-3 overflow-y-auto space-y-3">
+            <SamplePane />
+            <AlgorithmPane />
+            <ResultPane />
+            <ViewPane />
           </div>
-        </div>
+
+          {/* Right Pane - Content Area */}
+          <div className="flex-1 bg-gray-100 flex items-center justify-center">
+            <div
+              id="contentArea"
+              className="w-full h-full bg-gray-200 border rounded-lg flex items-center justify-center"
+            >
+              <span className="text-gray-600">Content Area</span>
+              <ContentPane/>
+            </div>
+          </div>
+        </ViewProvider>
       </div>
     </div>
   );

@@ -20,6 +20,7 @@ class Sample(Base):
     __tablename__ = "samples"
 
     id = Column(String(64), primary_key=True, index=True, nullable=False)
+    name = Column(String(255), unique=True, nullable=False)
     flowcell_id = Column(String(64), index=True, nullable=False)
     cycle_id = Column(String(64), index=True, nullable=False)
     embryo_id = Column(String(64), index=True, nullable=False)

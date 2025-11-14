@@ -175,7 +175,7 @@ export default function SamplePane() {
                       >
                         <div className="flex items-center justify-between">
                           <div>
-                            <div className="font-medium">{s.id}</div>
+                            <div className="font-medium">{s.name}</div>
                             <div className="text-sm text-gray-600">{s.cell_type}</div>
                             <div className="text-sm text-gray-600">{s.date}</div>
                           </div>
