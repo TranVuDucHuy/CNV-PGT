@@ -1,13 +1,17 @@
 /** Kiểu tế bào tương ứng với enum CellType bên backend */
 export enum CellType {
-  ICM = "ICM",
-  TE = "TE",
-  OTHER = "OTHER",
+  POLAR_BODY_1 = "Polar body 1",
+  POLAR_BODY_2 = "Polar body 2",
+  BLASTOMERE = "Blastomere",
+  TROPHOECTODERM = "Trophectoderm",
+  GENOMIC_DNA = "GenomicDNA",
+  OTHER = "Other"
 }
 
 /** Mẫu sample đầy đủ (dùng khi get theo id) */
 export interface Sample {
   id: string;
+  name: string;
   flowcell_id: string;
   cycle_id: string;
   embryo_id: string;
@@ -19,6 +23,7 @@ export interface Sample {
 /** Mẫu sample rút gọn, dùng trong get_all */
 export interface SampleSummary {
   id: string;
+  name: string;
   bam_url: string;
   cell_type: string; // backend trả về .value (string)
   date: string;

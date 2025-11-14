@@ -4,6 +4,8 @@ import uuid
 import datetime
 import re
 
+from fastapi import HTTPException, status
+
 from utils.minio_util import MinioUtil
 from .models import Sample, CellType
 from sqlalchemy.orm import Session
@@ -36,12 +38,14 @@ class SampleService:
         return flowcell_id, cycle_id, embryo_id
 
     @staticmethod
-    def _create_sample(file_stream: bytes) -> Sample:
+    def _create_sample(file_stream: bytes, file_name: str) -> Sample:
+        
+        # ✅ Tạo mới nếu không trùng
         id = str(uuid.uuid4())
         flowcell_id = str(uuid.uuid4())  # Replace with real flowcell ID retrieval
-        cycle_id = str(uuid.uuid4())  # Replace with real cycle ID retrieval
-        embryo_id = str(uuid.uuid4())  # Replace with real embryo ID retrieval
-        cell_type = CellType.OTHER  # Replace with real cell type
+        cycle_id = str(uuid.uuid4())     # Replace with real cycle ID retrieval
+        embryo_id = str(uuid.uuid4())    # Replace with real embryo ID retrieval
+        cell_type = CellType.OTHER       # Replace with real cell type
 
         object_name = f"{id}.bam"
         content_type = "application/octet-stream"
@@ -50,26 +54,57 @@ class SampleService:
 
         sample = Sample(
             id=id,
+            name=file_name,               # ✅ thêm name
             flowcell_id=flowcell_id,
             cycle_id=cycle_id,
             embryo_id=embryo_id,
             bam_url=bam_url,
-            cell_type=cell_type,
+            cell_type=cell_type
         )
-
         return sample
 
     @staticmethod
-    def save(db: Session, file_stream: bytes):
-        sample = SampleService._create_sample(file_stream)
-        db.add(sample)
-        db.commit()
+    def save(db: Session, file_stream: bytes, file_name: str):
+        # ✅ Kiểm tra trùng name
+        existing = db.query(Sample).filter(Sample.name == file_name).first()
+        if not existing:
+            sample = SampleService._create_sample(file_stream, file_name)
+            db.add(sample)
+            db.commit()
+        return {
+            "success": not existing
+        }
 
     @staticmethod
-    def save_many(db: Session, files: List[bytes]):
-        samples = [SampleService._create_sample(file_stream) for file_stream in files]
-        db.add_all(samples)
-        db.commit()
+    def save_many(db: Session, files: List[bytes], names: List[str]):
+        if len(files) != len(names):
+            raise ValueError("Số lượng files và names phải bằng nhau.")
+
+        created_samples = []
+        skipped_names = []
+
+        for file_stream, name in zip(files, names):
+            # Kiểm tra trùng name trong DB
+            existing = db.query(Sample).filter(Sample.name == name).first()
+            if existing:
+                skipped_names.append(name)
+                continue  # Bỏ qua file trùng name
+
+            sample = SampleService._create_sample(file_stream, name)
+            created_samples.append(sample)
+
+        # Nếu có sample mới, thêm vào DB
+        if created_samples:
+            db.add_all(created_samples)
+            db.commit()
+            for s in created_samples:
+                db.refresh(s)
+
+        return {
+            "created": [s.name for s in created_samples],
+            "skipped": skipped_names,
+        }
+
 
     @staticmethod
     def get(db: Session, sample_id: str) -> Optional[Sample]:
@@ -88,6 +123,7 @@ class SampleService:
         return [
             SampleSummary(
                 id=sample.id,
+                name=sample.name,
                 bam_url=sample.bam_url,
                 cell_type=sample.cell_type.value,
                 date=sample.date.strftime("%Y-%m-%d"),

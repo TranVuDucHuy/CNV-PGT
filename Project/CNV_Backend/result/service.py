@@ -250,10 +250,10 @@ class ResultService:
                 Result.sample_id,
                 Algorithm.name.label("algorithm_name"),
                 Result.reference_genome,
-                Result.uploaded_at.label("created_at"),
+                Result.created_at.label("created_at"),
             )
             .join(Algorithm)
-            .order_by(Result.uploaded_at.desc())
+            .order_by(Result.created_at.desc())
         )
 
         rows = db.execute(stmt).all()
@@ -266,7 +266,7 @@ class ResultService:
                 Result.sample_id,
                 Algorithm.name.label("algorithm_name"),
                 Result.reference_genome,
-                Result.uploaded_at.label("created_at"),
+                Result.created_at.label("created_at"),
             )
             .join(Algorithm)
             .where(Result.id == result_id)
