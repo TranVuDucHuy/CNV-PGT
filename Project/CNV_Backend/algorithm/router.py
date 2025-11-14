@@ -27,12 +27,14 @@ def register_algorithm(
     algorithm_metadata: AlgorithmMetadata,
     db: Session = Depends(get_db),
 ):
-    algorithm_id = AlgorithmService.register(
+    algorithm_id, algorithm_parameter_id = AlgorithmService.register(
         db=db,
         algorithm_metadata=algorithm_metadata,
     )
     return RegisterAlgorithmResponse(
-        message="Algorithm registered successfully", algorithm_id=algorithm_id
+        message="Algorithm registered successfully",
+        algorithm_id=algorithm_id,
+        algorithm_parameter_id=algorithm_parameter_id,
     )
 
 

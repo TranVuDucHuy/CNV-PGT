@@ -20,9 +20,11 @@ interface Props {
   paramsSchema?: AlgorithmParameterCreateRequest[]; // optional schema; if absent, derive from lastParamValues keys
   lastParamValues?: Record<string, any>; // last used params to prefill values
   onSaveValues?: (values: Record<string, any>) => void; // edit mode: save values locally
+  onRecordParameterId?: (algorithmId: string, parameterId: string) => void; // called with (algorithm_id, algorithm_parameter_id) after successful register
+  onRecordAlgorithmCreated?: (algorithmId: string, values: Record<string, any>) => void; // called after successful register with algorithm_id and parameter values
 }
 
-export default function AlgorithmDetail({ open, onClose, onSuccess, mode = 'create', initialAlgorithm, paramsSchema, lastParamValues, onSaveValues }: Props) {
+export default function AlgorithmDetail({ open, onClose, onSuccess, mode = 'create', initialAlgorithm, paramsSchema, lastParamValues, onSaveValues, onRecordParameterId, onRecordAlgorithmCreated }: Props) {
   const [name, setName] = useState('');
   const [version, setVersion] = useState('');
   const [description, setDescription] = useState('');
@@ -165,6 +167,31 @@ export default function AlgorithmDetail({ open, onClose, onSuccess, mode = 'crea
       };
       const res = await algorithmAPI.register(payload);
       registeredAlgorithmId = res.algorithm_id;
+      
+      // Prepare values dictionary from params
+      // Use value if set, otherwise use default, otherwise use empty string
+      const values: Record<string, any> = params.reduce((acc, p) => {
+        const finalValue = p.value !== '' && p.value !== null && p.value !== undefined 
+          ? p.value 
+          : (p.default !== '' && p.default !== null && p.default !== undefined ? p.default : '');
+        acc[p.name] = finalValue;
+        return acc;
+      }, {} as Record<string, any>);
+      
+      // Record algorithm_id and algorithm_parameter_id for later use
+      if (onRecordParameterId && res.algorithm_parameter_id) {
+        onRecordParameterId(res.algorithm_id, res.algorithm_parameter_id);
+      }
+      
+      // Record algorithm creation with values using the new callback
+      if (onRecordAlgorithmCreated) {
+        onRecordAlgorithmCreated(res.algorithm_id, values);
+      }
+      
+      // Also call onSaveValues for backward compatibility
+      if (onSaveValues) {
+        onSaveValues(values);
+      }
 
       if (zipFile) {
         try {

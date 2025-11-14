@@ -59,15 +59,15 @@ class ResultService:
         db: Session,
         bins_tsv: bytes,
         segments_tsv: bytes,
-        sample_id: str,
+        sample_name: str,
         algorithm_id: str,
         algorithm_parameter_id: str,
         reference_genome: str,
     ):
         # 0. Kiểm tra Algorithm và Sample tồn tại
-        sample_obj = db.query(Sample).filter(Sample.id == sample_id).first()
+        sample_obj = db.query(Sample).filter(Sample.name == sample_name).first()
         if not sample_obj:
-            raise ValueError(f"Sample {sample_id} not found")
+            raise ValueError(f"Sample {sample_name} not found")
         
         alg = db.query(Algorithm).filter(Algorithm.id == algorithm_id).first()
         if not alg:
@@ -81,7 +81,7 @@ class ResultService:
         existing = (
             db.query(Result)
             .filter(
-                Result.sample_id == sample_id,
+                Result.sample_id == sample_name,
                 Result.algorithm_id == algorithm_id,
                 Result.algorithm_parameter_id == algorithm_parameter_id,
             )
@@ -89,7 +89,7 @@ class ResultService:
         )
         if existing:
             raise ValueError(
-                f"Result for sample={sample_id}, algorithm={algorithm_id}, parameter={algorithm_parameter_id} already exists"
+                f"Result for sample={sample_name}, algorithm={algorithm_id}, parameter={algorithm_parameter_id} already exists"
             )
 
         result_id = uuid4().hex
@@ -148,7 +148,7 @@ class ResultService:
         # 4. Khởi tạo Result
         result = Result(
             id=result_id,
-            sample_id=sample_id,
+            sample_id=sample_name,
             algorithm_id=algorithm_id,
             algorithm_parameter_id=algorithm_parameter_id,
             reference_genome=ReferenceGenome(reference_genome),

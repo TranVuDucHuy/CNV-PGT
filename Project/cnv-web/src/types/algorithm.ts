@@ -39,4 +39,5 @@ export interface AlgorithmMetadata {
 
 export interface RegisterAlgorithmResponse extends BasicResponse {
   algorithm_id: string;
+  algorithm_parameter_id: string;
 }

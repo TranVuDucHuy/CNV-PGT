@@ -12,7 +12,7 @@ class Result(Base):
     id = Column(String(64), primary_key=True, index=True)
     sample_id = Column(
         String(64),
-        ForeignKey("samples.id", ondelete="CASCADE"),
+        ForeignKey("samples.name", ondelete="CASCADE"),
         index=True,
         nullable=False,
         name="fk_samples_results",

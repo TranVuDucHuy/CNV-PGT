@@ -11,13 +11,11 @@ import { useAlgorithms } from './useAlgorithms';
 import AlgorithmDetail from '@/components/AlgorithmDetail';
 
 export default function AlgorithmPane() {
-  const { algorithms, loading, deleteAlgorithm, loadAlgorithms } = useAlgorithms();
+  const { algorithms, loading, deleteAlgorithm, loadAlgorithms, lastParameterIds, lastValues, recordParameterId, recordLastValues } = useAlgorithms();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string | number>>(new Set());
   const [editOpen, setEditOpen] = useState(false);
   const [editTargetId, setEditTargetId] = useState<string | number | null>(null);
-  // Keep last used param values per algorithm in local state (id -> value dict)
-  const [lastValues, setLastValues] = useState<Record<string, Record<string, any>>>({});
 
   const editTarget = useMemo(() => algorithms.find(a => a.id === editTargetId), [algorithms, editTargetId]);
 
@@ -148,6 +146,11 @@ export default function AlgorithmPane() {
       <AlgorithmDetail
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
+        onRecordParameterId={recordParameterId}
+        onRecordAlgorithmCreated={(algorithmId, values) => {
+          console.log('Algorithm created:', algorithmId, values);
+          recordLastValues(algorithmId, values);
+        }}
         onSuccess={() => {
           // Refresh list after creation
           loadAlgorithms();
@@ -162,7 +165,7 @@ export default function AlgorithmPane() {
         lastParamValues={editTarget ? (lastValues[String(editTarget.id)] || (editTarget.parameters?.[editTarget.parameters.length - 1]?.value) || {}) : {}}
         onSaveValues={(vals) => {
           if (editTarget) {
-            setLastValues(prev => ({ ...prev, [String(editTarget.id)]: vals }));
+            recordLastValues(String(editTarget.id), vals);
           }
         }}
         onClose={() => setEditOpen(false)}
