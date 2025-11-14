@@ -44,3 +44,8 @@ class AlgorithmParameter(Base):
     value = Column(JSON, nullable=False)
 
     algorithm = relationship("Algorithm", back_populates="parameters")
+    results = relationship(
+        "Result",
+        back_populates="algorithm_parameter",
+        cascade="all, delete-orphan",
+    )

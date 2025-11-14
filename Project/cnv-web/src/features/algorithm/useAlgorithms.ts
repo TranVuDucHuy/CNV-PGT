@@ -11,6 +11,8 @@ export function useAlgorithms() {
   const [algorithms, setAlgorithms] = useState<Algorithm[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastParameterIds, setLastParameterIds] = useState<Record<string, string>>({});
+  const [lastValues, setLastValues] = useState<Record<string, Record<string, any>>>({});
 
   // Load algorithms khi hook được khởi tạo
   useEffect(() => {
@@ -50,11 +52,23 @@ export function useAlgorithms() {
     }
   };
 
+  const recordParameterId = (algorithmId: string, parameterId: string) => {
+    setLastParameterIds(prev => ({ ...prev, [algorithmId]: parameterId }));
+  };
+
+  const recordLastValues = (algorithmId: string, values: Record<string, any>) => {
+    setLastValues(prev => ({ ...prev, [algorithmId]: values }));
+  };
+
   return {
     algorithms,
     loading,
     error,
     loadAlgorithms,
     deleteAlgorithm,
+    lastParameterIds,
+    lastValues,
+    recordParameterId,
+    recordLastValues,
   };
 }

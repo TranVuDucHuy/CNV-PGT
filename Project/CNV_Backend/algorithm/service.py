@@ -116,17 +116,19 @@ class AlgorithmService:
                 "value": param.value,
                 "type": param.type,
             }
+        # create a default AlgorithmParameter and capture its id
+        new_param_id = uuid4().hex
         algorithm = Algorithm(
             id=f"{algorithm_metadata.name}_{algorithm_metadata.version}",
             name=algorithm_metadata.name,
             version=algorithm_metadata.version,
             description=algorithm_metadata.description,
-            parameters=[AlgorithmParameter(id=uuid4().hex, value=init_params)],
+            parameters=[AlgorithmParameter(id=new_param_id, value=init_params)],
         )
 
         db.add(algorithm)
         db.commit()
-        return algorithm.id
+        return algorithm.id, new_param_id
 
     @staticmethod
     def get_all(db: Session) -> List[AlgorithmSummary]:

@@ -244,6 +244,11 @@ def filter_base(gc_file, n_file, max_N=0.1, min_GC=0.0):
     Create a per-chromosome boolean mask that marks bins NOT eligible for normalization
     based on base composition thresholds.
     """
+    base_file = Path(gc_file).parent / "Base_filter.npz"
+    if base_file.exists():
+        print(f"Base filter file already exists: {base_file}")
+        return str(base_file)
+    
     gc_data = np.load(gc_file)
     n_data = np.load(n_file)
 
@@ -253,9 +258,6 @@ def filter_base(gc_file, n_file, max_N=0.1, min_GC=0.0):
         n_arr = n_data[chrom]
         base_filter[chrom] = (n_arr >= max_N) | (gc_arr <= min_GC)
 
-    # Save alongside gc_file (expected to be in Prepare directory)
-    from pathlib import Path
-    base_file = Path(gc_file).parent / "Base_filter.npz"
     np.savez_compressed(base_file, **base_filter)
     return str(base_file)
 
@@ -264,6 +266,11 @@ def filter_import(bed_file, pipeline_obj):
     """
     Đọc các vùng blacklist từ tệp BED và tạo mặt nạ (boolean) theo bin cho từng nhiễm sắc thể.
     """
+    import_filter_path = pipeline_obj.work_directory / "Prepare" / "Import_filter.npz"
+    if import_filter_path.exists():
+        print(f"Import filter file already exists: {import_filter_path}")
+        return str(import_filter_path)
+    
     bin_size = pipeline_obj.bin_size
 
     mask_dict = {}
@@ -296,7 +303,6 @@ def filter_import(bed_file, pipeline_obj):
     except FileNotFoundError:
         raise FileNotFoundError(f"Không tìm thấy tệp BED: {bed_path}")
 
-    import_filter_path = pipeline_obj.work_directory / "Prepare" / "Import_filter.npz"
     np.savez_compressed(import_filter_path, **mask_dict)
     return str(import_filter_path)
 
@@ -305,6 +311,11 @@ def combine_filters(work_dir):
     """
     Kết hợp Base_filter.npz và Import_filter.npz thành một tệp duy nhất Combined_filter.npz.
     """
+    out_path = work_dir / "Combined_filter.npz"
+    if out_path.exists():
+        print(f"Combined filter file already exists: {out_path}")
+        return str(out_path)
+
     base_path = work_dir / "Base_filter.npz"
     import_path = work_dir / "Import_filter.npz"
 
@@ -318,7 +329,6 @@ def combine_filters(work_dir):
         import_filter = import_data[chrom].astype(bool, copy=False)
         combined[chrom] = np.logical_or(base_filter, import_filter)
 
-    out_path = work_dir / "Combined_filter.npz"
     np.savez_compressed(out_path, **combined)
     return str(out_path)
 

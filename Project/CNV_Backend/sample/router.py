@@ -13,8 +13,14 @@ router = APIRouter()
 @router.post("/")
 async def upload_file(file: UploadFile = File(...), db: Session = Depends(get_db)):
     content = await file.read()
-    SampleService.save(db=db, file_stream=content)
-    return BasicResponse(message="File uploaded successfully")
+    result = SampleService.save(db=db, file_stream=content, file_name=file.filename.replace(".bam",""))
+    success = result.get("success")
+    message = ""
+    if success:
+        message = "File uploaded successfully"
+    else:
+        message = f"File uploaded unsuccessfully, file name {file.filename} already existed"
+    return BasicResponse(message=message)
 
 
 @router.post("/many")
@@ -22,10 +28,20 @@ async def upload_multiple_files(
     files: List[UploadFile] = File(...), db: Session = Depends(get_db)
 ):
     file_streams = []
+    names = []
     for file in files:
         content = await file.read()
         file_streams.append(content)
-    SampleService.save_many(db=db, files=file_streams)
+        names.append(file.filename.replace(".bam",""))
+    result = SampleService.save_many(db=db, files=file_streams, names=names)
+    # result có thể là dict như: {"added": [...], "skipped": [...]}
+    added = result.get("added", [])
+    skipped = result.get("skipped", [])
+
+    # Tạo thông điệp phản hồi
+    message = f"Uploaded {len(added)} file(s) successfully."
+    if skipped:
+        message += f" Skipped {len(skipped)} duplicate name(s): {', '.join(skipped)}."
     return BasicResponse(message="Files uploaded successfully")
 
 

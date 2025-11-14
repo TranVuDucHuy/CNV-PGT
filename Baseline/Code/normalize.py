@@ -11,6 +11,7 @@ def base_content(pipeline_obj, fasta_file):
     n_file = pipeline_obj.work_directory / "Prepare" / "N-content.npz"
 
     if gc_file.exists() and n_file.exists():
+        print(f"GC and N content files already exist: {gc_file}, {n_file}")
         return str(gc_file), str(n_file)
 
     fasta_path = Path(fasta_file)

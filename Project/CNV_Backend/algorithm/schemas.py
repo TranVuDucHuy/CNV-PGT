@@ -5,6 +5,7 @@ from common.schemas import BasicResponse
 
 class RegisterAlgorithmResponse(BasicResponse):
     algorithm_id: str
+    algorithm_parameter_id: str
 
 
 class AlgorithmParameterDto(BaseModel):

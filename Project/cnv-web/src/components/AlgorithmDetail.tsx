@@ -6,40 +6,78 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { X, Plus, Trash2, CheckCircle } from 'lucide-react';
-import { AlgorithmMetadata, AlgorithmParameterCreateRequest } from '@/types/algorithm';
-import ParamDialog from '@/components/ParamDialog';
+import { X, Plus, Minus, CheckCircle, AlertCircle } from 'lucide-react';
+import { Algorithm, AlgorithmMetadata, AlgorithmParameterCreateRequest } from '@/types/algorithm';
 import { algorithmAPI } from '@/services';
 
 interface Props {
   open: boolean;
   onClose: () => void;
-  onSuccess: () => void; // called after successful create (and optional upload)
+  onSuccess: () => void; // called after successful action
+  // Edit mode support
+  mode?: 'create' | 'edit';
+  initialAlgorithm?: Algorithm; // for edit mode: prefill name/version/description
+  paramsSchema?: AlgorithmParameterCreateRequest[]; // optional schema; if absent, derive from lastParamValues keys
+  lastParamValues?: Record<string, any>; // last used params to prefill values
+  onSaveValues?: (values: Record<string, any>) => void; // edit mode: save values locally
+  onRecordParameterId?: (algorithmId: string, parameterId: string) => void; // called with (algorithm_id, algorithm_parameter_id) after successful register
+  onRecordAlgorithmCreated?: (algorithmId: string, values: Record<string, any>) => void; // called after successful register with algorithm_id and parameter values
 }
 
-export default function AlgorithmDetail({ open, onClose, onSuccess }: Props) {
+export default function AlgorithmDetail({ open, onClose, onSuccess, mode = 'create', initialAlgorithm, paramsSchema, lastParamValues, onSaveValues, onRecordParameterId, onRecordAlgorithmCreated }: Props) {
   const [name, setName] = useState('');
   const [version, setVersion] = useState('');
   const [description, setDescription] = useState('');
   const [params, setParams] = useState<AlgorithmParameterCreateRequest[]>([]);
+  const [initialParams, setInitialParams] = useState<AlgorithmParameterCreateRequest[]>([]);
   const [zipFile, setZipFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const [paramDialogOpen, setParamDialogOpen] = useState(false);
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  // params are edited inline now; no dialog/editing index needed
   const [showSuccessAnnouncement, setShowSuccessAnnouncement] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (open) {
+    if (!open) return;
+    // Reset common state
+    setLoading(false);
+    setShowSuccessAnnouncement(false);
+    setErrorMessage(null);
+
+    if (mode === 'edit' && initialAlgorithm) {
+      // Prefill read-only fields
+      setName(initialAlgorithm.name || '');
+      setVersion(initialAlgorithm.version || '');
+      setDescription(initialAlgorithm.description || '');
+      setZipFile(null);
+
+      // Build params from provided schema or derive from lastParamValues
+      const valueDict = lastParamValues || (initialAlgorithm.parameters?.[initialAlgorithm.parameters.length - 1]?.value) || {};
+      let baseSchema: AlgorithmParameterCreateRequest[] = paramsSchema && paramsSchema.length
+        ? paramsSchema
+        : Object.keys(valueDict).map((k) => {
+            const v = (valueDict as any)[k];
+            const t = typeof v === 'number' ? 'number' : typeof v === 'boolean' ? 'boolean' : 'string';
+            return { name: k, type: t, default: '', value: v } as AlgorithmParameterCreateRequest;
+          });
+      // Ensure values pulled from valueDict; keep defaults blank (unknown)
+      baseSchema = baseSchema.map((p) => ({ ...p, value: valueDict[p.name] ?? p.value ?? '' }));
+      setParams(baseSchema);
+      setInitialParams(baseSchema.map(p => ({ ...p })));
+    } else {
+      // Create mode: empty fields
       setName('');
       setVersion('');
       setDescription('');
       setParams([]);
+      setInitialParams([]);
       setZipFile(null);
-      setLoading(false);
-      setEditingIndex(null);
-      setShowSuccessAnnouncement(false);
     }
-  }, [open]);
+  }, [open, mode, initialAlgorithm, paramsSchema, lastParamValues]);
+
+  const handleCloseAll = () => {
+    setErrorMessage(null);
+    onClose();
+  };
 
   const metadata: AlgorithmMetadata = useMemo(() => ({
     name: name.trim(),
@@ -49,41 +87,137 @@ export default function AlgorithmDetail({ open, onClose, onSuccess }: Props) {
   }), [name, version, description, params]);
 
   const canSubmit = name.trim() && version.trim();
+  const isEdit = mode === 'edit';
 
-  const handleSaveParam = (param: AlgorithmParameterCreateRequest) => {
-    if (editingIndex === null) {
-      setParams(prev => [...prev, param]);
-    } else {
-      setParams(prev => prev.map((p, i) => i === editingIndex ? param : p));
+  const isParamEmpty = (p: AlgorithmParameterCreateRequest) => {
+    if (!p.name || !String(p.name).trim()) return true;
+    const field = isEdit ? p.value : p.default;
+    return field === '' || field === null || field === undefined;
+  };
+
+  const hasEmptyParam = params.length > 0 && params.some(isParamEmpty);
+
+  const isRowDirty = (p: AlgorithmParameterCreateRequest, idx: number) => {
+    const base = initialParams[idx];
+    if (!base) {
+      // new row -> dirty if any field not empty
+      return Boolean(p.name || p.default || p.value);
     }
+    if (isEdit) {
+      return String(p.value ?? '') !== String(base.value ?? '');
+    }
+    // create mode: compare name/type/default
+    return p.name !== base.name || p.type !== base.type || String(p.default ?? '') !== String(base.default ?? '');
   };
 
-  const handleEditParam = (index: number) => {
-    setEditingIndex(index);
-    setParamDialogOpen(true);
+  // Inline param helpers
+  const addParam = () => {
+    const newParam = { name: '', type: 'string', default: '', value: '' } as AlgorithmParameterCreateRequest;
+    setParams(prev => [...prev, newParam]);
+    setInitialParams(prev => [...prev, { ...newParam }]);
   };
 
-  const handleDeleteParam = (index: number) => {
+  const [selectedParamIndex, setSelectedParamIndex] = useState<number | null>(null);
+
+  const deleteSelectedParam = () => {
+    if (selectedParamIndex === null) return;
+    setParams(prev => prev.filter((_, i) => i !== selectedParamIndex));
+    setSelectedParamIndex(null);
+    setInitialParams(prev => prev.filter((_, i) => i !== selectedParamIndex));
+  };
+
+  const updateParam = (index: number, field: keyof AlgorithmParameterCreateRequest, value: any) => {
+    setParams(prev => prev.map((p, i) => i === index ? { ...p, [field]: value } : p));
+  };
+
+  const deleteParam = (index: number) => {
     setParams(prev => prev.filter((_, i) => i !== index));
+    setInitialParams(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit) return;
+    if (isEdit) {
+      try {
+        setLoading(true);
+        // Prepare values dictionary from current params
+        const values: Record<string, any> = params.reduce((acc, p) => {
+          acc[p.name] = p.value;
+          return acc;
+        }, {} as Record<string, any>);
+        onSaveValues && onSaveValues(values);
+        setShowSuccessAnnouncement(true);
+        setTimeout(() => {
+          onSuccess();
+          handleCloseAll();
+        }, 800);
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+    let registeredAlgorithmId: string | null = null;
     try {
       setLoading(true);
-      const res = await algorithmAPI.register(metadata);
-      if (zipFile) {
-        await algorithmAPI.uploadZip(res.algorithm_id, zipFile);
+      // Ensure each parameter has a value (default to its default) before sending
+      const payload: AlgorithmMetadata = {
+        ...metadata,
+        parameters: params.map(p => ({ ...p, value: p.value ?? p.default })),
+      };
+      const res = await algorithmAPI.register(payload);
+      registeredAlgorithmId = res.algorithm_id;
+      
+      // Prepare values dictionary from params
+      // Use value if set, otherwise use default, otherwise use empty string
+      const values: Record<string, any> = params.reduce((acc, p) => {
+        const finalValue = p.value !== '' && p.value !== null && p.value !== undefined 
+          ? p.value 
+          : (p.default !== '' && p.default !== null && p.default !== undefined ? p.default : '');
+        acc[p.name] = finalValue;
+        return acc;
+      }, {} as Record<string, any>);
+      
+      // Record algorithm_id and algorithm_parameter_id for later use
+      if (onRecordParameterId && res.algorithm_parameter_id) {
+        onRecordParameterId(res.algorithm_id, res.algorithm_parameter_id);
       }
+      
+      // Record algorithm creation with values using the new callback
+      if (onRecordAlgorithmCreated) {
+        onRecordAlgorithmCreated(res.algorithm_id, values);
+      }
+      
+      // Also call onSaveValues for backward compatibility
+      if (onSaveValues) {
+        onSaveValues(values);
+      }
+
+      if (zipFile) {
+        try {
+          await algorithmAPI.uploadZip(res.algorithm_id, zipFile);
+        } catch (uploadErr) {
+          // Upload failed - delete the registered algorithm
+          try {
+            await algorithmAPI.delete(res.algorithm_id);
+          } catch (deleteErr) {
+            console.error('Failed to delete algorithm after upload error:', deleteErr);
+          }
+          // Surface upload error to UI
+          const msg = uploadErr instanceof Error ? uploadErr.message : String(uploadErr);
+          setErrorMessage(msg || 'ZIP upload failed');
+          return;
+        }
+      }
+
       setShowSuccessAnnouncement(true);
       setTimeout(() => {
         onSuccess();
-        onClose();
+        handleCloseAll();
       }, 1200);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create algorithm';
-      alert(message);
+      setErrorMessage(message);
     } finally {
       setLoading(false);
     }
@@ -93,31 +227,49 @@ export default function AlgorithmDetail({ open, onClose, onSuccess }: Props) {
 
   if (showSuccessAnnouncement) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
         <div className="bg-white rounded-lg shadow-xl p-8 text-center max-w-md">
           <CheckCircle size={64} className="text-green-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold mb-2">Saved!</h2>
-          <p className="text-gray-600 mb-2">Algorithm has been registered{zipFile ? ' and uploaded' : ''} successfully.</p>
+          <h2 className="text-2xl font-bold mb-2">{isEdit ? 'Saved!' : 'Saved!'}</h2>
+          <p className="text-gray-600 mb-2">
+            {isEdit
+              ? 'Parameters have been saved.'
+              : `Algorithm has been registered${zipFile ? ' and uploaded' : ''} successfully.`}
+          </p>
         </div>
       </div>
     );
   }
 
-  const currentEditingParam = editingIndex !== null ? params[editingIndex] : null;
+  if (errorMessage) {
+    return (
+      <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg shadow-xl p-6 text-center max-w-md">
+          <AlertCircle size={56} className="text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold mb-2 text-red-600">Error</h2>
+          <p className="text-gray-700 mb-4 whitespace-pre-wrap">{errorMessage}</p>
+          <div className="flex justify-center gap-2">
+            <button onClick={() => setErrorMessage(null)} className="px-4 py-2 border rounded">Close</button>
+            <button onClick={handleCloseAll} className="px-4 py-2 bg-gray-600 text-white rounded">Close Dialog</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl m-4">
+    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-40 mb-0">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl m-4">
         <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
           <h2 className="text-2xl font-bold">New Algorithm</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700" disabled={loading}>
+          <button onClick={handleCloseAll} className="text-gray-500 hover:text-gray-700" disabled={loading}>
             <X size={24} />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Basic Info */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Name <span className="text-red-500">*</span></label>
               <input
@@ -127,6 +279,7 @@ export default function AlgorithmDetail({ open, onClose, onSuccess }: Props) {
                 className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="e.g., MyAlgorithm"
                 required
+                disabled={isEdit}
               />
             </div>
             <div>
@@ -138,6 +291,17 @@ export default function AlgorithmDetail({ open, onClose, onSuccess }: Props) {
                 className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="e.g., 1.0.0"
                 required
+                disabled={isEdit}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Module ZIP (optional)</label>
+              <input
+                type="file"
+                accept=".zip"
+                onChange={(e) => setZipFile(e.target.files?.[0] || null)}
+                className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
+                disabled={isEdit}
               />
             </div>
           </div>
@@ -147,9 +311,10 @@ export default function AlgorithmDetail({ open, onClose, onSuccess }: Props) {
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              rows={3}
+              className="w-full border border-gray-300 rounded px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
+              rows={2}
               placeholder="Describe the algorithm..."
+              disabled={isEdit}
             />
           </div>
 
@@ -157,53 +322,150 @@ export default function AlgorithmDetail({ open, onClose, onSuccess }: Props) {
           <div className="border rounded p-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold">Algorithm Params</h3>
-              <button
-                type="button"
-                onClick={() => { setEditingIndex(null); setParamDialogOpen(true); }}
-                className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded flex items-center gap-1"
-              >
-                <Plus size={16} /> Add
-              </button>
+              {!isEdit && (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={addParam}
+                    title="Add parameter"
+                    className="p-1 bg-green-500 hover:bg-green-600 text-white rounded"
+                  >
+                    <Plus size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => deleteSelectedParam()}
+                    title="Delete selected"
+                    className="p-1 bg-red-500 hover:bg-red-600 text-white rounded"
+                  >
+                    <Minus size={16} />
+                  </button>
+                </div>
+              )}
             </div>
 
-            {params.length === 0 ? (
-              <div className="text-sm text-gray-500">No parameters yet.</div>
-            ) : (
-              <ul className="space-y-2">
-                {params.map((p, idx) => (
-                  <li key={idx} className="flex items-center justify-between border rounded px-3 py-2 bg-gray-50">
-                    <div>
-                      <div className="font-medium">{p.name} <span className="text-xs text-gray-500">({p.type})</span></div>
-                      <div className="text-xs text-gray-600">default: {String(p.default ?? '')} · value: {String(p.value ?? '')}</div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button type="button" className="text-blue-600 hover:underline" onClick={() => handleEditParam(idx)}>Edit</button>
-                      <button type="button" className="text-red-600 hover:text-red-700" onClick={() => handleDeleteParam(idx)}>
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <div className="overflow-x-auto overflow-y-scroll h-54 relative pr-2" style={{ scrollbarGutter: 'stable' }}>
+                <table className="w-full text-sm table-fixed border-collapse">
+                  <colgroup>
+                    <col style={{ width: '45%' }} />
+                    <col style={{ width: '25%' }} />
+                    <col style={{ width: '30%' }} />
+                  </colgroup>
+                  <thead className="bg-gray-100 sticky top-0 z-10">
+                    <tr>
+                      <th className="text-left px-3 py-2">Name</th>
+                      <th className="text-left px-3 py-2">Type</th>
+                      <th className="text-left px-3 py-2">{isEdit ? 'Value' : 'Default'}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {params.length === 0 ? (
+                      <tr>
+                        <td colSpan={3} className="px-3 py-6 text-center text-sm text-gray-500">No parameters yet.</td>
+                      </tr>
+                    ) : (
+                      params.map((p, idx) => {
+                        const isSelected = selectedParamIndex === idx;
+                        const isDirtyRow = isRowDirty(p, idx);
+                        const invalidName = !p.name || !String(p.name).trim();
+                        const invalidField = isEdit ? (p.value === '' || p.value === null || p.value === undefined) : (p.default === '' || p.default === null || p.default === undefined);
+                        return (
+                        <tr
+                          key={idx}
+                          role="button"
+                          onClick={() => setSelectedParamIndex(isSelected ? null : idx)}
+                          aria-pressed={isSelected}
+                          className={`border-b transition-colors ${isSelected ? 'bg-blue-50 ring-1 ring-blue-300' : isDirtyRow ? 'bg-yellow-50' : 'bg-white'}`}
+                        >
+                          <td className="px-3 py-2">
+                            <input
+                              type="text"
+                              value={p.name}
+                              onChange={(e) => updateParam(idx, 'name', e.target.value)}
+                              className={`w-full border rounded px-2 py-1 ${invalidName ? 'border-red-400' : ''}`}
+                              disabled={isEdit}
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            <select
+                              value={p.type}
+                              onChange={(e) => {
+                                const t = e.target.value;
+                                // reset default to sensible empty for new type
+                                let def: any = '';
+                                if (t === 'boolean') { def = ''; }
+                                if (t === 'number') { def = ''; }
+                                updateParam(idx, 'type', t);
+                                updateParam(idx, 'default', def);
+                              }}
+                              className={`w-full border rounded px-2 py-1 ${invalidField && !isEdit ? 'border-red-400' : ''}`}
+                              disabled={isEdit}
+                            >
+                              <option value="string">String</option>
+                              <option value="number">Number</option>
+                              <option value="boolean">Boolean</option>
+                            </select>
+                          </td>
+                          <td className="px-3 py-2">
+                            {isEdit ? (
+                              p.type === 'boolean' ? (
+                                <select
+                                  value={String(p.value ?? '')}
+                                  onChange={(e) => updateParam(idx, 'value', e.target.value === 'true' ? true : e.target.value === 'false' ? false : '')}
+                                  className={`w-full border rounded px-2 py-1 ${invalidField ? 'border-red-400' : ''}`}
+                                >
+                                  <option value="">{`-- Default: ${String(p.default ?? '')} --`}</option>
+                                  <option value="true">True</option>
+                                  <option value="false">False</option>
+                                </select>
+                              ) : (
+                                <input
+                                  type={p.type === 'number' ? 'number' : 'text'}
+                                  value={String(p.value ?? '')}
+                                  onChange={(e) => updateParam(idx, 'value', p.type === 'number' ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value)}
+                                  placeholder={String(p.default ?? '')}
+                                  className={`w-full border rounded px-2 py-1 ${invalidField ? 'border-red-400' : ''}`}
+                                />
+                              )
+                            ) : (
+                              p.type === 'boolean' ? (
+                                <select
+                                  value={String(p.default ?? '')}
+                                  onChange={(e) => updateParam(idx, 'default', e.target.value === 'true' ? true : e.target.value === 'false' ? false : '')}
+                                  className={`w-full border rounded px-2 py-1 ${invalidField ? 'border-red-400' : ''}`}
+                                >
+                                  <option value="">-- None --</option>
+                                  <option value="true">True</option>
+                                  <option value="false">False</option>
+                                </select>
+                              ) : (
+                                <input
+                                  type={p.type === 'number' ? 'number' : 'text'}
+                                  value={String(p.default ?? '')}
+                                  onChange={(e) => updateParam(idx, 'default', p.type === 'number' ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value)}
+                                  className={`w-full border rounded px-2 py-1 ${invalidField ? 'border-red-400' : ''}`}
+                                />
+                              )
+                            )}
+                          </td>
+                        </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
           </div>
 
-          {/* Optional ZIP */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Module ZIP (optional)</label>
-            <input
-              type="file"
-              accept=".zip"
-              onChange={(e) => setZipFile(e.target.files?.[0] || null)}
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <p className="text-xs text-gray-500 mt-1">If provided, the ZIP will be uploaded after registering the metadata.</p>
-          </div>
 
+
+          {hasEmptyParam && (
+            <p className="text-sm text-red-600">Please fill all parameter {isEdit ? 'values' : 'defaults'} before submitting.</p>
+          )}
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleCloseAll}
               className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
               disabled={loading}
             >
@@ -212,21 +474,15 @@ export default function AlgorithmDetail({ open, onClose, onSuccess }: Props) {
             <button
               type="submit"
               className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-60"
-              disabled={loading || !canSubmit}
+              disabled={loading || !canSubmit || hasEmptyParam}
             >
-              {loading ? 'Saving...' : 'OK'}
+              {loading ? 'Saving...' : isEdit ? 'Save' : 'OK'}
             </button>
           </div>
         </form>
       </div>
 
-      {/* Param Dialog */}
-      <ParamDialog
-        open={paramDialogOpen}
-        param={currentEditingParam}
-        onClose={() => setParamDialogOpen(false)}
-        onSave={(p) => { handleSaveParam(p); setParamDialogOpen(false); }}
-      />
+      {/* Param dialog removed - params are edited inline */}
     </div>
   );
 }

@@ -15,13 +15,22 @@ export const algorithmAPI = {
   },
 
   /**
-   * Đăng ký thuật toán (metadata only) → trả về algorithm_id
+   * Đăng ký thuật toán (metadata only) → trả về algorithm_id, algorithm_parameter_id
    */
   async register(metadata: AlgorithmMetadata): Promise<RegisterAlgorithmResponse> {
-    return fetchAPI<RegisterAlgorithmResponse>('/algorithms/', {
+    const response = await fetch(getApiUrl('/algorithms/'), {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(metadata),
     });
+    console.log('API Response [/algorithms/]:', response);
+    const data = await response.json() as RegisterAlgorithmResponse;
+    console.log('RegisterAlgorithmResponse:', {
+      algorithm_id: data.algorithm_id,
+      algorithm_parameter_id: data.algorithm_parameter_id,
+      message: data.message,
+    });
+    return data;       
   },
 
   /**

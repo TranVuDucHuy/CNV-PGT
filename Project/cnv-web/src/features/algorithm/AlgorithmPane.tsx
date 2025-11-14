@@ -5,15 +5,19 @@
 
 "use client";
 
-import React, { useState } from 'react';
-import { Plus, Minus, StepForward } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Plus, Minus, StepForward, Edit } from 'lucide-react';
 import { useAlgorithms } from './useAlgorithms';
 import AlgorithmDetail from '@/components/AlgorithmDetail';
 
 export default function AlgorithmPane() {
-  const { algorithms, loading, deleteAlgorithm, loadAlgorithms } = useAlgorithms();
+  const { algorithms, loading, deleteAlgorithm, loadAlgorithms, lastParameterIds, lastValues, recordParameterId, recordLastValues } = useAlgorithms();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string | number>>(new Set());
+  const [editOpen, setEditOpen] = useState(false);
+  const [editTargetId, setEditTargetId] = useState<string | number | null>(null);
+
+  const editTarget = useMemo(() => algorithms.find(a => a.id === editTargetId), [algorithms, editTargetId]);
 
   const handleAdd = () => {
     setDialogOpen(true);
@@ -55,6 +59,12 @@ export default function AlgorithmPane() {
     }
   };
 
+  const handleEditClick = (id: string | number | undefined) => {
+    if (id === undefined || id === null) return;
+    setEditTargetId(id);
+    setEditOpen(true);
+  };
+
   return (
     <>
       <details open className="border rounded-md">
@@ -86,7 +96,7 @@ export default function AlgorithmPane() {
           </div>
         </summary>
 
-        <div className="p-3 space-y-2">
+  <div className="p-3 space-y-2 max-h-52 overflow-y-scroll pr-2" style={{ scrollbarGutter: 'stable' }}>
           {loading ? (
             <div className="text-gray-500 text-sm text-center py-4">
               Loading algorithms...
@@ -104,21 +114,27 @@ export default function AlgorithmPane() {
                 role="button"
                 onClick={() => toggleSelect(algo.id)}
                 aria-pressed={isSelected}
-                className={`border p-2 rounded shadow-sm cursor-pointer transition-colors ${
-                  isSelected ? 'bg-blue-100 border-blue-500' : 'bg-white hover:bg-gray-50'
+                className={`group border p-2 rounded cursor-pointer transition-all duration-200 ${
+                  isSelected 
+                    ? 'bg-blue-300 border-blue-600 shadow-md' 
+                    : 'bg-white hover:bg-blue-100 hover:shadow-md hover:border-blue-400'
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <span className="font-medium">
                     {algo.name} <span className="text-xs text-gray-500">v{algo.version}</span>
-                    {isSelected && <span className="ml-2 text-xs text-blue-700">(selected)</span>}
+                    {isSelected && <span className="ml-2 text-xs text-blue-700"></span>}
                   </span>
-                </div>
-                {algo.description && (
-                  <p className="text-xs text-gray-600 mt-1">{algo.description}</p>
-                )}
-                <div className="text-xs text-gray-500 mt-1">
-                  {algo.parameters.length} parameter(s)
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); handleEditClick(algo.id); }}
+                      title="Edit"
+                      className="p-1 text-gray-600 hover:bg-gray-100 rounded transition-transform transform hover:scale-110"
+                    >
+                      <Edit size={16} />
+                    </button>
+                  </div>
                 </div>
               </div>
             );})
@@ -130,9 +146,32 @@ export default function AlgorithmPane() {
       <AlgorithmDetail
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
+        onRecordParameterId={recordParameterId}
+        onRecordAlgorithmCreated={(algorithmId, values) => {
+          console.log('Algorithm created:', algorithmId, values);
+          recordLastValues(algorithmId, values);
+        }}
         onSuccess={() => {
           // Refresh list after creation
           loadAlgorithms();
+        }}
+      />
+
+      {/* Edit Algorithm Dialog */}
+      <AlgorithmDetail
+        open={editOpen}
+        mode="edit"
+        initialAlgorithm={editTarget}
+        lastParamValues={editTarget ? (lastValues[String(editTarget.id)] || (editTarget.parameters?.[editTarget.parameters.length - 1]?.value) || {}) : {}}
+        onSaveValues={(vals) => {
+          if (editTarget) {
+            recordLastValues(String(editTarget.id), vals);
+          }
+        }}
+        onClose={() => setEditOpen(false)}
+        onSuccess={() => {
+          // For now, no backend update; we just keep values in local state
+          setEditOpen(false);
         }}
       />
     </>
