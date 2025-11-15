@@ -13,7 +13,9 @@ router = APIRouter()
 @router.post("/")
 async def upload_file(file: UploadFile = File(...), db: Session = Depends(get_db)):
     content = await file.read()
-    result = SampleService.save(db=db, file_stream=content, file_name=file.filename.replace(".bam",""))
+    name = file.filename
+    fileName = name[:name.index("_")]
+    result = SampleService.save(db=db, file_stream=content, file_name=fileName)
     success = result.get("success")
     message = ""
     if success:
@@ -32,7 +34,9 @@ async def upload_multiple_files(
     for file in files:
         content = await file.read()
         file_streams.append(content)
-        names.append(file.filename.replace(".bam",""))
+        name = file.filename
+        fileName = name[:name.index("_")]
+        names.append(fileName)
     result = SampleService.save_many(db=db, files=file_streams, names=names)
     # result có thể là dict như: {"added": [...], "skipped": [...]}
     added = result.get("added", [])

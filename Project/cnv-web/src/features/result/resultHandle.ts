@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { resultAPI } from "@/services"; // your provided API wrapper
-import { ResultSummary, ResultDto } from "@/types/result";
+import { ResultSummary, ResultDto, ReferenceGenome } from "@/types/result";
+import { Algorithm } from '@/types/algorithm';
 
 export interface UseSampleHandleReturn {
   results: ResultSummary[];
@@ -8,15 +9,17 @@ export interface UseSampleHandleReturn {
   segmentFile: File | null;
   loading: boolean;
   error: string | null;
-  algoId: string | null;
+  algo: Algorithm | null;
   resultDtos: ResultDto[];
+  referenceGenome: ReferenceGenome;
   setBinFile: (f: File | null) => void;
   setSegmentFile: (f: File | null) => void;
   save: () => Promise<void>;
   refresh: () => Promise<void>;
   removeResults: (ids: Set<string>) => Promise<void>;
   getAll: () => Promise<ResultSummary[]>;
-  setAlgoId: (id: string) => void;
+  setAlgo: (al: Algorithm) => void;
+  setReferenceGenome: (refGe: ReferenceGenome) => void;
 }
 
 export default function useResultHandle(initial: ResultSummary[] = []): UseSampleHandleReturn {
@@ -25,8 +28,9 @@ export default function useResultHandle(initial: ResultSummary[] = []): UseSampl
   const [segmentFile, setSegmentFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [algoId, setAlgoId] = useState<string | null>(null);
+  const [algo, setAlgo] = useState<Algorithm | null>(null);
   const [resultDtos, setResultDtos] = useState<ResultDto[]>([]);
+  const [referenceGenome, setReferenceGenome] = useState<ReferenceGenome>('HG19');
 
   useEffect(() => {
     // await refresh and properly handle loading
@@ -86,7 +90,7 @@ export default function useResultHandle(initial: ResultSummary[] = []): UseSampl
       setResultDtos(allDtos);
       //return all;
     } catch (err) {
-      console.error("Failed to refresh samples", err);
+      console.error("Failed to refresh results", err);
       throw err;
     } finally {
       setLoading(false);
@@ -94,16 +98,16 @@ export default function useResultHandle(initial: ResultSummary[] = []): UseSampl
   }, [fetchDtosFromSummaries]);
 
   const save = useCallback(async () => {
-    if (!binFile || !segmentFile || !algoId) return;
+    if (!binFile || !segmentFile || !algo) return;
 
     try {
-      await resultAPI.create(binFile, segmentFile, algoId);
+      await resultAPI.create(binFile, segmentFile, algo.id, algo.parameters?.[0].id, referenceGenome);
       await refresh();
     } catch (err) {
-      console.error("Failed to upload sample file:", err);
+      console.error("Failed to upload result file:", err);
       throw err;
     }
-  }, [binFile, segmentFile, algoId, refresh]);
+  }, [binFile, segmentFile, algo, refresh, referenceGenome]);
 
   const removeResults = useCallback(async (ids: Set<string>) => {
     try {
@@ -117,6 +121,7 @@ export default function useResultHandle(initial: ResultSummary[] = []): UseSampl
           await resultAPI.delete(id);
           console.log("deleted", id);
           ids.delete(id);
+          refresh()
         } catch (err) {
           console.error("delete failed", id, err);
         }
@@ -147,14 +152,16 @@ export default function useResultHandle(initial: ResultSummary[] = []): UseSampl
     segmentFile,
     loading,
     error,
-    algoId,
+    algo,
     resultDtos,
+    referenceGenome,
     setBinFile,
     setSegmentFile,
     save,
     refresh,
     removeResults,
     getAll,
-    setAlgoId
+    setAlgo,
+    setReferenceGenome
   };
 }

@@ -16,7 +16,7 @@ export type Chromosome =
   | '21' | '22' | 'X' | 'Y' | 'MT'
   | string;
 
-export type ReferenceGenome = 'HG19' | 'HG38' | string;
+export type ReferenceGenome = 'GRCh37/hg19' | 'GRCh38/hg38' | string;
 
 /* -------------------- SAMPLE BIN -------------------- */
 export interface SampleBin {
@@ -70,7 +70,7 @@ export interface Result {
 /** Tương ứng với lớp `ResultSummary` trong backend */
 export interface ResultSummary {
   id: string;
-  sample_id: string;
+  sample_name: string;
   algorithm_name: string;
   reference_genome: ReferenceGenome | string;
   created_at: string; // ISO format datetime

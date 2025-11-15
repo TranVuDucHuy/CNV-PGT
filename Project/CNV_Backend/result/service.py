@@ -247,11 +247,12 @@ class ResultService:
         stmt = (
             select(
                 Result.id,
-                Result.sample_id,
+                Sample.name.label("sample_name"),
                 Algorithm.name.label("algorithm_name"),
                 Result.reference_genome,
                 Result.created_at.label("created_at"),
             )
+            .join(Sample)
             .join(Algorithm)
             .order_by(Result.created_at.desc())
         )
@@ -263,11 +264,12 @@ class ResultService:
         stmt = (
             select(
                 Result.id,
-                Result.sample_id,
+                Sample.name.label("sample_name"),
                 Algorithm.name.label("algorithm_name"),
                 Result.reference_genome,
                 Result.created_at.label("created_at"),
             )
+            .join(Sample)
             .join(Algorithm)
             .where(Result.id == result_id)
         )
