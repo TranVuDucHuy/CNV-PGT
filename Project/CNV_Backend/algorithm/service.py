@@ -72,6 +72,7 @@ class AlgorithmService:
             plugin_dir.mkdir(parents=True, exist_ok=True)
 
             _extract_files_from_zip(algorithm_zip, plugin_dir)
+            AlgorithmService._ensure_venv_exists(plugin_dir)
 
             # Validate classes
             modules_classes = [
@@ -149,24 +150,7 @@ class AlgorithmService:
         return result
 
     @staticmethod
-    def run(
-        db: Session,
-        plugin_dir: Path,
-        algorithm_id: str,
-        input_data: dict,
-        **kwargs,
-    ) -> BaseOutput:
-        algorithm = db.query(Algorithm).filter(Algorithm.id == algorithm_id).first()
-        if not algorithm:
-            raise ValueError(f"Algorithm with id {algorithm_id} not found")
-
-        # If plugin_dir for this algorithm does not exist, create it
-        plugin_dir = plugin_dir / algorithm_id
-        if not plugin_dir.exists():
-            plugin_dir.mkdir(parents=True, exist_ok=True)
-            algorithm_zip = MinioUtil.get_file(algorithm.url)
-            _extract_files_from_zip(algorithm_zip, plugin_dir)
-
+    def _ensure_venv_exists(plugin_dir: Path):
         venv_dir = plugin_dir / ".venv"
         python_bin = (
             venv_dir / "Scripts" / "python.exe"
@@ -192,6 +176,27 @@ class AlgorithmService:
                     ],
                     check=True,
                 )
+
+    @staticmethod
+    def run(
+        db: Session,
+        plugin_dir: Path,
+        algorithm_id: str,
+        input_data: dict,
+        **kwargs,
+    ) -> BaseOutput:
+        algorithm = db.query(Algorithm).filter(Algorithm.id == algorithm_id).first()
+        if not algorithm:
+            raise ValueError(f"Algorithm with id {algorithm_id} not found")
+
+        # If plugin_dir for this algorithm does not exist, create it
+        plugin_dir = plugin_dir / algorithm_id
+        if not plugin_dir.exists():
+            plugin_dir.mkdir(parents=True, exist_ok=True)
+            algorithm_zip = MinioUtil.get_file(algorithm.url)
+            _extract_files_from_zip(algorithm_zip, plugin_dir)
+
+        AlgorithmService._ensure_venv_exists(plugin_dir)
 
         names = [algorithm.input_class, algorithm.exe_class]
         classes = []

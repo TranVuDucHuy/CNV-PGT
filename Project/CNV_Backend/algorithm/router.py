@@ -12,6 +12,7 @@ from common.schemas import BasicResponse
 from database import get_db
 from sqlalchemy.orm import Session
 import io
+import traceback
 
 router = APIRouter()
 
@@ -56,6 +57,7 @@ def upload_algorithm_zip(
         print(f"✅ Algorithm {file.filename} uploaded successfully")
         return BasicResponse(message="Algorithm uploaded successfully")
     except Exception as e:
+        traceback.print_exc()
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 
