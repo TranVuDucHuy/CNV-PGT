@@ -1,0 +1,71 @@
+# OS generated files
+.DS_Store
+Thumbs.db
+algorithms_container/
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.pyd
+*.pyo
+*.pyc
+
+# Virtual environments
+env/
+venv/
+ENV/
+.venv/
+.python-version
+
+# IDEs and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test and coverage output
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+pytest_cache/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+
+# FastAPI related
+instance/
+*.sqlite3
+
+# Logs
+*.log
+
+# dotenv environment variables
+.env
+.env.*
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# Minio temp data or config (if any)
+minio_data/
+
+# Miscellaneous
+*.bak
+*.tmp
+*~
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+

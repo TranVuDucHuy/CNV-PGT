@@ -22,10 +22,6 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
 ]
 
-[project.urls]
-Homepage = "https://example.com/huycnv"
-Repository = "https://example.com/huycnv.git"
-
 [tool.setuptools.packages.find]
 include = ["huycnv*"]
 

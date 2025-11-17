@@ -11,7 +11,7 @@ pip install -r requirements.txt
 - Start the FastAPI server using Uvicorn:
 
 ```bash
-uvicorn main:app
+uvicorn main:app --reload
 ```
 
 # How to upload an algorithm plugin

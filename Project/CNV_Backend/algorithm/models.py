@@ -13,7 +13,6 @@ class Algorithm(Base):
     version = Column(String(64), nullable=False)
     description = Column(String(1024), nullable=True)
     upload_date = Column(Date, nullable=False, default=datetime.datetime.now)
-    url = Column(String(256), nullable=True)
     input_class = Column(String(256), nullable=True)
     output_class = Column(String(256), nullable=True)
     exe_class = Column(String(256), nullable=True)

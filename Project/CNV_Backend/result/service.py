@@ -19,7 +19,9 @@ SEGMENT_EXPECTED = {"chromosome", "start", "end", "copy_number", "confidence"}
 BIN_EXPECTED = {"chromosome", "start", "end", "copy_number", "read_count", "gc_content"}
 
 
-def _parse_tsv_bytes(b: bytes, expected_cols: set, file_label: str) -> Iterator[Tuple[int, dict]]:
+def _parse_tsv_bytes(
+    b: bytes, expected_cols: set, file_label: str
+) -> Iterator[Tuple[int, dict]]:
     f = io.TextIOWrapper(io.BytesIO(b), encoding="utf-8")
     reader = csv.DictReader(f, delimiter="\t")
     if not reader.fieldnames:
@@ -30,7 +32,9 @@ def _parse_tsv_bytes(b: bytes, expected_cols: set, file_label: str) -> Iterator[
         raise ValueError(f"{file_label}: missing columns {missing}")
     row_count = 0
     for i, raw in enumerate(reader, start=1):
-        row = {k.strip(): (v.strip() if isinstance(v, str) else v) for k, v in raw.items()}
+        row = {
+            k.strip(): (v.strip() if isinstance(v, str) else v) for k, v in raw.items()
+        }
         row_count += 1
         yield i, row
 
@@ -41,17 +45,18 @@ def _parse_tsv_bytes(b: bytes, expected_cols: set, file_label: str) -> Iterator[
 def _map_chromosome(value: str) -> Chromosome:
     """Map chromosome với các trường hợp (normalize & thử nhiều format)."""
     v = value.strip().removeprefix("chr").removeprefix("CHR")
-    
+
     for resolver in (
-        lambda: Chromosome(v),                # value-based
-        lambda: Chromosome[v.upper()],        # name-based
-        lambda: Chromosome(int(v)),           # numeric-based
+        lambda: Chromosome(v),  # value-based
+        lambda: Chromosome[v.upper()],  # name-based
+        lambda: Chromosome(int(v)),  # numeric-based
     ):
         try:
             return resolver()
         except Exception:
             continue
     raise ValueError(f"Cannot map chromosome value '{value}' to Chromosome enum")
+
 
 class ResultService:
     @staticmethod
@@ -68,15 +73,19 @@ class ResultService:
         sample_obj = db.query(Sample).filter(Sample.name == sample_name).first()
         if not sample_obj:
             raise ValueError(f"Sample {sample_name} not found")
-        
+
         alg = db.query(Algorithm).filter(Algorithm.id == algorithm_id).first()
         if not alg:
             raise ValueError(f"Algorithm {algorithm_id} not found")
-        
-        alg_param = (db.query(AlgorithmParameter).filter(AlgorithmParameter.id == algorithm_parameter_id).first())
+
+        alg_param = (
+            db.query(AlgorithmParameter)
+            .filter(AlgorithmParameter.id == algorithm_parameter_id)
+            .first()
+        )
         if not alg_param:
             raise ValueError(f"AlgorithmParameter {algorithm_parameter_id} not found")
-        
+
         # 1. Kiểm tra trùng
         existing = (
             db.query(Result)
@@ -98,10 +107,10 @@ class ResultService:
         segments_objs: list[SampleSegment] = []
         for idx, row in _parse_tsv_bytes(segments_tsv, SEGMENT_EXPECTED, "segments"):
             try:
-                chrom = _map_chromosome(row["chromosome"])  
-                start = int(row["start"])  
-                end = int(row["end"])  
-                copy_number = float(row["copy_number"])  
+                chrom = _map_chromosome(row["chromosome"])
+                start = int(row["start"])
+                end = int(row["end"])
+                copy_number = float(row["copy_number"])
                 conf_raw = row.get("confidence", "")
                 confidence = float(conf_raw) if conf_raw not in (None, "") else None
             except Exception as e:
@@ -173,7 +182,7 @@ class ResultService:
         sample_id: str,
         algorithm_id: str,
         algorithm_parameter_id: str,
-        algorithm_output: BaseOutput,
+        algorithm_output: dict,
     ):
         # Kiểm tra trùng
         existing = (
@@ -195,35 +204,31 @@ class ResultService:
             sample_id=sample_id,
             algorithm_id=algorithm_id,
             algorithm_parameter_id=algorithm_parameter_id,
-            reference_genome=ReferenceGenome(algorithm_output.reference_genome),
+            reference_genome=ReferenceGenome(algorithm_output["reference_genome"]),
         )
 
         segments = [
             SampleSegment(
                 id=uuid4().hex,
-                result_id=result.id,
-                chromosome=Chromosome(segment.chromosome),
-                start=segment.start,
-                end=segment.end,
-                copy_number=segment.copy_number,
-                confidence=segment.confidence,
-                result=result,
+                chromosome=Chromosome(segment["chromosome"]),
+                start=segment["start"],
+                end=segment["end"],
+                copy_number=segment["copy_number"],
+                confidence=segment["confidence"],
             )
-            for segment in algorithm_output.segments
+            for segment in algorithm_output["segments"]
         ]
         bins = [
             SampleBin(
                 id=uuid4().hex,
-                result_id=result.id,
-                chromosome=Chromosome(bin.chromosome),
-                start=bin.start,
-                end=bin.end,
-                copy_number=bin.copy_number,
-                read_count=bin.read_count,
-                gc_content=bin.gc_content,
-                result=result,
+                chromosome=Chromosome(bin["chromosome"]),
+                start=bin["start"],
+                end=bin["end"],
+                copy_number=bin["copy_number"],
+                read_count=bin["read_count"],
+                gc_content=bin["gc_content"],
             )
-            for bin in algorithm_output.bins
+            for bin in algorithm_output["bins"]
         ]
 
         result.segments = segments

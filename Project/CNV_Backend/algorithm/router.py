@@ -50,7 +50,6 @@ def upload_algorithm_zip(
         algorithm_zip = file.file.read()
         AlgorithmService.save_zip(
             db=db,
-            plugin_dir=request.app.state.plugin_dir,
             algorithm_id=algorithm_id,
             algorithm_zip=algorithm_zip,
         )
@@ -64,22 +63,23 @@ def upload_algorithm_zip(
 @router.get("/{algorithm_id}/run")
 def run_algorithm(
     algorithm_id: str,
+    sample_id: str,
     request: Request,
     db: Session = Depends(get_db),
 ):
-    input_data = {
-        "sample_id": "324e7f24-e9c4-4b3e-99af-5cad6e716f1d",
-        "params_id": "f1f948ba095241e1a55aa72e643d0c5b",
-        "input_1": "example_input",
-        "input_2": 42,
-    }
-    output = AlgorithmService.run(
-        db=db,
-        plugin_dir=request.app.state.plugin_dir,
-        algorithm_id=algorithm_id,
-        input_data=input_data,
-    )
-    return output
+    try:
+        input_data = {
+            "sample_id": sample_id,
+        }
+        output = AlgorithmService.run(
+            db=db,
+            algorithm_id=algorithm_id,
+            input_data=input_data,
+        )
+        return output
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.get("/{algorithm_id}", response_model=AlgorithmDto)
@@ -119,4 +119,5 @@ def delete_algorithm(
         AlgorithmService.delete(db=db, algorithm_id=algorithm_id)
         return BasicResponse(message="Algorithm deleted successfully")
     except Exception as e:
+        traceback.print_exc()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

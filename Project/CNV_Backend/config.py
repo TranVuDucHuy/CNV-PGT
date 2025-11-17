@@ -19,3 +19,12 @@ class MinioConfig:
     SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "miniorootpw")
     USE_SSL = os.getenv("MINIO_USE_SSL", "false").lower() == "true"
     BUCKET = os.getenv("MINIO_BUCKET", "cnv-bucket")
+
+
+class SandboxConfig:
+    SANDBOX_INSTALLER_URL = os.getenv(
+        "SANDBOX_INSTALLER_URL", "http://localhost:8001/api/v1/installer"
+    )
+    SANDBOX_RUNNER_URL = os.getenv(
+        "SANDBOX_RUNNER_URL", "http://localhost:8016/api/v1/runner"
+    )

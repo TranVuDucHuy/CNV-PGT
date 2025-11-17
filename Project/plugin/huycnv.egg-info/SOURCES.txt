@@ -1,0 +1,11 @@
+LICENSE
+MANIFEST.in
+README.md
+pyproject.toml
+huycnv/__init__.py
+huycnv/plugin.py
+huycnv.egg-info/PKG-INFO
+huycnv.egg-info/SOURCES.txt
+huycnv.egg-info/dependency_links.txt
+huycnv.egg-info/requires.txt
+huycnv.egg-info/top_level.txt
