@@ -1,4 +1,4 @@
-// SampleBinTable.tsx
+// SampleSegmentTable.tsx
 import React from "react";
 import {
   Table,
@@ -11,22 +11,21 @@ import {
   TableSortLabel,
 } from "@mui/material";
 
-import { SampleBin } from "@/types/result";
+import { SampleSegment } from "@/types/result";
 
 type Order = "asc" | "desc";
 
 type Props = {
-  data: SampleBin[];
+  data: SampleSegment[];
   dense?: boolean;
-  onRowClick?: (row: SampleBin) => void;
-  fullHeight?: boolean; // new
+  onRowClick?: (row: SampleSegment) => void;
+  fullHeight?: boolean;
 };
 
 function descendingComparator<T>(a: T, b: T, orderBy: keyof T) {
   const va = (a as any)[orderBy];
   const vb = (b as any)[orderBy];
 
-  // handle undefined/null
   if (va == null && vb == null) return 0;
   if (va == null) return 1;
   if (vb == null) return -1;
@@ -34,11 +33,9 @@ function descendingComparator<T>(a: T, b: T, orderBy: keyof T) {
   if (typeof va === "number" && typeof vb === "number") {
     return vb - va;
   }
-  // for boolean -> convert to number
   if (typeof va === "boolean" && typeof vb === "boolean") {
     return Number(vb) - Number(va);
   }
-  // fallback to string comparison
   return String(vb).localeCompare(String(va), undefined, { numeric: true });
 }
 
@@ -61,16 +58,14 @@ function stableSort<T>(array: T[], comparator: (a: T, b: T) => number) {
   return stabilized.map((el) => el[0]);
 }
 
-export default function SampleBinTable({
+export default function SampleSegmentTable({
   data,
   dense = false,
   onRowClick,
   fullHeight = false,
 }: Props) {
   const [order, setOrder] = React.useState<Order>("asc");
-  const [orderBy, setOrderBy] = React.useState<keyof SampleBin | "gc_content_percent" | "result_name">(
-    "id"
-  );
+  const [orderBy, setOrderBy] = React.useState<keyof SampleSegment | "result_name">("id");
 
   const handleRequestSort = (property: typeof orderBy) => {
     const isAsc = orderBy === property && order === "asc";
@@ -78,16 +73,13 @@ export default function SampleBinTable({
     setOrderBy(property);
   };
 
-  // prepare rows: augment gc_content_percent and result_name for sorting
   const rows = React.useMemo(() => {
     return data.map((r) => ({
       ...r,
-      gc_content_percent: r.gc_content != null ? r.gc_content * 100 : null,
       result_name: r.result?.reference_genome ?? "",
     }));
   }, [data]);
 
-  // pick comparator key: cast to any because we augmented rows
   const sortedRows = stableSort(rows, getComparator(order, orderBy as any));
 
   return (
@@ -159,23 +151,23 @@ export default function SampleBinTable({
                 </TableSortLabel>
               </TableCell>
 
-              <TableCell align="right" sortDirection={orderBy === "read_count" ? order : false}>
+              <TableCell align="right" sortDirection={orderBy === "confidence" ? order : false}>
                 <TableSortLabel
-                  active={orderBy === "read_count"}
-                  direction={orderBy === "read_count" ? order : "asc"}
-                  onClick={() => handleRequestSort("read_count")}
+                  active={orderBy === "confidence"}
+                  direction={orderBy === "confidence" ? order : "asc"}
+                  onClick={() => handleRequestSort("confidence")}
                 >
-                  Read Count
+                  Confidence
                 </TableSortLabel>
               </TableCell>
 
-              <TableCell align="right" sortDirection={orderBy === "gc_content_percent" ? order : false}>
+              <TableCell sortDirection={orderBy === "man_change" ? order : false}>
                 <TableSortLabel
-                  active={orderBy === "gc_content_percent"}
-                  direction={orderBy === "gc_content_percent" ? order : "asc"}
-                  onClick={() => handleRequestSort("gc_content_percent")}
+                  active={orderBy === "man_change"}
+                  direction={orderBy === "man_change" ? order : "asc"}
+                  onClick={() => handleRequestSort("man_change")}
                 >
-                  GC %
+                  Manual Change
                 </TableSortLabel>
               </TableCell>
 
@@ -215,10 +207,10 @@ export default function SampleBinTable({
                 <TableCell align="right">{r.start}</TableCell>
                 <TableCell align="right">{r.end}</TableCell>
                 <TableCell align="right">{r.copy_number}</TableCell>
-                <TableCell align="right">{r.read_count}</TableCell>
                 <TableCell align="right">
-                  {r.gc_content != null ? (r.gc_content * 100).toFixed(2) + "%" : "-"}
+                  {r.confidence != null ? Number(r.confidence).toFixed(4) : "-"}
                 </TableCell>
+                <TableCell>{r.man_change ? "Yes" : "No"}</TableCell>
                 <TableCell>{r.result?.reference_genome}</TableCell>
               </TableRow>
             ))}

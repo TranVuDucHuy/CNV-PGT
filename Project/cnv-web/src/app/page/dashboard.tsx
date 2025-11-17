@@ -1,8 +1,4 @@
-/**
- * Dashboard - Main Container
- * Chỉ chứa layout, không chứa business logic
- */
-
+// dashboard.tsx
 "use client";
 
 import React from "react";
@@ -14,10 +10,8 @@ import ContentPane from "@/features/content/ContentPane";
 import { ViewProvider } from "@/features/view/viewHandle";
 
 const DashboardView: React.FC = () => {
-
   return (
     <div className="flex flex-col h-screen font-sans">
-
       {/* Menu Bar */}
       <nav className="bg-gray-200 border-b border-gray-400 px-4 py-2 flex items-center">
         <h1 className="text-lg font-bold">CNV Analysis Dashboard</h1>
@@ -25,9 +19,8 @@ const DashboardView: React.FC = () => {
 
       {/* Split Pane */}
       <div className="flex flex-1">
-
         <ViewProvider>
-          {/* Left Pane - Sidebar với các feature panes */}
+          {/* Left Pane */}
           <div className="w-60 border-r border-gray-300 bg-gray-50 p-3 overflow-y-auto space-y-3">
             <SamplePane />
             <AlgorithmPane />
@@ -35,14 +28,13 @@ const DashboardView: React.FC = () => {
             <ViewPane />
           </div>
 
-          {/* Right Pane - Content Area */}
-          <div className="flex-1 bg-gray-100 flex items-center justify-center">
+          {/* Right Pane - Content Area (now full-size) */}
+          <div className="flex-1 bg-gray-100 flex">
             <div
               id="contentArea"
-              className="w-full h-full bg-gray-200 border rounded-lg flex items-center justify-center"
+              className="w-full h-full bg-gray-200 border rounded-lg flex flex-col p-3"
             >
-              <span className="text-gray-600">Content Area</span>
-              <ContentPane/>
+              <ContentPane />
             </div>
           </div>
         </ViewProvider>
