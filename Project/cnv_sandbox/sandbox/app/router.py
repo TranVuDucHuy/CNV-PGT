@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request, UploadFile, File, HTTPException, Response, Form
 import traceback
-from .service import InstallerService
+from .service import SandboxService
 import json
 import subprocess
 
@@ -15,20 +15,9 @@ def install_algorithm_zip(
 ):
     try:
         algorithm_zip = file.file.read()
-        InstallerService.install_from_zip(
+        SandboxService.install_from_zip(
             algorithm_id=algorithm_id, algo_zip=algorithm_zip
         )
-
-        # Restart the runner service to load the new algorithm
-        runner_process = request.app.state.runner_process
-        print("Runner process in root endpoint:", runner_process)
-        if runner_process:
-            print("Restarting runner process...")
-            runner_process.terminate()
-            runner_process.wait()
-        runner_process = subprocess.Popen(["uvicorn", "runner:app", "--port", "8016"])
-        request.app.state.runner_process = runner_process
-        print("New runner process started:", runner_process)
 
     except Exception as e:
 
@@ -38,12 +27,45 @@ def install_algorithm_zip(
     return {"message": "Algorithm zip installed successfully"}
 
 
+@router.post("/{algorithm_id}/run")
+def run_algorithm(
+    algorithm_id: str,
+    bam: UploadFile = File(...),
+    input_data: str = Form(...),
+    params: str = Form(...),
+    input_cls: str = Form(...),
+    exe_cls: str = Form(...),
+):
+    try:
+        # Print all received parameters for debugging
+        print("Algorithm ID:", algorithm_id)
+        print("Running algorithm with data:", input_data)
+        print("Parameters:", params)
+        print("Input Class:", input_cls)
+        print("Execution Class:", exe_cls)
+        input_data_dict = json.loads(input_data)
+        params_dict = json.loads(params)
+        result = SandboxService.run_algorithm(
+            algorithm_id=algorithm_id,
+            input_cls=input_cls,
+            exe_cls=exe_cls,
+            bam=bam.file.read(),
+            input_data=input_data_dict,
+            **params_dict,
+        )
+        return result
+
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.delete("/{algorithm_id}")
 def uninstall_algorithm(
     algorithm_id: str,
 ):
     try:
-        InstallerService.uninstall_algorithm(algorithm_id=algorithm_id)
+        SandboxService.uninstall_algorithm(algorithm_id=algorithm_id)
 
     except Exception as e:
         traceback.print_exc()
@@ -57,7 +79,7 @@ def download_algorithm_zip(
     algorithm_id: str,
 ):
     try:
-        algo_zip = InstallerService.get_algorithm_zip(algorithm_id=algorithm_id)
+        algo_zip = SandboxService.get_algorithm_zip(algorithm_id=algorithm_id)
         return Response(content=algo_zip, media_type="application/zip")
     except Exception as e:
         traceback.print_exc()

@@ -1,20 +1,28 @@
-FROM python:3.11-slim
+FROM ubuntu:22.04
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PATH="/opt/venv/bin:$PATH"
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-venv \
+    python3-pip \
+    python-is-python3
+
 
 WORKDIR /app
-
-RUN python -m venv /opt/venv \
-    && pip install --upgrade pip
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
 COPY . .
 
-EXPOSE 8001
-EXPOSE 8016
+# Runner venv
+WORKDIR /app/runner
+COPY runner/requirements.txt .
+RUN python3 -m venv /app/runner/.venv 
+RUN /app/runner/.venv/bin/pip install --upgrade pip setuptools wheel build
+RUN /app/runner/.venv/bin/pip install -r requirements.txt
 
-CMD ["uvicorn", "installer:app", "--host", "0.0.0.0", "--port", "8001"]
+# Sandbox venv
+WORKDIR /app/sandbox
+COPY sandbox/requirements.txt .
+RUN python3 -m venv /app/sandbox/.venv 
+RUN /app/sandbox/.venv/bin/pip install --upgrade pip setuptools wheel build
+RUN /app/sandbox/.venv/bin/pip install -r requirements.txt
+
+EXPOSE 8001
+CMD ["/app/sandbox/.venv/bin/uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]

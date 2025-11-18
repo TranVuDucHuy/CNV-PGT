@@ -1,71 +1,93 @@
-# OS generated files
-.DS_Store
-Thumbs.db
 algorithms_container/
-
-# Python
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
-*.so
-*.pyd
-*.pyo
-*.pyc
+*$py.class
 
-# Virtual environments
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
 env/
 venv/
-ENV/
 .venv/
-.python-version
+ENV/
+*.egg-info/
+dist/
+build/
+*.egg
+*.whl
 
-# IDEs and editors
-.vscode/
-.idea/
-*.swp
-*.swo
+# PyInstaller
+*.manifest
+*.spec
 
-# Test and coverage output
+# Unit test / coverage reports
 htmlcov/
 .tox/
 .nox/
 .coverage
 .coverage.*
 .cache
-pytest_cache/
+.pytest_cache/
 nosetests.xml
 coverage.xml
 *.cover
 *.py,cover
+.hypothesis/
 
-# FastAPI related
-instance/
-*.sqlite3
+# Jupyter Notebook
+.ipynb_checkpoints
 
-# Logs
-*.log
+# IPython
+profile_default/
+ipython_config.py
 
-# dotenv environment variables
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# poetry
+poetry.lock
+
+# PEP 582; used by e.g. github.com/David-OConnor/pyflow
+__pypackages__/
+
+# Celery
+celerybeat-schedule
+*.db
+
+# SageMath
+*.sage.py
+
+# Environments
 .env
 .env.*
+*.env
 
-# MyPy
+# Spyder project settings
+.spyderproject
+.spyderworkspace
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
 .mypy_cache/
 .dmypy.json
+dmypy.json
 
 # Pyre type checker
 .pyre/
 
-# Minio temp data or config (if any)
-minio_data/
+# pytype static type analyzer
+.pytype/
 
-# Miscellaneous
-*.bak
-*.tmp
-*~
-
-# Distribution / packaging
-build/
-dist/
-*.egg-info/
-.eggs/
-
+# Cython debug symbols
+cython_debug/

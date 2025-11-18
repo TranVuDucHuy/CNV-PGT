@@ -1,27 +1,50 @@
-# Sandbox Service to run installed algorithms
+# Sandbox to run algorithms
 
-## Installation
+## Folder Structure
 
-### Docker Setup
+- `runner/`: Contains the separate Python Project to install and run algorithms.
+- `sandbox/`: Contains the FastAPI application to interact with the runner.
 
-Simply using docker compose up will build and start the service.
+## How to run?
+
+You have two options to run the sandbox:
+
+1. Using Docker (recommended):
+   The compose file brings up three containers: the FastAPI sandbox API, the
+   background runner worker, and Redis. Build and start everything with:
 
 ```bash
 docker compose up --build
 ```
 
-### Running Locally
+   After the containers are ready, access the sandbox endpoints at
+   `http://localhost:8001/api/v1/sandbox`.
 
-1. Go to `main.py` and run the file directly to start the service.
-2. Use `uvicorn`
+2. Manually:
+
+- First, make sure that the 2 projects have environment and dependencies installed.
+- Start Redis locally (or with Docker):
 
 ```bash
-uvicorn installer:app --port=8001
+docker run --rm -p 6379:6379 redis:7
 ```
 
-## API Endpoints
+- In one terminal, run the `Redis Queue` worker inside the `runner/` project:
 
-### Install Algorithm from Zip
+```bash
+cd runner
+pip install -r requirements.txt  # if not already installed
+REDIS_HOST=localhost python main.py
+```
 
-- **Endpoint:** `POST /sandbox/{algorithm_id}/zip`
-- **Description:** Installs an algorithm from a provided zip file.
+Or go to `runner/main.py` and run the file directly.
+
+- In another terminal, run the FastAPI application inside the `sandbox/` project:
+
+```bash
+cd sandbox
+pip install -r requirements.txt  # if not already installed
+REDIS_HOST=localhost uvicorn main:app --reload --host 0.0.0.0 --port 8001
+```
+
+Access the sandbox endpoints at `http://localhost:8001/api/v1/sandbox`.

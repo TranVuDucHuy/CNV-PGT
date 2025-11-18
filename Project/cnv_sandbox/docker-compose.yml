@@ -1,10 +1,46 @@
 services:
-  api:
+  sandbox_api:
     build: .
-    container_name: cnv_sandbox
+    container_name: cnv_sandbox_api
     ports:
       - "8001:8001"
-      - "8016:8016"
     environment:
       - PYTHONUNBUFFERED=1
-    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]
+      - REDIS_HOST=redis
+    depends_on:
+      - redis
+      - runner
+    command:
+      [
+        "/app/sandbox/.venv/bin/uvicorn",
+        "main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8001",
+      ]
+    volumes:
+      - ./algorithms_container:/app/sandbox/algorithms_container
+
+  runner:
+    build: .
+    container_name: cnv_sandbox_runner
+    environment:
+      - REDIS_HOST=redis
+      - PATH=/app/runner/.venv/bin
+    depends_on:
+      - redis
+    command: ["/app/runner/.venv/bin/python", "/app/runner/main.py"]
+    volumes:
+      - ./algorithms_container:/app/sandbox/algorithms_container
+
+  redis:
+    image: redis:latest
+    container_name: cnv_sandbox_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  redis_data:

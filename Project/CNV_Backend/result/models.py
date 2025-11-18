@@ -35,8 +35,7 @@ class Result(Base):
         String(64),
         ForeignKey("algorithm_parameters.id", ondelete="CASCADE"),
         index=True,
-        nullable=False,
-        name="fk_algorithm_parameters_results",
+        nullable=True,
     )
 
     reference_genome = Column(
@@ -64,7 +63,6 @@ class SampleSegment(Base):
         ForeignKey("results.id", ondelete="CASCADE"),
         index=True,
         nullable=False,
-        name="fk_results_sample_segments",
     )
     chromosome = Column(SqlEnum(Chromosome), nullable=False)
     start = Column(Integer, nullable=False)
@@ -85,7 +83,6 @@ class SampleBin(Base):
         ForeignKey("results.id", ondelete="CASCADE"),
         index=True,
         nullable=False,
-        name="fk_results_sample_bins",
     )
     chromosome = Column(SqlEnum(Chromosome), nullable=False)
     start = Column(Integer, nullable=False)

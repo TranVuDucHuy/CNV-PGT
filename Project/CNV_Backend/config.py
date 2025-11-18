@@ -22,9 +22,4 @@ class MinioConfig:
 
 
 class SandboxConfig:
-    SANDBOX_INSTALLER_URL = os.getenv(
-        "SANDBOX_INSTALLER_URL", "http://localhost:8001/api/v1/installer"
-    )
-    SANDBOX_RUNNER_URL = os.getenv(
-        "SANDBOX_RUNNER_URL", "http://localhost:8016/api/v1/runner"
-    )
+    SANDBOX_URL = os.getenv("SANDBOX_URL", "http://localhost:8001/api/v1/sandbox")

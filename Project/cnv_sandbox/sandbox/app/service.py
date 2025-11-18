@@ -5,10 +5,10 @@ import io
 from config import SandboxConfig
 import json
 import shutil
+import time
 
-from utils.module_utils import load_module
-from utils.module_utils import get_class_from_module
 from utils.module_utils import modulize_name
+from redis_queue import runner_queue
 
 
 PYPROJECT_TEMPLATE = """
@@ -31,7 +31,7 @@ include = ["*"]
 """
 
 
-class InstallerService:
+class SandboxService:
     @staticmethod
     def install_from_zip(algorithm_id: str, algo_zip: bytes):
         """Install an algorithm from a zip file.
@@ -65,16 +65,13 @@ class InstallerService:
                 if dep.strip() and not dep.strip().startswith("#")
             ]
 
-            print("name:", name)
-            print("version:", version)
-            print("dependencies:", dependencies)
-
             print("Preparing algorithm installation...")
             algo_container_dir = SandboxConfig.ALGORITHM_PATH
             os.makedirs(algo_container_dir, exist_ok=True)
             algo_dir = algo_container_dir / name
             os.makedirs(algo_dir, exist_ok=True)
 
+            print("Extracting algorithm to:", algo_dir)
             if (
                 "pyproject.toml" not in zip_ref.namelist()
                 or "setup.py" not in zip_ref.namelist()
@@ -113,7 +110,20 @@ class InstallerService:
 
             # Run pip install -e <algo_dir>
             print("Running installation command...")
-            os.system(f"pip install -e {algo_dir}")
+            print("algo_dir exists:", algo_dir.exists())
+            algo_dir_abs_path = str(algo_dir.resolve())
+            path = Path(algo_dir_abs_path)
+            if not path.exists():
+                raise ValueError(f"While installing, path does not exist: {algo_dir_abs_path}")
+            job = runner_queue.enqueue("tasks.install_algorithm", algo_dir_abs_path)
+
+            while job.get_status() not in ("finished", "failed"):
+                time.sleep(0.5)
+
+
+            res = job.result
+            if not res["done"]:
+                raise RuntimeError(f"Algorithm installation failed: {res['error']}")
 
     @staticmethod
     def run_algorithm(
@@ -124,23 +134,33 @@ class InstallerService:
         input_data: dict,
         **kwargs,
     ) -> dict:
-        """Run an installed algorithm.
-        This method executes the algorithm specified by the name, input_cls, and exe_cls.
-        It takes the BAM file and input data as parameters and returns the output.
+        """Run an installed algorithm in a sandboxed environment.
+        Args:
+            algorithm_id (str): The unique identifier for the algorithm.
+            input_cls (str): The input class name.
+            exe_cls (str): The execution class name.
+            bam (bytes): The BAM file content as bytes.
+            input_data (dict): The input data for the algorithm.
+            **kwargs: Additional keyword arguments for the algorithm execution.
+        Returns:
+            dict: The output data from the algorithm execution.
         """
-        algorithm_id = modulize_name(algorithm_id)
-        class_names = [input_cls, exe_cls]
-        classes = []
-        for cls_name in class_names:
-            pre_modules, actual_name = cls_name.split(":")
-            module = load_module(f"{algorithm_id}.{pre_modules}")
-            cls = get_class_from_module(module, actual_name)
-            classes.append(cls)
-        InputClass, ExecClass = classes
+        job = runner_queue.enqueue(
+            "tasks.run_algorithm",
+            algorithm_id,
+            input_cls,
+            exe_cls,
+            bam,
+            input_data,
+            **kwargs,
+        )
 
-        input_instance = InputClass(bam=bam, **input_data)
-        output_instance = ExecClass().run(input_instance, **kwargs)
-        return output_instance.model_dump()
+        while job.get_status() not in ("finished", "failed"):
+            time.sleep(0.5)
+        res = job.result
+        if not res["done"]:
+            raise RuntimeError(f"Algorithm execution failed: {res['error']}")
+        return res["output"]
 
     @staticmethod
     def uninstall_algorithm(algorithm_id: str):
@@ -158,6 +178,16 @@ class InstallerService:
         algo_dir = algo_container_dir / algorithm_id
         if algo_dir.exists() and algo_dir.is_dir():
             shutil.rmtree(algo_dir)
+
+        job = runner_queue.enqueue(
+            "tasks.uninstall_algorithm",
+            algorithm_id,
+        )
+        while job.get_status() not in ("finished", "failed"):
+            time.sleep(0.5)
+        res = job.result
+        if not res["done"]:
+            raise RuntimeError(f"Algorithm uninstallation failed: {res['error']}")
 
     @staticmethod
     def get_algorithm_zip(algorithm_id: str) -> bytes:

@@ -65,7 +65,7 @@ class AlgorithmService:
             algorithm.exe_class = algorithm_metadata["exe_class"]
 
             # Upload zip to sandbox
-            sandbox_url = SandboxConfig.SANDBOX_INSTALLER_URL
+            sandbox_url = SandboxConfig.SANDBOX_URL
             upload_url = f"{sandbox_url}/{algorithm_id}/zip"
             response = requests.post(upload_url, files={"file": algorithm_zip})
             if response.status_code != 200:
@@ -136,7 +136,7 @@ class AlgorithmService:
         print("Running algorithm...")
 
         # Run algorithm in sandbox
-        sandbox_url = SandboxConfig.SANDBOX_RUNNER_URL
+        sandbox_url = SandboxConfig.SANDBOX_URL
         run_url = f"{sandbox_url}/{algorithm_id}/run"
         resp = requests.post(
             run_url,
@@ -168,7 +168,7 @@ class AlgorithmService:
         if not algorithm:
             raise ValueError(f"Algorithm with id {algorithm_id} not found")
         # Delete from Sandbox
-        sandbox_url = SandboxConfig.SANDBOX_INSTALLER_URL
+        sandbox_url = SandboxConfig.SANDBOX_URL
         delete_url = f"{sandbox_url}/{algorithm_id}"
         response = requests.delete(delete_url)
         if response.status_code != 200:
@@ -184,7 +184,7 @@ class AlgorithmService:
         algorithm = db.query(Algorithm).filter(Algorithm.id == algorithm_id).first()
         if not algorithm:
             raise ValueError(f"Algorithm with id {algorithm_id} not found")
-        zip_url = f"{SandboxConfig.SANDBOX_INSTALLER_URL}/{algorithm_id}/zip"
+        zip_url = f"{SandboxConfig.SANDBOX_URL}/{algorithm_id}/zip"
         response = requests.get(zip_url)
         if response.status_code != 200:
             raise ValueError(
