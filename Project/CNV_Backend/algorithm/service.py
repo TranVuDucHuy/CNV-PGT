@@ -36,6 +36,7 @@ class AlgorithmService:
             name=algorithm_metadata.name,
             version=algorithm_metadata.version,
             description=algorithm_metadata.description,
+            references_required=algorithm_metadata.references_required,
             parameters=[AlgorithmParameter(id=new_param_id, value=init_params)],
         )
 
@@ -86,6 +87,7 @@ class AlgorithmService:
                 name=algo.name,
                 version=algo.version,
                 description=algo.description,
+                references_required=algo.references_required,
                 parameters=[
                     AlgorithmParameterDto(id=param.id, value=param.value)
                     for param in algo.parameters
@@ -203,6 +205,7 @@ class AlgorithmService:
             name=algorithm.name,
             version=algorithm.version,
             description=algorithm.description,
+            references_required=algorithm.references_required,
             upload_date=str(algorithm.upload_date),
             url=algorithm.url,
             parameters=[

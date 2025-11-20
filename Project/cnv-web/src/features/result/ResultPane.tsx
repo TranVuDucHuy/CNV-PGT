@@ -6,6 +6,7 @@ import useResultHandle from "./resultHandle";
 import OperatingDialog from "@/components/OperatingDialog";
 import { Checkbox } from "@mui/material";
 import { useAlgorithms } from "../algorithm/useAlgorithms";
+import { parseSampleNameToParts } from "@/features/sample/sampleUtils";
 
 export default function ResultPane() {
   const {
@@ -77,42 +78,6 @@ export default function ResultPane() {
 
     return map;
   }, [results]);
-
-  function parseSampleNameToParts(rawName?: string) {
-  // rawName may include .bam or not. Return { flowcell, cycle, embryo, displayName }
-  if (!rawName || rawName.trim() === "") {
-    return {
-      flowcell: "UNKNOWN",
-      cycle: "UNKNOWN",
-      embryo: rawName ?? "UNKNOWN",
-      displayName: rawName ?? "UNKNOWN",
-    };
-  }
-  const name = rawName.endsWith(".bam") ? rawName.slice(0, -4) : rawName;
-  const parts = name.split("-");
-  if (parts.length === 1) {
-    // can't split, fallback
-    const embryoWithPlate = parts[0];
-    const embryo = embryoWithPlate.split("_")[0];
-    return {
-      flowcell: "UNKNOWN",
-      cycle: "UNKNOWN",
-      embryo,
-      displayName: embryo,
-    };
-  }
-  // assume first part = flowcell, last part = embryo+plate, middle = cycle parts
-  const flowcell = parts[0] || "UNKNOWN";
-  const embryoWithPlate = parts[parts.length - 1] || "UNKNOWN";
-  const embryo = embryoWithPlate.split("_")[0] || embryoWithPlate;
-  const cycleParts = parts.slice(1, parts.length - 1);
-  const cycle = cycleParts.join("-") || "UNKNOWN";
-  return {
-    flowcell,
-    cycle,
-    embryo
-  };
-}
 
   // ======== Helpers for cascade select =========
   const getAllResultIdsUnderFlowcell = (flowcell: string) => {

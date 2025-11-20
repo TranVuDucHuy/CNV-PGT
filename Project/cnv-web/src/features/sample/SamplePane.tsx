@@ -6,6 +6,8 @@ import useSampleHandle from "./sampleHandle";
 import OperatingDialog from "@/components/OperatingDialog";
 import { Checkbox } from "@mui/material";
 import { ReferenceGenome, CellType } from "@/types/sample";
+import { syncWithSamples } from "@/features/reference/useReferences";
+import { parseSampleNameToParts } from "./sampleUtils";
 
 /**
  * Updated SamplePane
@@ -27,43 +29,6 @@ type SampleItem = {
   // keep any other props
   [k: string]: any;
 };
-
-function parseSampleNameToParts(rawName?: string) {
-  // rawName may include .bam or not. Return { flowcell, cycle, embryo, displayName }
-  if (!rawName || rawName.trim() === "") {
-    return {
-      flowcell: "UNKNOWN",
-      cycle: "UNKNOWN",
-      embryo: rawName ?? "UNKNOWN",
-      displayName: rawName ?? "UNKNOWN",
-    };
-  }
-  const name = rawName.endsWith(".bam") ? rawName.slice(0, -4) : rawName;
-  const parts = name.split("-");
-  if (parts.length === 1) {
-    // can't split, fallback
-    const embryoWithPlate = parts[0];
-    const embryo = embryoWithPlate.split("_")[0];
-    return {
-      flowcell: "UNKNOWN",
-      cycle: "UNKNOWN",
-      embryo,
-      displayName: embryo,
-    };
-  }
-  // assume first part = flowcell, last part = embryo+plate, middle = cycle parts
-  const flowcell = parts[0] || "UNKNOWN";
-  const embryoWithPlate = parts[parts.length - 1] || "UNKNOWN";
-  const embryo = embryoWithPlate.split("_")[0] || embryoWithPlate;
-  const cycleParts = parts.slice(1, parts.length - 1);
-  const cycle = cycleParts.join("-") || "UNKNOWN";
-  return {
-    flowcell,
-    cycle,
-    embryo,
-    displayName: embryo,
-  };
-}
 
 export default function SamplePane() {
   const {
@@ -106,6 +71,7 @@ export default function SamplePane() {
     if (!samples || samples.length === 0) {
       setSelectedIds(new Set());
       setIsSelectAll(false);
+      syncWithSamples(new Set());
       return;
     }
     setSelectedIds((prev) => {
@@ -116,7 +82,10 @@ export default function SamplePane() {
       }
       return next;
     });
-  }, [samples]);
+    
+    const availableSampleIds = new Set(samples.map((s: any) => s.id));
+    syncWithSamples(availableSampleIds);
+  }, [samples, syncWithSamples]);
 
   useEffect(() => {
     const total = samples.length;

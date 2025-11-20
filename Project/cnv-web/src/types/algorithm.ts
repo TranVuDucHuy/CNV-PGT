@@ -13,6 +13,7 @@ export interface Algorithm {
   name: string;
   version: string;
   description?: string;
+  references_required?: number;
   parameters: AlgorithmParameterDto[];
 }
 
@@ -33,6 +34,7 @@ export interface AlgorithmMetadata {
   name: string;
   version: string;
   description?: string;
+  references_required?: number;
   parameters?: AlgorithmParameterCreateRequest[];
   url?: string; // optional field for algorithm source URL
 }

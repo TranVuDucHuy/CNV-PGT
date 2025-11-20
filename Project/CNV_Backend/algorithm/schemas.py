@@ -18,6 +18,7 @@ class AlgorithmSummary(BaseModel):
     name: str
     version: str
     description: Optional[str] = None
+    references_required: int = 0
     parameters: List[AlgorithmParameterDto] = None
 
 
@@ -37,6 +38,7 @@ class AlgorithmMetadata(BaseModel):
     name: str
     version: str
     description: Optional[str] = None
+    references_required: int = 0
     parameters: List[AlgorithmParameterCreateRequest] = None
 
 
