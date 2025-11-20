@@ -5,6 +5,7 @@ import { Plus, Minus, Edit3, X } from "lucide-react";
 import useSampleHandle from "./sampleHandle";
 import OperatingDialog from "@/components/OperatingDialog";
 import { Checkbox } from "@mui/material";
+import { ReferenceGenome } from "@/types/sample";
 
 /**
  * Updated SamplePane
@@ -84,6 +85,7 @@ export default function SamplePane() {
   const [operating, setOperating] = useState(false);
   const [promise, setPromise] = useState<Promise<any> | undefined>();
   const [isSelectAll, setIsSelectAll] = useState<boolean>(false);
+  const [referenceGenome, setReferenceGenome] = useState<ReferenceGenome>(ReferenceGenome.HG19);
 
   // UI expand/collapse state
   const [openFlowcells, setOpenFlowcells] = useState<Set<string>>(new Set());
@@ -441,9 +443,9 @@ export default function SamplePane() {
               if (!operating) {
                 if (files?.length && files?.length > 0) {
                   if (files?.length == 1) {
-                    openOperatingDialog(save());
+                    openOperatingDialog(save(referenceGenome));
                   } else if (files?.length > 1) {
-                    openOperatingDialog(saveManyFiles());
+                    openOperatingDialog(saveManyFiles(referenceGenome));
                   }
                 }
               }
@@ -470,6 +472,19 @@ export default function SamplePane() {
                   required
                   multiple
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Reference Genome</label>
+                <select
+                  value={referenceGenome}
+                  onChange={(e) => setReferenceGenome(e.target.value as ReferenceGenome)}
+                  className="mt-1 block w-full rounded border px-3 py-2"
+                  required
+                >
+                  <option value={ReferenceGenome.HG19}>HG19</option>
+                  <option value={ReferenceGenome.HG38}>HG38</option>
+                </select>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2">

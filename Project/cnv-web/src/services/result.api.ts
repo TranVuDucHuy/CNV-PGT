@@ -27,13 +27,12 @@ export const resultAPI = {
   /**
    * Tạo sample mới
    */
-  async create(bins_tsv: File, segments_tsv: File, algorithm_id: string, algorithm_parameter_id: string, reference_genome: string): Promise<void> {
+  async create(bins_tsv: File, segments_tsv: File, algorithm_id: string, algorithm_parameter_id: string): Promise<void> {
     const formData = new FormData();
     formData.append("bins_tsv", bins_tsv);
     formData.append("segments_tsv", segments_tsv);
     formData.append("algorithm_id", algorithm_id);
     formData.append("algorithm_parameter_id", algorithm_parameter_id);
-    formData.append("reference_genome", reference_genome);
 
     const res = await fetchAPI<void>('/results', {
       method: 'POST',

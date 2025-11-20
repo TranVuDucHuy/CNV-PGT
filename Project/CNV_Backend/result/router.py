@@ -21,7 +21,6 @@ def upload_result(
     segments_tsv: UploadFile = File(...),
     algorithm_id: str = Form(...),
     algorithm_parameter_id: str = Form(...),
-    reference_genome: str = Form(...),
     db: Session = Depends(get_db),
 ):
     try:
@@ -42,7 +41,6 @@ def upload_result(
             algorithm_parameter_id=algorithm_parameter_id,
             sample_name=sample_name,
             algorithm_id=algorithm_id,
-            reference_genome=reference_genome,
         )
 
         return JSONResponse(status_code=201, content={

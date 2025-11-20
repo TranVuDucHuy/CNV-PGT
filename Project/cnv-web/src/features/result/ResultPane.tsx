@@ -15,14 +15,12 @@ export default function ResultPane() {
     loading,
     error,
     algo,
-    referenceGenome,
     setBinFile,
     setSegmentFile,
     save,
     refresh,
     removeResults,
     setAlgo,
-    setReferenceGenome,
   } = useResultHandle();
 
   const { algorithms } = useAlgorithms();
@@ -389,13 +387,6 @@ export default function ResultPane() {
               <div>
                 <label className="block text-sm font-medium text-gray-700">Select Segment File</label>
                 <input type="file" accept=".tsv" onChange={(e) => setSegmentFile(e.target.files?.[0] ?? null)} className="mt-1 block w-full rounded border px-3 py-2" required />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Reference Genome</label>
-                <select value={referenceGenome} onChange={(e) => setReferenceGenome(e.target.value as "GRCh37/hg19" | "GRCh38/hg38")} className="mt-1 block w-full rounded border px-3 py-2" required>
-                  <option value="GRCh37/hg19">GRCh37 / hg19</option>
-                  <option value="GRCh38/hg38">GRCh38 / hg38</option>
-                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Select Algorithm</label>

@@ -25,9 +25,12 @@ export const sampleAPI = {
   /**
    * Tạo sample mới
    */
-  async create(file: File): Promise<void> {
+  async create(file: File, referenceGenome?: string): Promise<void> {
     const formData = new FormData();
     formData.append("file", file);
+    if (referenceGenome) {
+      formData.append("reference_genome", referenceGenome);
+    }
 
     const res = await fetchAPI<void>('/samples', {
       method: 'POST',
@@ -40,11 +43,14 @@ export const sampleAPI = {
   /**
    * Tạo sample mới
    */
-  async createMany(files: File[]): Promise<void> {
+  async createMany(files: File[], referenceGenome?: string): Promise<void> {
     const formData = new FormData();
     files.forEach((file) => {
       formData.append("files", file, file.name);
     });
+    if (referenceGenome) {
+      formData.append("reference_genome", referenceGenome);
+    }
     
 
     const res = await fetchAPI<void>('/samples/many', {
