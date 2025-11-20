@@ -29,14 +29,12 @@ class SampleService:
         )
 
     @staticmethod
-    def _create_sample(file_stream: bytes, file_name: str, reference_genome: str = None) -> Sample:
-        
-        # ✅ Tạo mới nếu không trùng
+    def _create_sample(file_stream: bytes, file_name: str, reference_genome: str = None, cell_type: str = None, date: str = None) -> Sample:
         id = str(uuid.uuid4())
         flowcell_id, cycle_id, embryo_id = SampleService.parse_filename(file_name)
-        cell_type = CellType.OTHER       # Replace with real cell type
         ref_genome = ReferenceGenome(reference_genome) if reference_genome else ReferenceGenome.HG19
-
+        cell_type = CellType(cell_type) if cell_type else CellType.OTHER
+        date = datetime.datetime.strptime(date, "%Y-%m-%d").date() if date else datetime.date.today()
         object_name = f"{id}.bam"
         content_type = "application/octet-stream"
 
@@ -44,21 +42,22 @@ class SampleService:
 
         sample = Sample(
             id=id,
-            name=file_name,               # ✅ thêm name
+            name=file_name,               
             flowcell_id=flowcell_id,
             cycle_id=cycle_id,
             embryo_id=embryo_id,
             bam_url=bam_url,
             cell_type=cell_type,
-            reference_genome=ref_genome
+            reference_genome=ref_genome,
+            date=date,
         )
         return sample
 
     @staticmethod
-    def save(db: Session, file_stream: bytes, file_name: str, reference_genome: str = None):
+    def save(db: Session, file_stream: bytes, file_name: str, reference_genome: str = None, cell_type: str = None, date: str = None):
         existing = db.query(Sample).filter(Sample.name == file_name).first()
         if not existing:
-            sample = SampleService._create_sample(file_stream, file_name, reference_genome)
+            sample = SampleService._create_sample(file_stream, file_name, reference_genome, cell_type, date)
             db.add(sample)
             db.commit()
         return {
@@ -66,14 +65,12 @@ class SampleService:
         }
 
     @staticmethod
-    def save_many(db: Session, files: List[bytes], names: List[str], reference_genome: str = None):
+    def save_many(db: Session, files: List[bytes], names: List[str], reference_genome: str = None, cell_type: str = None, date: str = None):
         if len(files) != len(names):
             raise ValueError("Số lượng files và names phải bằng nhau.")
 
         created_samples = []
         skipped_names = []
-        
-        ref_genome = reference_genome if reference_genome else None
 
         for i, (file_stream, name) in enumerate(zip(files, names)):
             existing = db.query(Sample).filter(Sample.name == name).first()
@@ -81,7 +78,7 @@ class SampleService:
                 skipped_names.append(name)
                 continue  # Bỏ qua file trùng name
 
-            sample = SampleService._create_sample(file_stream, name, ref_genome)
+            sample = SampleService._create_sample(file_stream, name, reference_genome, cell_type, date)
             created_samples.append(sample)
 
         # Nếu có sample mới, thêm vào DB

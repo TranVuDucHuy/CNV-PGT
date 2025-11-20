@@ -12,8 +12,8 @@ export interface UseSampleHandleReturn {
   open: () => void;
   close: () => void;
   setFile: (f: File[] | null) => void;
-  save: (referenceGenome?: string) => Promise<void>;
-  saveManyFiles: (referenceGenome?: string) => Promise<void>;
+  save: (referenceGenome?: string, cellType?: string, date?: string) => Promise<void>;
+  saveManyFiles: (referenceGenome?: string, cellType?: string, date?: string) => Promise<void>;
   refresh: () => Promise<void>;
   removeSamples: (ids: Set<string>) => Promise<void>;
   getAll: () => Promise<SampleSummary[]>
@@ -65,12 +65,12 @@ export default function useSampleHandle(initial: Sample[] = []): UseSampleHandle
     }
   }, []);
 
-  const save = useCallback(async (referenceGenome?: string) => {
+  const save = useCallback(async (referenceGenome?: string, cellType?: string, date?: string) => {
     if (!files || files.length != 1) return;
 
     try {
       setIsOpen(false);
-      await sampleAPI.create(files[0], referenceGenome); 
+      await sampleAPI.create(files[0], referenceGenome, cellType, date); 
       await refresh();
       
     } catch (err) {
@@ -80,14 +80,14 @@ export default function useSampleHandle(initial: Sample[] = []): UseSampleHandle
     }
   }, [files, refresh]);
 
-  const saveManyFiles = useCallback(async (referenceGenome?: string) => {
+  const saveManyFiles = useCallback(async (referenceGenome?: string, cellType?: string, date?: string) => {
     console.log(files);
     if (!files || files.length < 2) return;
 
     try {
       setIsOpen(false);
       console.log("start saving");
-      await sampleAPI.createMany(files, referenceGenome);
+      await sampleAPI.createMany(files, referenceGenome, cellType, date);
       await refresh();
       
     } catch (err) {

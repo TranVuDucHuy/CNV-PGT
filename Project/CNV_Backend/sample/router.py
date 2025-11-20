@@ -14,12 +14,14 @@ router = APIRouter()
 async def upload_file(
     file: UploadFile = File(...),
     reference_genome: str = Body(None),
+    cell_type: str = Body(None),
+    date: str = Body(None),
     db: Session = Depends(get_db)
 ):
     content = await file.read()
     name = file.filename
     fileName = name[:name.index("_")] if "_" in name else name
-    result = SampleService.save(db=db, file_stream=content, file_name=fileName, reference_genome=reference_genome)
+    result = SampleService.save(db=db, file_stream=content, file_name=fileName, reference_genome=reference_genome, cell_type=cell_type, date=date)
     success = result.get("success")
     message = ""
     if success:
@@ -33,6 +35,8 @@ async def upload_file(
 async def upload_multiple_files(
     files: List[UploadFile] = File(...),
     reference_genome: str = Body(None),
+    cell_type: str = Body(None),
+    date: str = Body(None),
     db: Session = Depends(get_db)
 ):
     file_streams = []
@@ -43,7 +47,7 @@ async def upload_multiple_files(
         name = file.filename
         fileName = name[:name.index("_")] if "_" in name else name
         names.append(fileName)
-    result = SampleService.save_many(db=db, files=file_streams, names=names, reference_genome=reference_genome)
+    result = SampleService.save_many(db=db, files=file_streams, names=names, reference_genome=reference_genome, cell_type=cell_type, date=date)
     # result có thể là dict như: {"added": [...], "skipped": [...]}
     added = result.get("added", [])
     skipped = result.get("skipped", [])

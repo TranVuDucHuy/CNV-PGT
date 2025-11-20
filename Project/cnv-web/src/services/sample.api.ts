@@ -25,11 +25,17 @@ export const sampleAPI = {
   /**
    * Tạo sample mới
    */
-  async create(file: File, referenceGenome?: string): Promise<void> {
+  async create(file: File, referenceGenome?: string, cellType?: string, date?: string): Promise<void> {
     const formData = new FormData();
     formData.append("file", file);
     if (referenceGenome) {
       formData.append("reference_genome", referenceGenome);
+    }
+    if (cellType) {
+      formData.append("cell_type", cellType);
+    }
+    if (date) {
+      formData.append("date", date);
     }
 
     const res = await fetchAPI<void>('/samples', {
@@ -43,7 +49,7 @@ export const sampleAPI = {
   /**
    * Tạo sample mới
    */
-  async createMany(files: File[], referenceGenome?: string): Promise<void> {
+  async createMany(files: File[], referenceGenome?: string, cellType?: string, date?: string): Promise<void> {
     const formData = new FormData();
     files.forEach((file) => {
       formData.append("files", file, file.name);
@@ -51,7 +57,12 @@ export const sampleAPI = {
     if (referenceGenome) {
       formData.append("reference_genome", referenceGenome);
     }
-    
+    if (cellType) {
+      formData.append("cell_type", cellType);
+    }
+    if (date) {
+      formData.append("date", date);
+    }
 
     const res = await fetchAPI<void>('/samples/many', {
       method: 'POST',
