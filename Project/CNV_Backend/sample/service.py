@@ -16,36 +16,24 @@ from common.models import ReferenceGenome
 class SampleService:
     @staticmethod
     def parse_filename(filename: str) -> Tuple[str, str, str]:
-        """
-        Parse BAM filename to extract IDs.
-
-        Args:
-            filename: BAM filename (with or without .bam extension)
-
-        Returns:
-            Tuple of (flowcell_id, cycle_id, embryo_id)
-        """
-        filename = filename.replace(".bam", "")
-        pattern = r"^([A-Z0-9]+)-([A-Z0-9-]+)-([A-Z0-9]+)_([A-Z0-9]+)$"
+        filename = filename.replace(".bam", "").strip()
+        filename = re.sub(r"_[A-Z0-9]+$", "", filename)
+        pattern = r"^([A-Z0-9]+)-(.+)-([A-Z0-9]+)$"
         match = re.match(pattern, filename)
-
-        if not match:
-            raise ValueError(
-                f"Filename '{filename}' doesn't match expected pattern: "
-                "[Flowcell ID]-[Cycle ID]-[Embryo ID]_[Plate ID].bam"
-            )
-
-        flowcell_id, cycle_id, embryo_id, plate_id = match.groups()
-        return flowcell_id, cycle_id, embryo_id
+        if match:
+            return match.groups()
+        
+        raise ValueError(
+            f"Filename '{filename}' doesn't match expected pattern. "
+            "Expected: FLOWCELL-CYCLE-EMBRYO[_PLATE].bam"
+        )
 
     @staticmethod
     def _create_sample(file_stream: bytes, file_name: str, reference_genome: str = None) -> Sample:
         
         # ✅ Tạo mới nếu không trùng
         id = str(uuid.uuid4())
-        flowcell_id = str(uuid.uuid4())  # Replace with real flowcell ID retrieval
-        cycle_id = str(uuid.uuid4())     # Replace with real cycle ID retrieval
-        embryo_id = str(uuid.uuid4())    # Replace with real embryo ID retrieval
+        flowcell_id, cycle_id, embryo_id = SampleService.parse_filename(file_name)
         cell_type = CellType.OTHER       # Replace with real cell type
         ref_genome = ReferenceGenome(reference_genome) if reference_genome else ReferenceGenome.HG19
 
