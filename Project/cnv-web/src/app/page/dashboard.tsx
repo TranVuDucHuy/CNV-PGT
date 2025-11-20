@@ -40,18 +40,8 @@ const DashboardView: React.FC = () => {
             >
               <ContentPane />
             </div>
-
-            {/* Right Pane - Content Area */}
-            <div className="flex-1 bg-gray-100 flex items-center justify-center">
-              <div
-                id="contentArea"
-                className="w-full h-full bg-gray-200 border rounded-lg flex items-center justify-center"
-              >
-                <span className="text-gray-600">Content Area</span>
-                <ContentPane/>
-              </div>
-            </div>
-          </ViewProvider>
+          </div>
+        </ViewProvider>
       </div>
     </div>
   );
