@@ -5,6 +5,9 @@ import { Plus, Minus, Edit3, X } from "lucide-react";
 import useSampleHandle from "./sampleHandle";
 import OperatingDialog from "@/components/OperatingDialog";
 import { Checkbox } from "@mui/material";
+import { ReferenceGenome, CellType } from "@/types/sample";
+import { syncWithSamples } from "@/features/reference/useReferences";
+import { parseSampleNameToParts } from "./sampleUtils";
 
 /**
  * Updated SamplePane
@@ -27,43 +30,6 @@ type SampleItem = {
   [k: string]: any;
 };
 
-function parseSampleNameToParts(rawName?: string) {
-  // rawName may include .bam or not. Return { flowcell, cycle, embryo, displayName }
-  if (!rawName || rawName.trim() === "") {
-    return {
-      flowcell: "UNKNOWN",
-      cycle: "UNKNOWN",
-      embryo: rawName ?? "UNKNOWN",
-      displayName: rawName ?? "UNKNOWN",
-    };
-  }
-  const name = rawName.endsWith(".bam") ? rawName.slice(0, -4) : rawName;
-  const parts = name.split("-");
-  if (parts.length === 1) {
-    // can't split, fallback
-    const embryoWithPlate = parts[0];
-    const embryo = embryoWithPlate.split("_")[0];
-    return {
-      flowcell: "UNKNOWN",
-      cycle: "UNKNOWN",
-      embryo,
-      displayName: embryo,
-    };
-  }
-  // assume first part = flowcell, last part = embryo+plate, middle = cycle parts
-  const flowcell = parts[0] || "UNKNOWN";
-  const embryoWithPlate = parts[parts.length - 1] || "UNKNOWN";
-  const embryo = embryoWithPlate.split("_")[0] || embryoWithPlate;
-  const cycleParts = parts.slice(1, parts.length - 1);
-  const cycle = cycleParts.join("-") || "UNKNOWN";
-  return {
-    flowcell,
-    cycle,
-    embryo,
-    displayName: embryo,
-  };
-}
-
 export default function SamplePane() {
   const {
     files,
@@ -84,6 +50,9 @@ export default function SamplePane() {
   const [operating, setOperating] = useState(false);
   const [promise, setPromise] = useState<Promise<any> | undefined>();
   const [isSelectAll, setIsSelectAll] = useState<boolean>(false);
+  const [referenceGenome, setReferenceGenome] = useState<ReferenceGenome>(ReferenceGenome.HG19);
+  const [cellType, setCellType] = useState<string>("Other");
+  const [uploadDate, setUploadDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   // UI expand/collapse state
   const [openFlowcells, setOpenFlowcells] = useState<Set<string>>(new Set());
@@ -102,6 +71,7 @@ export default function SamplePane() {
     if (!samples || samples.length === 0) {
       setSelectedIds(new Set());
       setIsSelectAll(false);
+      syncWithSamples(new Set());
       return;
     }
     setSelectedIds((prev) => {
@@ -112,7 +82,10 @@ export default function SamplePane() {
       }
       return next;
     });
-  }, [samples]);
+    
+    const availableSampleIds = new Set(samples.map((s: any) => s.id));
+    syncWithSamples(availableSampleIds);
+  }, [samples, syncWithSamples]);
 
   useEffect(() => {
     const total = samples.length;
@@ -441,9 +414,9 @@ export default function SamplePane() {
               if (!operating) {
                 if (files?.length && files?.length > 0) {
                   if (files?.length == 1) {
-                    openOperatingDialog(save());
+                    openOperatingDialog(save(referenceGenome, cellType, uploadDate));
                   } else if (files?.length > 1) {
-                    openOperatingDialog(saveManyFiles());
+                    openOperatingDialog(saveManyFiles(referenceGenome, cellType, uploadDate));
                   }
                 }
               }
@@ -469,6 +442,47 @@ export default function SamplePane() {
                   className="mt-1 block w-full rounded border px-3 py-2"
                   required
                   multiple
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Reference Genome</label>
+                <select
+                  value={referenceGenome}
+                  onChange={(e) => setReferenceGenome(e.target.value as ReferenceGenome)}
+                  className="mt-1 block w-full rounded border px-3 py-2"
+                  required
+                >
+                  <option value={ReferenceGenome.HG19}>HG19</option>
+                  <option value={ReferenceGenome.HG38}>HG38</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Cell Type</label>
+                <select
+                  value={cellType}
+                  onChange={(e) => setCellType(e.target.value)}
+                  className="mt-1 block w-full rounded border px-3 py-2"
+                  required
+                >
+                  <option value={CellType.POLAR_BODY_1}>Polar body 1</option>
+                  <option value={CellType.POLAR_BODY_2}>Polar body 2</option>
+                  <option value={CellType.BLASTOMERE}>Blastomere</option>
+                  <option value={CellType.TROPHOECTODERM}>Trophectoderm</option>
+                  <option value={CellType.GENOMIC_DNA}>GenomicDNA</option>
+                  <option value={CellType.OTHER}>Other</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Date</label>
+                <input
+                  type="date"
+                  value={uploadDate}
+                  onChange={(e) => setUploadDate(e.target.value)}
+                  className="mt-1 block w-full rounded border px-3 py-2"
+                  required
                 />
               </div>
 

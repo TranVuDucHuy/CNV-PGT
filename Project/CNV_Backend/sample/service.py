@@ -10,43 +10,31 @@ from utils.minio_util import MinioUtil
 from .models import Sample, CellType
 from sqlalchemy.orm import Session
 from .schemas import EditRequest, SampleSummary
+from common.models import ReferenceGenome
 
 
 class SampleService:
     @staticmethod
     def parse_filename(filename: str) -> Tuple[str, str, str]:
-        """
-        Parse BAM filename to extract IDs.
-
-        Args:
-            filename: BAM filename (with or without .bam extension)
-
-        Returns:
-            Tuple of (flowcell_id, cycle_id, embryo_id)
-        """
-        filename = filename.replace(".bam", "")
-        pattern = r"^([A-Z0-9]+)-([A-Z0-9-]+)-([A-Z0-9]+)_([A-Z0-9]+)$"
+        filename = filename.replace(".bam", "").strip()
+        filename = re.sub(r"_[A-Z0-9]+$", "", filename)
+        pattern = r"^([A-Z0-9]+)-(.+)-([A-Z0-9]+)$"
         match = re.match(pattern, filename)
-
-        if not match:
-            raise ValueError(
-                f"Filename '{filename}' doesn't match expected pattern: "
-                "[Flowcell ID]-[Cycle ID]-[Embryo ID]_[Plate ID].bam"
-            )
-
-        flowcell_id, cycle_id, embryo_id, plate_id = match.groups()
-        return flowcell_id, cycle_id, embryo_id
+        if match:
+            return match.groups()
+        
+        raise ValueError(
+            f"Filename '{filename}' doesn't match expected pattern. "
+            "Expected: FLOWCELL-CYCLE-EMBRYO[_PLATE].bam"
+        )
 
     @staticmethod
-    def _create_sample(file_stream: bytes, file_name: str) -> Sample:
-        
-        # ✅ Tạo mới nếu không trùng
+    def _create_sample(file_stream: bytes, file_name: str, reference_genome: str = None, cell_type: str = None, date: str = None) -> Sample:
         id = str(uuid.uuid4())
-        flowcell_id = str(uuid.uuid4())  # Replace with real flowcell ID retrieval
-        cycle_id = str(uuid.uuid4())     # Replace with real cycle ID retrieval
-        embryo_id = str(uuid.uuid4())    # Replace with real embryo ID retrieval
-        cell_type = CellType.OTHER       # Replace with real cell type
-
+        flowcell_id, cycle_id, embryo_id = SampleService.parse_filename(file_name)
+        ref_genome = ReferenceGenome(reference_genome) if reference_genome else ReferenceGenome.HG19
+        cell_type = CellType(cell_type) if cell_type else CellType.OTHER
+        date = datetime.datetime.strptime(date, "%Y-%m-%d").date() if date else datetime.date.today()
         object_name = f"{id}.bam"
         content_type = "application/octet-stream"
 
@@ -54,21 +42,22 @@ class SampleService:
 
         sample = Sample(
             id=id,
-            name=file_name,               # ✅ thêm name
+            name=file_name,               
             flowcell_id=flowcell_id,
             cycle_id=cycle_id,
             embryo_id=embryo_id,
             bam_url=bam_url,
-            cell_type=cell_type
+            cell_type=cell_type,
+            reference_genome=ref_genome,
+            date=date,
         )
         return sample
 
     @staticmethod
-    def save(db: Session, file_stream: bytes, file_name: str):
-        # ✅ Kiểm tra trùng name
+    def save(db: Session, file_stream: bytes, file_name: str, reference_genome: str = None, cell_type: str = None, date: str = None):
         existing = db.query(Sample).filter(Sample.name == file_name).first()
         if not existing:
-            sample = SampleService._create_sample(file_stream, file_name)
+            sample = SampleService._create_sample(file_stream, file_name, reference_genome, cell_type, date)
             db.add(sample)
             db.commit()
         return {
@@ -76,21 +65,20 @@ class SampleService:
         }
 
     @staticmethod
-    def save_many(db: Session, files: List[bytes], names: List[str]):
+    def save_many(db: Session, files: List[bytes], names: List[str], reference_genome: str = None, cell_type: str = None, date: str = None):
         if len(files) != len(names):
             raise ValueError("Số lượng files và names phải bằng nhau.")
 
         created_samples = []
         skipped_names = []
 
-        for file_stream, name in zip(files, names):
-            # Kiểm tra trùng name trong DB
+        for i, (file_stream, name) in enumerate(zip(files, names)):
             existing = db.query(Sample).filter(Sample.name == name).first()
             if existing:
                 skipped_names.append(name)
                 continue  # Bỏ qua file trùng name
 
-            sample = SampleService._create_sample(file_stream, name)
+            sample = SampleService._create_sample(file_stream, name, reference_genome, cell_type, date)
             created_samples.append(sample)
 
         # Nếu có sample mới, thêm vào DB
@@ -126,6 +114,7 @@ class SampleService:
                 name=sample.name,
                 bam_url=sample.bam_url,
                 cell_type=sample.cell_type.value,
+                reference_genome=sample.reference_genome.value,
                 date=sample.date.strftime("%Y-%m-%d"),
             )
             for sample in db.query(Sample).all()
@@ -144,6 +133,14 @@ class SampleService:
         if sample:
             sample.cell_type = CellType(request.cell_type)
             sample.date = datetime.datetime.strptime(request.date, "%Y-%m-%d").date()
+            
+            if request.reference_genome:
+                from result.models import Result
+                sample.reference_genome = ReferenceGenome(request.reference_genome)
+                db.query(Result).filter(Result.sample_id == sample.name).update(
+                    {Result.reference_genome: ReferenceGenome(request.reference_genome)}
+                )
+            
             db.commit()
             db.refresh(sample)
         return sample

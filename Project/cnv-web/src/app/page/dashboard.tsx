@@ -8,8 +8,11 @@ import ResultPane from "@/features/result/ResultPane";
 import ViewPane from "@/features/view/ViewPane";
 import ContentPane from "@/features/content/ContentPane";
 import { ViewProvider } from "@/features/view/viewHandle";
+import ReferencePane from "@/features/reference/ReferencePane";
+import useSampleHandle from "@/features/sample/sampleHandle";
 
 const DashboardView: React.FC = () => {
+  const { samples, refresh } = useSampleHandle();
   return (
     <div className="flex flex-col h-screen font-sans">
       {/* Menu Bar */}
@@ -23,6 +26,7 @@ const DashboardView: React.FC = () => {
           {/* Left Pane */}
           <div className="w-60 border-r border-gray-300 bg-gray-50 p-3 overflow-y-auto space-y-3">
             <SamplePane />
+            <ReferencePane samples={samples} onRefresh={refresh} />            
             <AlgorithmPane />
             <ResultPane />
             <ViewPane />

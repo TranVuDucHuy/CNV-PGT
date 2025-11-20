@@ -8,6 +8,12 @@ export enum CellType {
   OTHER = "Other"
 }
 
+/** Genome tham chiếu tương ứng với enum ReferenceGenome bên backend */
+export enum ReferenceGenome {
+  HG19 = "GRCh37/hg19",
+  HG38 = "GRCh38/hg38"
+}
+
 /** Mẫu sample đầy đủ (dùng khi get theo id) */
 export interface Sample {
   id: string;
@@ -26,6 +32,7 @@ export interface SampleSummary {
   name: string;
   bam_url: string;
   cell_type: string; // backend trả về .value (string)
+  reference_genome: string;
   date: string;
 }
 
@@ -33,6 +40,7 @@ export interface SampleSummary {
 export interface EditRequest {
   cell_type: CellType | string;
   date: string; // "YYYY-MM-DD"
+  reference_genome?: ReferenceGenome | string;
 }
 
 /** Response đơn giản cho các thao tác upload, delete, update */

@@ -1,6 +1,7 @@
 import io
 import csv
-from typing import Iterator, Tuple
+from typing import Iterator, Tuple, Optional
+from datetime import datetime
 from sqlalchemy import select
 from uuid import uuid4
 from sqlalchemy.orm import Session
@@ -12,7 +13,7 @@ from algorithm.plugin import (
 )
 from algorithm.models import Algorithm, AlgorithmParameter
 from .schemas import ResultDto, ResultSummary
-from common.models import ReferenceGenome, Chromosome
+from common.models import Chromosome
 from sample.models import Sample
 
 SEGMENT_EXPECTED = {"chromosome", "start", "end", "copy_number", "confidence"}
@@ -67,7 +68,7 @@ class ResultService:
         sample_name: str,
         algorithm_id: str,
         algorithm_parameter_id: str,
-        reference_genome: str,
+        created_at: Optional[str] = None,
     ):
         # 0. Kiểm tra Algorithm và Sample tồn tại
         sample_obj = db.query(Sample).filter(Sample.name == sample_name).first()
@@ -160,7 +161,8 @@ class ResultService:
             sample_id=sample_name,
             algorithm_id=algorithm_id,
             algorithm_parameter_id=algorithm_parameter_id,
-            reference_genome=ReferenceGenome(reference_genome),
+            reference_genome=sample_obj.reference_genome,
+            created_at=created_at if created_at else datetime.now(),
         )
         result.segments = segments_objs
         result.bins = bins_objs
@@ -184,6 +186,11 @@ class ResultService:
         algorithm_parameter_id: str,
         algorithm_output: dict,
     ):
+        # Kiểm tra Sample tồn tại
+        sample_obj = db.query(Sample).filter(Sample.name == sample_id).first()
+        if not sample_obj:
+            raise ValueError(f"Sample {sample_id} not found")
+
         # Kiểm tra trùng
         existing = (
             db.query(Result)
@@ -204,7 +211,7 @@ class ResultService:
             sample_id=sample_id,
             algorithm_id=algorithm_id,
             algorithm_parameter_id=algorithm_parameter_id,
-            reference_genome=ReferenceGenome(algorithm_output["reference_genome"]),
+            reference_genome=sample_obj.reference_genome,
         )
 
         segments = [

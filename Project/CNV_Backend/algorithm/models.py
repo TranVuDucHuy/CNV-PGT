@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Date, ForeignKey, JSON
+from sqlalchemy import Column, String, Date, ForeignKey, JSON, Integer
 from sqlalchemy.orm import relationship
 
 from database import Base
@@ -16,6 +16,7 @@ class Algorithm(Base):
     input_class = Column(String(256), nullable=True)
     output_class = Column(String(256), nullable=True)
     exe_class = Column(String(256), nullable=True)
+    references_required = Column(Integer, nullable=False, default=0)
 
     parameters = relationship(
         "AlgorithmParameter",

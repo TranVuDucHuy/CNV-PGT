@@ -6,23 +6,24 @@ import useResultHandle from "./resultHandle";
 import OperatingDialog from "@/components/OperatingDialog";
 import { Checkbox } from "@mui/material";
 import { useAlgorithms } from "../algorithm/useAlgorithms";
+import { parseSampleNameToParts } from "@/features/sample/sampleUtils";
 
 export default function ResultPane() {
   const {
     results,
     binFile,
     segmentFile,
+    createdAt,
     loading,
     error,
     algo,
-    referenceGenome,
     setBinFile,
     setSegmentFile,
+    setCreatedAt,
     save,
     refresh,
     removeResults,
     setAlgo,
-    setReferenceGenome,
   } = useResultHandle();
 
   const { algorithms } = useAlgorithms();
@@ -77,42 +78,6 @@ export default function ResultPane() {
 
     return map;
   }, [results]);
-
-  function parseSampleNameToParts(rawName?: string) {
-  // rawName may include .bam or not. Return { flowcell, cycle, embryo, displayName }
-  if (!rawName || rawName.trim() === "") {
-    return {
-      flowcell: "UNKNOWN",
-      cycle: "UNKNOWN",
-      embryo: rawName ?? "UNKNOWN",
-      displayName: rawName ?? "UNKNOWN",
-    };
-  }
-  const name = rawName.endsWith(".bam") ? rawName.slice(0, -4) : rawName;
-  const parts = name.split("-");
-  if (parts.length === 1) {
-    // can't split, fallback
-    const embryoWithPlate = parts[0];
-    const embryo = embryoWithPlate.split("_")[0];
-    return {
-      flowcell: "UNKNOWN",
-      cycle: "UNKNOWN",
-      embryo,
-      displayName: embryo,
-    };
-  }
-  // assume first part = flowcell, last part = embryo+plate, middle = cycle parts
-  const flowcell = parts[0] || "UNKNOWN";
-  const embryoWithPlate = parts[parts.length - 1] || "UNKNOWN";
-  const embryo = embryoWithPlate.split("_")[0] || embryoWithPlate;
-  const cycleParts = parts.slice(1, parts.length - 1);
-  const cycle = cycleParts.join("-") || "UNKNOWN";
-  return {
-    flowcell,
-    cycle,
-    embryo
-  };
-}
 
   // ======== Helpers for cascade select =========
   const getAllResultIdsUnderFlowcell = (flowcell: string) => {
@@ -391,11 +356,13 @@ export default function ResultPane() {
                 <input type="file" accept=".tsv" onChange={(e) => setSegmentFile(e.target.files?.[0] ?? null)} className="mt-1 block w-full rounded border px-3 py-2" required />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Reference Genome</label>
-                <select value={referenceGenome} onChange={(e) => setReferenceGenome(e.target.value as "GRCh37/hg19" | "GRCh38/hg38")} className="mt-1 block w-full rounded border px-3 py-2" required>
-                  <option value="GRCh37/hg19">GRCh37 / hg19</option>
-                  <option value="GRCh38/hg38">GRCh38 / hg38</option>
-                </select>
+                <label className="block text-sm font-medium text-gray-700">Date</label>
+                <input 
+                  type="date" 
+                  value={createdAt || ""} 
+                  onChange={(e) => setCreatedAt(e.target.value || null)} 
+                  className="mt-1 block w-full rounded border px-3 py-2" 
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Select Algorithm</label>

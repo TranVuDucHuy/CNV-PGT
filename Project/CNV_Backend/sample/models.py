@@ -3,6 +3,7 @@ from sqlalchemy import Column, String, Enum as SqlEnum, Date
 from sqlalchemy.orm import relationship
 from database import Base
 from datetime import date
+from common.models import ReferenceGenome
 
 
 class CellType(Enum):
@@ -26,6 +27,7 @@ class Sample(Base):
     embryo_id = Column(String(64), index=True, nullable=False)
     bam_url = Column(String(256), nullable=False)
     cell_type = Column(SqlEnum(CellType), nullable=False, default=CellType.OTHER)
+    reference_genome = Column(SqlEnum(ReferenceGenome), nullable=False, default=ReferenceGenome.HG19)
     date = Column(Date, nullable=False, default=date.today)
 
     results = relationship(

@@ -28,6 +28,7 @@ export default function AlgorithmDetail({ open, onClose, onSuccess, mode = 'crea
   const [name, setName] = useState('');
   const [version, setVersion] = useState('');
   const [description, setDescription] = useState('');
+  const [referencesRequired, setReferencesRequired] = useState<number>(0);
   const [params, setParams] = useState<AlgorithmParameterCreateRequest[]>([]);
   const [initialParams, setInitialParams] = useState<AlgorithmParameterCreateRequest[]>([]);
   const [zipFile, setZipFile] = useState<File | null>(null);
@@ -48,6 +49,7 @@ export default function AlgorithmDetail({ open, onClose, onSuccess, mode = 'crea
       setName(initialAlgorithm.name || '');
       setVersion(initialAlgorithm.version || '');
       setDescription(initialAlgorithm.description || '');
+      setReferencesRequired(initialAlgorithm.references_required || 0);
       setZipFile(null);
 
       // Build params from provided schema or derive from lastParamValues
@@ -68,6 +70,7 @@ export default function AlgorithmDetail({ open, onClose, onSuccess, mode = 'crea
       setName('');
       setVersion('');
       setDescription('');
+      setReferencesRequired(0);
       setParams([]);
       setInitialParams([]);
       setZipFile(null);
@@ -83,8 +86,9 @@ export default function AlgorithmDetail({ open, onClose, onSuccess, mode = 'crea
     name: name.trim(),
     version: version.trim(),
     description: description.trim() || undefined,
+    references_required: referencesRequired,
     parameters: params,
-  }), [name, version, description, params]);
+  }), [name, version, description, referencesRequired, params]);
 
   const canSubmit = name.trim() && version.trim();
   const isEdit = mode === 'edit';
@@ -160,21 +164,16 @@ export default function AlgorithmDetail({ open, onClose, onSuccess, mode = 'crea
     let registeredAlgorithmId: string | null = null;
     try {
       setLoading(true);
-      // Ensure each parameter has a value (default to its default) before sending
+      // Values are always default during registration
       const payload: AlgorithmMetadata = {
         ...metadata,
-        parameters: params.map(p => ({ ...p, value: p.value ?? p.default })),
+        parameters: params.map(p => ({ ...p, value: p.default })),
       };
       const res = await algorithmAPI.register(payload);
       registeredAlgorithmId = res.algorithm_id;
       
-      // Prepare values dictionary from params
-      // Use value if set, otherwise use default, otherwise use empty string
       const values: Record<string, any> = params.reduce((acc, p) => {
-        const finalValue = p.value !== '' && p.value !== null && p.value !== undefined 
-          ? p.value 
-          : (p.default !== '' && p.default !== null && p.default !== undefined ? p.default : '');
-        acc[p.name] = finalValue;
+        acc[p.name] = p.default;
         return acc;
       }, {} as Record<string, any>);
       
@@ -269,7 +268,7 @@ export default function AlgorithmDetail({ open, onClose, onSuccess, mode = 'crea
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Basic Info */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Name <span className="text-red-500">*</span></label>
               <input
@@ -294,6 +293,22 @@ export default function AlgorithmDetail({ open, onClose, onSuccess, mode = 'crea
                 disabled={isEdit}
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4"> 
+            <div>
+              <label className="block text-sm font-medium mb-1">References Required (minimum)</label>
+              <input
+                type="number"
+                value={referencesRequired}
+                onChange={(e) => setReferencesRequired(Math.max(0, parseInt(e.target.value) || 0))}
+                className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
+                placeholder="0"
+                min="0"
+                disabled={isEdit}
+              />
+              <p className="text-xs text-gray-500 mt-1">Number of reference samples required for this algorithm</p>
+            </div>
             <div>
               <label className="block text-sm font-medium mb-1">Module ZIP (optional)</label>
               <input
@@ -317,6 +332,8 @@ export default function AlgorithmDetail({ open, onClose, onSuccess, mode = 'crea
               disabled={isEdit}
             />
           </div>
+
+          
 
           {/* Parameters */}
           <div className="border rounded p-4">
@@ -344,7 +361,7 @@ export default function AlgorithmDetail({ open, onClose, onSuccess, mode = 'crea
               )}
             </div>
 
-            <div className="overflow-x-auto overflow-y-scroll h-54 relative pr-2" style={{ scrollbarGutter: 'stable' }}>
+            <div className="overflow-x-auto overflow-y-scroll h-36 relative pr-2" style={{ scrollbarGutter: 'stable' }}>
                 <table className="w-full text-sm table-fixed border-collapse">
                   <colgroup>
                     <col style={{ width: '45%' }} />

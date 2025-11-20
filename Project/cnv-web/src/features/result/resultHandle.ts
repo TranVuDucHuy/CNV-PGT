@@ -7,30 +7,30 @@ export interface UseSampleHandleReturn {
   results: ResultSummary[];
   binFile: File | null;
   segmentFile: File | null;
+  createdAt: string | null;
   loading: boolean;
   error: string | null;
   algo: Algorithm | null;
   resultDtos: ResultDto[];
-  referenceGenome: ReferenceGenome;
   setBinFile: (f: File | null) => void;
   setSegmentFile: (f: File | null) => void;
+  setCreatedAt: (date: string | null) => void;
   save: () => Promise<void>;
   refresh: () => Promise<void>;
   removeResults: (ids: Set<string>) => Promise<void>;
   getAll: () => Promise<ResultSummary[]>;
   setAlgo: (al: Algorithm) => void;
-  setReferenceGenome: (refGe: ReferenceGenome) => void;
 }
 
 export default function useResultHandle(initial: ResultSummary[] = []): UseSampleHandleReturn {
   const [results, setResults] = useState<ResultSummary[]>(initial);
   const [binFile, setBinFile] = useState<File | null>(null);
   const [segmentFile, setSegmentFile] = useState<File | null>(null);
+  const [createdAt, setCreatedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [algo, setAlgo] = useState<Algorithm | null>(null);
   const [resultDtos, setResultDtos] = useState<ResultDto[]>([]);
-  const [referenceGenome, setReferenceGenome] = useState<ReferenceGenome>('HG19');
 
   useEffect(() => {
     // await refresh and properly handle loading
@@ -101,13 +101,13 @@ export default function useResultHandle(initial: ResultSummary[] = []): UseSampl
     if (!binFile || !segmentFile || !algo) return;
 
     try {
-      await resultAPI.create(binFile, segmentFile, algo.id, algo.parameters?.[0].id, referenceGenome);
+      await resultAPI.create(binFile, segmentFile, algo.id, algo.parameters?.[0].id, createdAt || undefined);
       await refresh();
     } catch (err) {
       console.error("Failed to upload result file:", err);
       throw err;
     }
-  }, [binFile, segmentFile, algo, refresh, referenceGenome]);
+  }, [binFile, segmentFile, algo, createdAt, refresh]);
 
   const removeResults = useCallback(async (ids: Set<string>) => {
     try {
@@ -150,18 +150,18 @@ export default function useResultHandle(initial: ResultSummary[] = []): UseSampl
     results,
     binFile,
     segmentFile,
+    createdAt,
     loading,
     error,
     algo,
     resultDtos,
-    referenceGenome,
     setBinFile,
     setSegmentFile,
+    setCreatedAt,
     save,
     refresh,
     removeResults,
     getAll,
     setAlgo,
-    setReferenceGenome
   };
 }

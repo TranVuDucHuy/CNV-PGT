@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, status
+from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, status, Body
 from fastapi.responses import StreamingResponse
 from typing import List
 from .service import SampleService
@@ -11,11 +11,17 @@ router = APIRouter()
 
 
 @router.post("/")
-async def upload_file(file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def upload_file(
+    file: UploadFile = File(...),
+    reference_genome: str = Body(None),
+    cell_type: str = Body(None),
+    date: str = Body(None),
+    db: Session = Depends(get_db)
+):
     content = await file.read()
     name = file.filename
-    fileName = name[:name.index("_")]
-    result = SampleService.save(db=db, file_stream=content, file_name=fileName)
+    fileName = name[:name.index("_")] if "_" in name else name
+    result = SampleService.save(db=db, file_stream=content, file_name=fileName, reference_genome=reference_genome, cell_type=cell_type, date=date)
     success = result.get("success")
     message = ""
     if success:
@@ -27,7 +33,11 @@ async def upload_file(file: UploadFile = File(...), db: Session = Depends(get_db
 
 @router.post("/many")
 async def upload_multiple_files(
-    files: List[UploadFile] = File(...), db: Session = Depends(get_db)
+    files: List[UploadFile] = File(...),
+    reference_genome: str = Body(None),
+    cell_type: str = Body(None),
+    date: str = Body(None),
+    db: Session = Depends(get_db)
 ):
     file_streams = []
     names = []
@@ -35,9 +45,9 @@ async def upload_multiple_files(
         content = await file.read()
         file_streams.append(content)
         name = file.filename
-        fileName = name[:name.index("_")]
+        fileName = name[:name.index("_")] if "_" in name else name
         names.append(fileName)
-    result = SampleService.save_many(db=db, files=file_streams, names=names)
+    result = SampleService.save_many(db=db, files=file_streams, names=names, reference_genome=reference_genome, cell_type=cell_type, date=date)
     # result có thể là dict như: {"added": [...], "skipped": [...]}
     added = result.get("added", [])
     skipped = result.get("skipped", [])
