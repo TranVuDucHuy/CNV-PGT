@@ -1,8 +1,4 @@
-/**
- * Dashboard - Main Container
- * Chỉ chứa layout, không chứa business logic
- */
-
+// dashboard.tsx
 "use client";
 
 import React from "react";
@@ -19,7 +15,6 @@ const DashboardView: React.FC = () => {
   const { samples, refresh } = useSampleHandle();
   return (
     <div className="flex flex-col h-screen font-sans">
-
       {/* Menu Bar */}
       <nav className="bg-gray-200 border-b border-gray-400 px-4 py-2 flex items-center">
         <h1 className="text-lg font-bold">CNV Analysis Dashboard</h1>
@@ -27,15 +22,23 @@ const DashboardView: React.FC = () => {
 
       {/* Split Pane */}
       <div className="flex flex-1">
+        <ViewProvider>
+          {/* Left Pane */}
+          <div className="w-60 border-r border-gray-300 bg-gray-50 p-3 overflow-y-auto space-y-3">
+            <SamplePane />
+            <ReferencePane samples={samples} onRefresh={refresh} />            
+            <AlgorithmPane />
+            <ResultPane />
+            <ViewPane />
+          </div>
 
-          <ViewProvider>
-            {/* Left Pane - Sidebar với các feature panes */}
-            <div className="w-60 border-r border-gray-300 bg-gray-50 p-3 overflow-y-auto space-y-3">
-              <SamplePane />
-              <ReferencePane samples={samples} onRefresh={refresh} />
-              <AlgorithmPane />
-              <ResultPane />
-              <ViewPane />
+          {/* Right Pane - Content Area (now full-size) */}
+          <div className="flex-1 bg-gray-100 flex">
+            <div
+              id="contentArea"
+              className="w-full h-full bg-gray-200 border rounded-lg flex flex-col p-3"
+            >
+              <ContentPane />
             </div>
 
             {/* Right Pane - Content Area */}
