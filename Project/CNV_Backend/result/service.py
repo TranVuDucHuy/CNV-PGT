@@ -1,6 +1,7 @@
 import io
 import csv
-from typing import Iterator, Tuple
+from typing import Iterator, Tuple, Optional
+from datetime import datetime
 from sqlalchemy import select
 from uuid import uuid4
 from sqlalchemy.orm import Session
@@ -67,6 +68,7 @@ class ResultService:
         sample_name: str,
         algorithm_id: str,
         algorithm_parameter_id: str,
+        created_at: Optional[str] = None,
     ):
         # 0. Kiểm tra Algorithm và Sample tồn tại
         sample_obj = db.query(Sample).filter(Sample.name == sample_name).first()
@@ -160,6 +162,7 @@ class ResultService:
             algorithm_id=algorithm_id,
             algorithm_parameter_id=algorithm_parameter_id,
             reference_genome=sample_obj.reference_genome,
+            created_at=created_at if created_at else datetime.now(),
         )
         result.segments = segments_objs
         result.bins = bins_objs

@@ -12,11 +12,13 @@ export default function ResultPane() {
     results,
     binFile,
     segmentFile,
+    createdAt,
     loading,
     error,
     algo,
     setBinFile,
     setSegmentFile,
+    setCreatedAt,
     save,
     refresh,
     removeResults,
@@ -387,6 +389,15 @@ export default function ResultPane() {
               <div>
                 <label className="block text-sm font-medium text-gray-700">Select Segment File</label>
                 <input type="file" accept=".tsv" onChange={(e) => setSegmentFile(e.target.files?.[0] ?? null)} className="mt-1 block w-full rounded border px-3 py-2" required />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Date</label>
+                <input 
+                  type="date" 
+                  value={createdAt || ""} 
+                  onChange={(e) => setCreatedAt(e.target.value || null)} 
+                  className="mt-1 block w-full rounded border px-3 py-2" 
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Select Algorithm</label>
