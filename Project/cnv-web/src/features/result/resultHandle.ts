@@ -113,7 +113,7 @@ export default function useResultHandle(initial: ResultSummary[] = []): UseSampl
     try {
       console.log("start removing");
       const promises = Array.from(ids).map(async (id) => {
-        if (!id || isNaN(Number(id))) {
+        if (!id) {
           console.warn("skip invalid id", id);
           return;
         }
