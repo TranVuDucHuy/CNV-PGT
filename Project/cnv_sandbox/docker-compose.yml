@@ -22,18 +22,6 @@ services:
     volumes:
       - ./algorithms_container:/app/sandbox/algorithms_container
 
-  runner:
-    build: .
-    container_name: cnv_sandbox_runner
-    environment:
-      - REDIS_HOST=redis
-      - PATH=/app/runner/.venv/bin
-    depends_on:
-      - redis
-    command: ["/app/runner/.venv/bin/python", "/app/runner/main.py"]
-    volumes:
-      - ./algorithms_container:/app/sandbox/algorithms_container
-
   redis:
     image: redis:latest
     container_name: cnv_sandbox_redis

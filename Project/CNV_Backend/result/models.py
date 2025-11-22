@@ -21,7 +21,7 @@ class Result(Base):
     id = Column(String(64), primary_key=True, index=True)
     sample_id = Column(
         String(64),
-        ForeignKey("samples.name", ondelete="CASCADE"),
+        ForeignKey("samples.id", ondelete="CASCADE"),
         index=True,
         nullable=False,
     )

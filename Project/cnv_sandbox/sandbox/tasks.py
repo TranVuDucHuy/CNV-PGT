@@ -1,5 +1,5 @@
 import importlib
-from module_utils import modulize_name, load_module, get_class_from_module
+from utils.module_utils import modulize_name, load_module, get_class_from_module
 
 import sys
 import subprocess
@@ -29,12 +29,13 @@ def install_algorithm(algorithm_path):
     subprocess.run(
         [sys.executable, "-m", "pip", "install", "-e", str(path)], check=True
     )
-    
+
     src_path = str(path / "src")
     print("Source path set to:", src_path)
     sys.path.insert(0, src_path)
     importlib.invalidate_caches()
     import site
+
     site.main()
     return {"done": True}
 
