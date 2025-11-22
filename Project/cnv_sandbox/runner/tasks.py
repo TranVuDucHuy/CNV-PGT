@@ -1,8 +1,11 @@
+import importlib
 from module_utils import modulize_name, load_module, get_class_from_module
 
 import sys
 import subprocess
 from pathlib import Path
+import traceback
+
 
 def install_algorithm(algorithm_path):
     path = Path(algorithm_path)
@@ -12,21 +15,28 @@ def install_algorithm(algorithm_path):
 
     # Must contain pyproject.toml or setup.py
     if not ((path / "pyproject.toml").exists() or (path / "setup.py").exists()):
-        return {"done": False, "error": "Not a valid Python project: missing pyproject.toml or setup.py"}
-    
+        return {
+            "done": False,
+            "error": "Not a valid Python project: missing pyproject.toml or setup.py",
+        }
+
     # Print content of "pyproject.toml" if exists
     if (path / "pyproject.toml").exists():
         with open(path / "pyproject.toml", "r") as f:
             print("pyproject.toml content:")
             print(f.read())
-    # Set 
+    # Set
     subprocess.run(
-        [sys.executable, "-m", "pip", "install", str(path)],
-        check=True
+        [sys.executable, "-m", "pip", "install", "-e", str(path)], check=True
     )
-
+    
+    src_path = str(path / "src")
+    print("Source path set to:", src_path)
+    sys.path.insert(0, src_path)
+    importlib.invalidate_caches()
+    import site
+    site.main()
     return {"done": True}
-
 
 
 def run_algorithm(
@@ -54,23 +64,22 @@ def run_algorithm(
 
         input_instance = InputClass(bam=bam, **input_data)
         output_instance = ExecClass().run(input_instance, **kwargs)
-        
+
         return {"done": True, "output": output_instance.model_dump()}
     except Exception as e:
         print("Error during algorithm execution:", str(e))
+        traceback.print_exc()
         return {"done": False, "error": str(e)}
 
 
 def uninstall_algorithm(algorithm_id: str):
     algorithm_id = modulize_name(algorithm_id)
     try:
-        subprocess.run(
-            ["pip", "uninstall", "-y", algorithm_id],
-            check=True
-        )
+        subprocess.run(["pip", "uninstall", "-y", algorithm_id], check=True)
         return {"done": True}
     except subprocess.CalledProcessError as e:
         return {"done": False, "error": str(e)}
+
 
 def example_execute():
     return {"status": "success", "message": "Example algorithm executed."}

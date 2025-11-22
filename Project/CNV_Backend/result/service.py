@@ -187,7 +187,7 @@ class ResultService:
         algorithm_output: dict,
     ):
         # Kiểm tra Sample tồn tại
-        sample_obj = db.query(Sample).filter(Sample.name == sample_id).first()
+        sample_obj = db.query(Sample).filter(Sample.id == sample_id).first()
         if not sample_obj:
             raise ValueError(f"Sample {sample_id} not found")
 
