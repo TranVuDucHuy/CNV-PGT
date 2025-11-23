@@ -7,7 +7,7 @@ from pathlib import Path
 import traceback
 
 
-def install_algorithm(algorithm_path):
+def install_editable_mode(algorithm_path):
     path = Path(algorithm_path)
 
     if not path.exists():
@@ -25,19 +25,37 @@ def install_algorithm(algorithm_path):
         with open(path / "pyproject.toml", "r") as f:
             print("pyproject.toml content:")
             print(f.read())
-    # Set
-    subprocess.run(
-        [sys.executable, "-m", "pip", "install", "-e", str(path)], check=True
-    )
+    # Install the algorithm in editable mode to keep
+    try:
+        subprocess.run(
+            ["pip", "install", "-e", str(path)], check=True
+        )
+    except subprocess.CalledProcessError as e:
+        return {"done": False, "error": str(e)}
 
-    src_path = str(path / "src")
-    print("Source path set to:", src_path)
-    sys.path.insert(0, src_path)
-    importlib.invalidate_caches()
-    import site
-
-    site.main()
     return {"done": True}
+
+
+def install_conda_pkgs(channels: list[str], packages: list[str]):
+    """Install packages using conda.
+
+    Args:
+        channels (list[str]): List of conda channels to use.
+        packages (list[str]): List of packages to install.
+
+    Returns:
+        dict: A dictionary indicating success or failure.
+    """
+    try:
+        command = ["conda", "install", "-y"]
+        for channel in channels:
+            command.extend(["-c", channel])
+        command.extend(packages)
+
+        subprocess.run(command, check=True)
+        return {"done": True}
+    except subprocess.CalledProcessError as e:
+        return {"done": False, "error": str(e)}
 
 
 def run_algorithm(
