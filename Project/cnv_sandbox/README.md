@@ -7,7 +7,7 @@
 1. Create a conda environment:
 
    ```bash
-   conda create -n cnv_sandbox python=3.13 -y
+   conda create -n cnv_sandbox python=3.11 -y
    conda activate cnv_sandbox
    ```
 
