@@ -1,50 +1,36 @@
-# Sandbox to run algorithms
+# Sandbox to run CNV-PGT algorithms safely
 
-## Folder Structure
+## `NOTE`: Better to run this in a virtual machine to avoid security risks.
 
-- `runner/`: Contains the separate Python Project to install and run algorithms.
-- `sandbox/`: Contains the FastAPI application to interact with the runner.
+## Setup Instructions
 
-## How to run?
+1. Create a conda environment:
 
-You have two options to run the sandbox:
+   ```bash
+   conda create -n cnv_sandbox python=3.11 -y
+   conda activate cnv_sandbox
+   ```
 
-1. Using Docker (recommended):
-   The compose file brings up three containers: the FastAPI sandbox API, the
-   background runner worker, and Redis. Build and start everything with:
+2. Install required packages:
 
-```bash
-docker compose up --build
-```
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-   After the containers are ready, access the sandbox endpoints at
-   `http://localhost:8001/api/v1/sandbox`.
+3. Start a Redis server (can be run by docker):
 
-2. Manually:
+   ```bash
+   docker run -d -p 6379:6379 redis
+   ```
 
-- First, make sure that the 2 projects have environment and dependencies installed.
-- Start Redis locally (or with Docker):
+   Or use the docker-compose file:
 
-```bash
-docker run --rm -p 6379:6379 redis:7
-```
+   ```bash
+   docker-compose up -d
+   ```
 
-- In one terminal, run the `Redis Queue` worker inside the `runner/` project:
+4. Run the sandbox server:
 
-```bash
-cd runner
-pip install -r requirements.txt  # if not already installed
-REDIS_HOST=localhost python main.py
-```
-
-Or go to `runner/main.py` and run the file directly.
-
-- In another terminal, run the FastAPI application inside the `sandbox/` project:
-
-```bash
-cd sandbox
-pip install -r requirements.txt  # if not already installed
-REDIS_HOST=localhost uvicorn main:app --reload --host 0.0.0.0 --port 8001
-```
-
-Access the sandbox endpoints at `http://localhost:8001/api/v1/sandbox`.
+   ```bash
+   uvicorn main:app --reload --port=8001
+   ```

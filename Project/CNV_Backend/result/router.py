@@ -6,6 +6,7 @@ from database import get_db
 from .service import ResultService
 from .schemas import ResultSummary
 from .schemas import ResultDto
+from .schemas import ResultReportResponse
 from common.schemas import BasicResponse
 import logging
 
@@ -66,6 +67,15 @@ def get_result(result_id: str, db: Session = Depends(get_db)):
     try:
         result = ResultService.get(db=db, result_id=result_id)
         return result
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+@router.get("/{result_id}/report", response_model=ResultReportResponse)
+def get_result_report(result_id: str, db: Session = Depends(get_db)):
+    try:
+        report = ResultService.get_report(db=db, result_id=result_id)
+        return report
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 

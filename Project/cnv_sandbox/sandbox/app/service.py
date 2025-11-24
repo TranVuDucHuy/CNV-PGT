@@ -6,9 +6,10 @@ from config import SandboxConfig
 import json
 import shutil
 import time
+import subprocess
 
 from utils.module_utils import modulize_name
-from redis_queue import runner_queue
+from redis_utils import connect_queue
 
 
 PYPROJECT_TEMPLATE = """
@@ -31,9 +32,23 @@ include = ["*"]
 """
 
 
+def execute_rq_job(runner_queue, func_name: str, *args, **kwargs):
+    job = runner_queue.enqueue(func_name, *args, **kwargs)
+
+    while job.get_status() not in ("finished", "failed"):
+        time.sleep(0.5)
+
+    res = job.result
+    return res
+
+
 class SandboxService:
     @staticmethod
-    def install_from_zip(algorithm_id: str, algo_zip: bytes):
+    def install_from_zip(
+        algorithm_id: str,
+        algo_zip: bytes,
+        runner_queue,
+    ):
         """Install an algorithm from a zip file.
         The zip file should contain a metadata.json file with at least the following fields:
         - version: str
@@ -108,20 +123,32 @@ class SandboxService:
                 # Directly extract all files
                 zip_ref.extractall(algo_dir)
 
-            # Run pip install -e <algo_dir>
-            print("Running installation command...")
-            print("algo_dir exists:", algo_dir.exists())
+            # Install conda packages if specified in metadata
+            env_metadata = metadata.get("environment", None)
+            if not env_metadata:
+                return
+            print("Installing conda packages...")
+            channels = env_metadata.get("channels", [])
+            dependencies = env_metadata.get("dependencies", [])
+            res = execute_rq_job(
+                runner_queue,
+                "tasks.install_conda_pkgs",
+                channels,
+                dependencies,
+            )
+            if not res["done"]:
+                raise RuntimeError(f"Conda package installation failed: {res['error']}")
+            
+                        # Run pip install -e <algo_dir>
             algo_dir_abs_path = str(algo_dir.resolve())
-            path = Path(algo_dir_abs_path)
-            if not path.exists():
-                raise ValueError(f"While installing, path does not exist: {algo_dir_abs_path}")
-            job = runner_queue.enqueue("tasks.install_algorithm", algo_dir_abs_path)
 
-            while job.get_status() not in ("finished", "failed"):
-                time.sleep(0.5)
-
-
-            res = job.result
+            # Install the algorithm in editable mode to preserve file structure
+            print("Installing algorithm in editable mode...")
+            res = execute_rq_job(
+                runner_queue,
+                "tasks.install_editable_mode",
+                algo_dir_abs_path,
+            )
             if not res["done"]:
                 raise RuntimeError(f"Algorithm installation failed: {res['error']}")
 
@@ -132,7 +159,8 @@ class SandboxService:
         exe_cls: str,
         bam: bytes,
         input_data: dict,
-        **kwargs,
+        params: dict,
+        runner_queue,
     ) -> dict:
         """Run an installed algorithm in a sandboxed environment.
         Args:
@@ -141,7 +169,7 @@ class SandboxService:
             exe_cls (str): The execution class name.
             bam (bytes): The BAM file content as bytes.
             input_data (dict): The input data for the algorithm.
-            **kwargs: Additional keyword arguments for the algorithm execution.
+            params (dict): Additional parameters for the algorithm execution.
         Returns:
             dict: The output data from the algorithm execution.
         """
@@ -152,7 +180,7 @@ class SandboxService:
             exe_cls,
             bam,
             input_data,
-            **kwargs,
+            **params,
         )
 
         while job.get_status() not in ("finished", "failed"):
@@ -163,13 +191,16 @@ class SandboxService:
         return res["output"]
 
     @staticmethod
-    def uninstall_algorithm(algorithm_id: str):
+    def uninstall_algorithm(algorithm_id: str, runner_queue):
         """Uninstall an algorithm by its ID.
         This method removes the installed algorithm package using pip and deletes its files.
 
         Args:
             algorithm_id (str): The unique identifier for the algorithm.
+            worker_process_pool (dict): The worker process pool for managing worker processes.
+            user_id (str): The user ID for the sandbox queue.
         """
+
         algorithm_id = modulize_name(algorithm_id)
         # Uninstall using pip
         os.system(f"pip uninstall -y {algorithm_id}")
