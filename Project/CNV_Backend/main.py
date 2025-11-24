@@ -3,6 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 import sample
 import algorithm
 import result
+import aberration
+# Import models to register them with Base
+from sample.models import Sample
+from algorithm.models import Algorithm, AlgorithmParameter
+from result.models import Result, SampleSegment, SampleBin
+from aberration.models import Aberration, AberrationSegment, AberrationThreshold
 from database import Base, engine
 from fastapi.middleware.cors import CORSMiddleware
 import os
