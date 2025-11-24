@@ -1,39 +1,32 @@
+// SamplePane.tsx
 "use client";
 
 import React, { ChangeEvent, useEffect, useMemo, useState } from "react";
-import { Plus, Minus, Edit3, X } from "lucide-react";
+import { Plus, Minus, Edit3 } from "lucide-react";
 import useSampleHandle from "./sampleHandle";
+import CenterDialog from "@/components/CenterDialog";
 import OperatingDialog from "@/components/OperatingDialog";
-import { Checkbox } from "@mui/material";
+import { Checkbox, Box, Button, Stack, Typography, CircularProgress, Collapse, IconButton } from "@mui/material";
 import { ReferenceGenome, CellType } from "@/types/sample";
 import { syncWithSamples } from "@/features/reference/useReferences";
 import { parseSampleNameToParts } from "./sampleUtils";
-
-/**
- * Updated SamplePane
- * - Grouping: Flowcell -> Cycle -> Embryo
- * - Select cascade: selecting flowcell/cycle selects all children
- * - Parse sample.name if backend fields missing or 'rand'
- * - Removes plate suffix like _S93 for display
- */
+import MUIAccordionPane from "@/components/MUIAccordionPane";
 
 type SampleItem = {
   id: string;
-  name: string; // name in DB (expected to be filename without .bam)
+  name: string;
   cell_type?: string;
   date?: string;
-  // optional backend fields (may be 'rand' as placeholder)
   flowcell_id?: string;
   cycle_id?: string;
   embryo_id?: string;
-  // keep any other props
   [k: string]: any;
 };
 
 export default function SamplePane() {
   const {
     files,
-    samples,
+    samples = [],
     isOpen,
     open,
     loading,
@@ -46,17 +39,17 @@ export default function SamplePane() {
   } = useSampleHandle();
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [removeDialog, setRemoveDialog] = useState<boolean>(false);
+  const [removeDialogOpen, setRemoveDialogOpen] = useState<boolean>(false);
   const [operating, setOperating] = useState(false);
   const [promise, setPromise] = useState<Promise<any> | undefined>();
   const [isSelectAll, setIsSelectAll] = useState<boolean>(false);
   const [referenceGenome, setReferenceGenome] = useState<ReferenceGenome>(ReferenceGenome.HG19);
   const [cellType, setCellType] = useState<string>("Other");
-  const [uploadDate, setUploadDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [uploadDate, setUploadDate] = useState<string>(new Date().toISOString().split("T")[0]);
 
   // UI expand/collapse state
   const [openFlowcells, setOpenFlowcells] = useState<Set<string>>(new Set());
-  const [openCycles, setOpenCycles] = useState<Set<string>>(new Set()); // key: `${flowcell}|${cycle}`
+  const [openCycles, setOpenCycles] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -82,10 +75,10 @@ export default function SamplePane() {
       }
       return next;
     });
-    
+
     const availableSampleIds = new Set(samples.map((s: any) => s.id));
     syncWithSamples(availableSampleIds);
-  }, [samples, syncWithSamples]);
+  }, [samples]);
 
   useEffect(() => {
     const total = samples.length;
@@ -100,22 +93,18 @@ export default function SamplePane() {
 
   // Build grouping map: flowcell -> cycle -> samples[]
   const grouped = useMemo(() => {
-    const map = new Map<
-      string,
-      Map<string, Array<{ sample: SampleItem; parsed: ReturnType<typeof parseSampleNameToParts> }>>
-    >();
+    const map = new Map<string, Map<string, Array<{ sample: SampleItem; parsed: any }>>>();
 
     for (const sRaw of (samples as SampleItem[] | undefined) ?? []) {
       const s = sRaw as SampleItem;
 
-      // prefer backend-provided fields if present and not 'rand'
       const fallbackParsed = parseSampleNameToParts(s.name);
 
       const flowcell =
         s.flowcell_id && s.flowcell_id !== "rand" ? s.flowcell_id : fallbackParsed.flowcell;
       const cycle = s.cycle_id && s.cycle_id !== "rand" ? s.cycle_id : fallbackParsed.cycle;
       const embryo = s.embryo_id && s.embryo_id !== "rand" ? s.embryo_id : fallbackParsed.embryo;
-      const display = embryo; // short name, already removed plate suffix by parse
+      const display = embryo;
 
       const parsed = {
         flowcell,
@@ -130,19 +119,17 @@ export default function SamplePane() {
       cycleMap.get(cycle)!.push({ sample: s, parsed });
     }
 
-    // sort flowcells and cycles alphabetically for stable UI
-    const sortedMap = new Map<string, Map<string, Array<{ sample: SampleItem; parsed: ReturnType<typeof parseSampleNameToParts> }>>>();
+    const sortedMap = new Map<string, Map<string, Array<{ sample: SampleItem; parsed: any }>>>();
     Array.from(map.keys())
       .sort()
       .forEach((flow) => {
         const cycles = map.get(flow)!;
-        const sortedCycles = new Map<string, Array<{ sample: SampleItem; parsed: ReturnType<typeof parseSampleNameToParts> }>>();
+        const sortedCycles = new Map<string, Array<{ sample: SampleItem; parsed: any }>>();
         Array.from(cycles.keys())
           .sort()
           .forEach((c) => {
             const arr = cycles.get(c)!;
-            // sort embryo or sample display ascending
-            arr.sort((a, b) => (a.parsed.displayName > b.parsed.displayName ? 1 : -1));
+            arr.sort((a: any, b: any) => (a.parsed.displayName > b.parsed.displayName ? 1 : -1));
             sortedCycles.set(c, arr);
           });
         sortedMap.set(flow, sortedCycles);
@@ -165,33 +152,7 @@ export default function SamplePane() {
     const cycleMap = grouped.get(flowcell);
     if (!cycleMap) return [];
     const arr = cycleMap.get(cycle) ?? [];
-    return arr.map((it) => it.sample.id);
-  };
-
-  const isFlowcellAllSelected = (flowcell: string) => {
-    const ids = allSampleIdsUnderFlowcell(flowcell);
-    if (ids.length === 0) return false;
-    return ids.every((id) => selectedIds.has(id));
-  };
-
-  const isFlowcellIndeterminate = (flowcell: string) => {
-    const ids = allSampleIdsUnderFlowcell(flowcell);
-    if (ids.length === 0) return false;
-    const any = ids.some((id) => selectedIds.has(id));
-    return any && !isFlowcellAllSelected(flowcell);
-  };
-
-  const isCycleAllSelected = (flowcell: string, cycle: string) => {
-    const ids = allSampleIdsUnderCycle(flowcell, cycle);
-    if (ids.length === 0) return false;
-    return ids.every((id) => selectedIds.has(id));
-  };
-
-  const isCycleIndeterminate = (flowcell: string, cycle: string) => {
-    const ids = allSampleIdsUnderCycle(flowcell, cycle);
-    if (ids.length === 0) return false;
-    const any = ids.some((id) => selectedIds.has(id));
-    return any && !isCycleAllSelected(flowcell, cycle);
+    return arr.map((it: any) => it.sample.id);
   };
 
   const toggleSelect = (id: string | undefined) => {
@@ -235,7 +196,7 @@ export default function SamplePane() {
   };
 
   const toggleCycle = (flowcell: string, cycle: string) => {
-    const ids = allSampleIdsUnderCycle(flowcell, cycle);
+    const ids: string[] = allSampleIdsUnderCycle(flowcell, cycle);
     if (ids.length === 0) return;
     const allSelected = ids.every((id) => selectedIds.has(id));
     setSelectedIds((prev) => {
@@ -268,291 +229,275 @@ export default function SamplePane() {
     });
   };
 
+  const handleUploadConfirm = () => {
+    if (!operating) {
+      if (files?.length && files?.length > 0) {
+        if (files?.length == 1) {
+          openOperatingDialog(save(referenceGenome, cellType, uploadDate));
+        } else if (files?.length > 1) {
+          openOperatingDialog(saveManyFiles(referenceGenome, cellType, uploadDate));
+        }
+      }
+    }
+  };
+
+  const handleRemoveConfirm = () => {
+    if (!operating) {
+      openOperatingDialog(removeSamples(selectedIds));
+      setRemoveDialogOpen(false);
+    }
+  };
+
+  const headerRight = (
+    <Stack direction="row" spacing={1} alignItems="center">
+      <Button
+        onClick={(e) => {
+          e.stopPropagation();
+          open();
+        }}
+        title="Add"
+        variant="contained"
+        size="small"
+        sx={{ minWidth: 0, px: 1, bgcolor: "#10B981", "&:hover": { bgcolor: "#059669" } }}
+      >
+        <Plus size={14} />
+      </Button>
+
+      <Button
+        onClick={(e) => {
+          e.stopPropagation();
+          if (selectedIds.size > 0) {
+            setRemoveDialogOpen(true);
+          }
+        }}
+        title="Remove"
+        variant="contained"
+        size="small"
+        sx={{ minWidth: 0, px: 1, bgcolor: "#EF4444", "&:hover": { bgcolor: "#DC2626" } }}
+      >
+        <Minus size={14} />
+      </Button>
+
+      <IconButton
+        onClick={(e) => e.stopPropagation()}
+        title="Edit"
+        size="small"
+        sx={{ bgcolor: "#3B82F6", color: "#fff", "&:hover": { bgcolor: "#2563EB" } }}
+      >
+        <Edit3 size={16} />
+      </IconButton>
+    </Stack>
+  );
+
   return (
-    <details open className="border rounded-md">
-      <summary className="bg-gray-300 px-3 py-2 font-semibold cursor-pointer flex items-center justify-between">
-        <span>Sample</span>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              open();
-            }}
-            title="Add"
-            className="p-1 bg-green-500 hover:bg-green-600 text-white rounded"
-          >
-            <Plus size={16} />
-          </button>
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              if (selectedIds.size > 0) {
-                setRemoveDialog(true);
-              }
-            }}
-            title="Remove"
-            className="p-1 bg-red-500 hover:bg-red-600 text-white rounded"
-          >
-            <Minus size={16} />
-          </button>
-          <button title="Edit" className="p-1 bg-blue-500 hover:bg-blue-600 text-white rounded">
-            <Edit3 size={16} />
-          </button>
-        </div>
-      </summary>
+    <MUIAccordionPane title="Sample" defaultExpanded headerRight={headerRight}>
+      <Box>
+        <Box sx={{ display: "flex", gap: 2, alignItems: "center", mb: 1 }}>
+          <Typography variant="body2">{selectedIds.size} selected</Typography>
 
-      <div className="flex items-center gap-4 p-3">
-        <div>{selectedIds.size} selected</div>
-        <div className="flex items-center gap-2">
-          <Checkbox checked={isSelectAll} onChange={toggleSelectAll} />
-          <span className="text-sm font-medium">Select All</span>
-        </div>
-      </div>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Checkbox checked={isSelectAll} onChange={toggleSelectAll} size="small" />
+            <Typography variant="body2">Select All</Typography>
+          </Box>
+        </Box>
 
-      <div className="p-3 space-y-2">
         {loading ? (
-          <div className="text-gray-500 text-sm text-center py-4">Loading samples...</div>
+          <Box sx={{ textAlign: "center", py: 3 }}>
+            <CircularProgress size={20} />
+            <Typography variant="body2" sx={{ mt: 1 }}>
+              Loading samples...
+            </Typography>
+          </Box>
         ) : samples.length === 0 ? (
-          <div className="text-gray-500 text-sm text-center py-4">No samples yet. Click + to add one.</div>
+          <Box sx={{ textAlign: "center", py: 3 }}>
+            <Typography variant="body2" color="text.secondary">
+              No samples yet. Click + to add one.
+            </Typography>
+          </Box>
         ) : (
-          <div className="space-y-3 max-h-[40vh] overflow-y-auto">
-            {Array.from(grouped.entries()).map(([flowcell, cycleMap]) => {
-              const flowcellAll = isFlowcellAllSelected(flowcell);
-              const flowcellInd = isFlowcellIndeterminate(flowcell);
-              const isOpenFlow = openFlowcells.has(flowcell);
+          <Box sx={{ maxHeight: "40vh", overflowY: "auto", pr: 1 }}>
+            <Stack spacing={1}>
+              {Array.from(grouped.entries()).map(([flowcell, cycleMap]) => {
+                const isOpenFlow = openFlowcells.has(flowcell);
+                const totalCount = Array.from(cycleMap.values()).flat().length;
+                return (
+                  <Box key={flowcell} sx={{ borderRadius: 1, border: 1, borderColor: "grey.200", bgcolor: "#fff", p: 1 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <Box>
+                        <Button onClick={() => toggleOpenFlowcell(flowcell)} sx={{ textTransform: "none", p: 0, minWidth: 0 }}>
+                          <Typography sx={{ fontWeight: 600 }}>{flowcell}</Typography>
+                          <Typography sx={{ ml: 1, fontSize: "0.75rem", color: "text.secondary" }}>({totalCount})</Typography>
+                        </Button>
+                      </Box>
+                    </Box>
+
+                    <Collapse in={isOpenFlow} unmountOnExit>
+                      <Box sx={{ pl: 4, pt: 1 }}>
+                        <Stack spacing={1}>
+                          {Array.from(cycleMap.entries()).map(([cycle, arr]) => {
+                            const cycleKey = `${flowcell}|${cycle}`;
+                            const isOpenCycle = openCycles.has(cycleKey);
+                            return (
+                              <Box key={cycle} sx={{ borderRadius: 1, p: 1, bgcolor: "#F9FAFB" }}>
+                                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                  <Box>
+                                    <Button onClick={() => toggleOpenCycle(flowcell, cycle)} sx={{ textTransform: "none", p: 0, minWidth: 0 }}>
+                                      <Typography sx={{ fontWeight: 500 }}>{cycle}</Typography>
+                                      <Typography sx={{ ml: 1, fontSize: "0.75rem", color: "text.secondary" }}>({arr.length})</Typography>
+                                    </Button>
+                                  </Box>
+                                </Box>
+
+                                <Collapse in={isOpenCycle} unmountOnExit>
+                                  <Box sx={{ pl: 4, pt: 1 }}>
+                                    <Stack spacing={1}>
+                                      {arr.map(({ sample, parsed }: any) => {
+                                        const isSelected = sample.id !== undefined && selectedIds.has(sample.id);
+                                        return (
+                                          <Box
+                                            key={sample.id}
+                                            role="button"
+                                            onClick={() => toggleSelect(sample.id)}
+                                            aria-pressed={isSelected}
+                                            sx={{
+                                              p: 1,
+                                              borderRadius: 1,
+                                              cursor: "pointer",
+                                              border: isSelected ? "1px solid" : "1px solid transparent",
+                                              borderColor: isSelected ? "primary.main" : "transparent",
+                                              bgcolor: isSelected ? "#DBEAFE" : "#fff",
+                                              transition: "background-color 0.12s",
+                                              display: "flex",
+                                              alignItems: "center",
+                                              justifyContent: "space-between",
+                                            }}
+                                          >
+                                            <Typography variant="caption" color="text.secondary">
+                                              {parsed.displayName}
+                                            </Typography>
+                                          </Box>
+                                        );
+                                      })}
+                                    </Stack>
+                                  </Box>
+                                </Collapse>
+                              </Box>
+                            );
+                          })}
+                        </Stack>
+                      </Box>
+                    </Collapse>
+                  </Box>
+                );
+              })}
+            </Stack>
+          </Box>
+        )}
+      </Box>
+
+      {operating && promise ? <OperatingDialog promise={promise} onDelayDone={() => setOperating(false)} autoCloseDelay={1000} /> : null}
+
+      <CenterDialog
+        open={isOpen}
+        title="Upload Sample"
+        onClose={() => close()}
+        onConfirm={handleUploadConfirm}
+        confirmLabel="Upload"
+        cancelLabel="Cancel"
+      >
+        <Stack spacing={2}>
+          <Box>
+            <Typography variant="body2" sx={{ mb: 0.5 }}>
+              Select File
+            </Typography>
+            <input
+              type="file"
+              accept=".bam"
+              onChange={(e) => setFile(Array.from(e.target.files ?? []))}
+              style={{ display: "block", width: "100%" }}
+              required
+              multiple
+            />
+          </Box>
+
+          <Box>
+            <Typography variant="body2" sx={{ mb: 0.5 }}>
+              Reference Genome
+            </Typography>
+            <select
+              value={referenceGenome}
+              onChange={(e) => setReferenceGenome(e.target.value as ReferenceGenome)}
+              style={{ display: "block", width: "100%", padding: 8, borderRadius: 6, border: "1px solid rgba(0,0,0,0.23)" }}
+              required
+            >
+              <option value={ReferenceGenome.HG19}>HG19</option>
+              <option value={ReferenceGenome.HG38}>HG38</option>
+            </select>
+          </Box>
+
+          <Box>
+            <Typography variant="body2" sx={{ mb: 0.5 }}>
+              Cell Type
+            </Typography>
+            <select
+              value={cellType}
+              onChange={(e) => setCellType(e.target.value)}
+              style={{ display: "block", width: "100%", padding: 8, borderRadius: 6, border: "1px solid rgba(0,0,0,0.23)" }}
+              required
+            >
+              <option value={CellType.POLAR_BODY_1}>Polar body 1</option>
+              <option value={CellType.POLAR_BODY_2}>Polar body 2</option>
+              <option value={CellType.BLASTOMERE}>Blastomere</option>
+              <option value={CellType.TROPHOECTODERM}>Trophectoderm</option>
+              <option value={CellType.GENOMIC_DNA}>GenomicDNA</option>
+              <option value={CellType.OTHER}>Other</option>
+            </select>
+          </Box>
+
+          <Box>
+            <Typography variant="body2" sx={{ mb: 0.5 }}>
+              Date
+            </Typography>
+            <input
+              type="date"
+              value={uploadDate}
+              onChange={(e) => setUploadDate(e.target.value)}
+              style={{ display: "block", width: "100%", padding: 8, borderRadius: 6, border: "1px solid rgba(0,0,0,0.23)" }}
+              required
+            />
+          </Box>
+        </Stack>
+      </CenterDialog>
+
+      <CenterDialog
+        open={removeDialogOpen}
+        title={`You sure want to remove these samples (${selectedIds.size})`}
+        onClose={() => setRemoveDialogOpen(false)}
+        onConfirm={handleRemoveConfirm}
+        confirmLabel="Yes"
+        cancelLabel="Cancel"
+      >
+        <Box sx={{ maxHeight: 240, overflowY: "auto" }}>
+          <Stack spacing={1}>
+            {samples.map((s: SampleItem) => {
+              const isSelected = s.id !== undefined && selectedIds.has(s.id);
+              if (!isSelected) return null;
+              const parsed = parseSampleNameToParts(s.name);
               return (
-                <div key={flowcell} className="border rounded p-2 bg-white">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        checked={flowcellAll}
-                        indeterminate={flowcellInd}
-                        onChange={() => toggleFlowcell(flowcell)}
-                      />
-                      <button
-                        onClick={() => toggleOpenFlowcell(flowcell)}
-                        className="text-left font-semibold"
-                      >
-                        {flowcell} <span className="text-sm text-gray-500">({Array.from(cycleMap.values()).flat().length})</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {isOpenFlow && (
-                    <div className="pl-5 pt-1 space-y-2">
-                      {Array.from(cycleMap.entries()).map(([cycle, arr]) => {
-                        const cycleAll = isCycleAllSelected(flowcell, cycle);
-                        const cycleInd = isCycleIndeterminate(flowcell, cycle);
-                        const cycleKey = `${flowcell}|${cycle}`;
-                        const isOpenCycle = openCycles.has(cycleKey);
-                        return (
-                          <div key={cycle} className="rounded p-1 bg-gray-50">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <Checkbox
-                                  checked={cycleAll}
-                                  indeterminate={cycleInd}
-                                  onChange={() => toggleCycle(flowcell, cycle)}
-                                />
-                                <button onClick={() => toggleOpenCycle(flowcell, cycle)} className="text-left font-medium">
-                                  {cycle} <span className="text-sm text-gray-500">({arr.length})</span>
-                                </button>
-                              </div>
-                            </div>
-
-                            {isOpenCycle && (
-                              <div className="pl-5 pt-1 space-y-2">
-                                {arr.map(({ sample, parsed }) => {
-                                  const isSelected = sample.id !== undefined && selectedIds.has(sample.id);
-                                  return (
-                                    <div
-                                      key={sample.id}
-                                      role="button"
-                                      onClick={() => toggleSelect(sample.id)}
-                                      aria-pressed={isSelected}
-                                      className={`p-1 rounded shadow-sm cursor-pointer transition-colors ${
-                                        isSelected ? "bg-blue-100 border-blue-500" : "bg-white hover:bg-gray-50"
-                                      }`}
-                                    >
-                                      <div className="flex items-center justify-between">
-                                        <div>
-                                          <div className="font-medium">{parsed.displayName}</div>
-                                          <div className="text-sm text-gray-600">{sample.cell_type ?? "-"}</div>
-                                          <div className="text-sm text-gray-600">{sample.date ?? "-"}</div>
-                                        </div>
-                                        <div className="text-xs text-gray-500">{sample.name}</div>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
+                <Box key={s.id} sx={{ border: 1, borderColor: "grey.200", p: 1, borderRadius: 1, bgcolor: "#fff" }}>
+                  <Typography sx={{ fontWeight: 500 }}>{parsed.displayName}</Typography>
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    {s.cell_type ?? "-"}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    {s.date ?? "-"}
+                  </Typography>
+                </Box>
               );
             })}
-          </div>
-        )}
-      </div>
-
-      {operating && promise ? (
-        <OperatingDialog promise={promise} onDelayDone={() => setOperating(false)} autoCloseDelay={1000} />
-      ) : (
-        <div />
-      )}
-
-      {/* Upload dialog */}
-      {isOpen && (
-        <dialog open className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={close}>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (!operating) {
-                if (files?.length && files?.length > 0) {
-                  if (files?.length == 1) {
-                    openOperatingDialog(save(referenceGenome, cellType, uploadDate));
-                  } else if (files?.length > 1) {
-                    openOperatingDialog(saveManyFiles(referenceGenome, cellType, uploadDate));
-                  }
-                }
-              }
-            }}
-            method="dialog"
-            className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Upload Sample</h3>
-              <button type="button" onClick={close} className="p-1 rounded hover:bg-gray-100">
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Select File</label>
-                <input
-                  type="file"
-                  accept=".bam"
-                  onChange={(e) => setFile(Array.from(e.target.files ?? []))}
-                  className="mt-1 block w-full rounded border px-3 py-2"
-                  required
-                  multiple
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Reference Genome</label>
-                <select
-                  value={referenceGenome}
-                  onChange={(e) => setReferenceGenome(e.target.value as ReferenceGenome)}
-                  className="mt-1 block w-full rounded border px-3 py-2"
-                  required
-                >
-                  <option value={ReferenceGenome.HG19}>HG19</option>
-                  <option value={ReferenceGenome.HG38}>HG38</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Cell Type</label>
-                <select
-                  value={cellType}
-                  onChange={(e) => setCellType(e.target.value)}
-                  className="mt-1 block w-full rounded border px-3 py-2"
-                  required
-                >
-                  <option value={CellType.POLAR_BODY_1}>Polar body 1</option>
-                  <option value={CellType.POLAR_BODY_2}>Polar body 2</option>
-                  <option value={CellType.BLASTOMERE}>Blastomere</option>
-                  <option value={CellType.TROPHOECTODERM}>Trophectoderm</option>
-                  <option value={CellType.GENOMIC_DNA}>GenomicDNA</option>
-                  <option value={CellType.OTHER}>Other</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Date</label>
-                <input
-                  type="date"
-                  value={uploadDate}
-                  onChange={(e) => setUploadDate(e.target.value)}
-                  className="mt-1 block w-full rounded border px-3 py-2"
-                  required
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button type="button" onClick={close} className="px-3 py-2 rounded border hover:bg-gray-50">
-                  Cancel
-                </button>
-                <button type="submit" className="px-3 py-2 rounded bg-green-600 text-white hover:bg-green-700">
-                  {operating ? <div>Uploading</div> : <div>Upload</div>}
-                </button>
-              </div>
-            </div>
-          </form>
-        </dialog>
-      )}
-
-      {/* Remove dialog */}
-      {removeDialog && (
-        <dialog
-          open
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-          onClick={() => setRemoveDialog(false)}
-        >
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (!operating) {
-                save();
-                openOperatingDialog(removeSamples(selectedIds));
-                setRemoveDialog(false);
-              }
-            }}
-            method="dialog"
-            className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative"
-            onClick={(e) => { e.stopPropagation();
-              
-            }}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">You sure want to remove these samples</h3>
-            </div>
-
-            <div className="space-y-4">
-              <div className="overflow-y-auto max-h-40">
-                {samples.map((s: SampleItem) => {
-                  const isSelected = s.id !== undefined && selectedIds.has(s.id);
-                  if (!isSelected) return null;
-                  // display short parsed name
-                  const parsed = parseSampleNameToParts(s.name);
-                  return (
-                    <div key={s.id} className="border p-2 rounded shadow-sm transition-colors bg-white">
-                      <div className="font-medium">{parsed.displayName}</div>
-                      <div className="text-sm text-gray-600">{s.cell_type ?? "-"}</div>
-                      <div className="text-sm text-gray-600">{s.date ?? "-"}</div>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button type="button" onClick={() => setRemoveDialog(false)} className="px-3 py-2 rounded border hover:bg-gray-50">
-                  Cancel
-                </button>
-                <button type="submit" className="px-3 py-2 rounded bg-green-600 text-white hover:bg-green-700">
-                  Yes
-                </button>
-              </div>
-            </div>
-          </form>
-        </dialog>
-      )}
-    </details>
+          </Stack>
+        </Box>
+      </CenterDialog>
+    </MUIAccordionPane>
   );
 }

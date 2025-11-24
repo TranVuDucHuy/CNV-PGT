@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+// resultHandle.ts
+import React from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { resultAPI } from "@/services"; // your provided API wrapper
-import { ResultSummary, ResultDto, ReferenceGenome } from "@/types/result";
-import { Algorithm } from '@/types/algorithm';
+import { ResultSummary, ResultDto } from "@/types/result";
+import { Algorithm } from "@/types/algorithm";
 
 export interface UseSampleHandleReturn {
   results: ResultSummary[];
@@ -12,6 +14,8 @@ export interface UseSampleHandleReturn {
   error: string | null;
   algo: Algorithm | null;
   resultDtos: ResultDto[];
+  selectedResultId: string | null;
+  selectedResultDto: ResultDto | null;
   setBinFile: (f: File | null) => void;
   setSegmentFile: (f: File | null) => void;
   setCreatedAt: (date: string | null) => void;
@@ -20,9 +24,11 @@ export interface UseSampleHandleReturn {
   removeResults: (ids: Set<string>) => Promise<void>;
   getAll: () => Promise<ResultSummary[]>;
   setAlgo: (al: Algorithm) => void;
+  setSelectedResultId: (id: string | null) => void;
 }
 
-export default function useResultHandle(initial: ResultSummary[] = []): UseSampleHandleReturn {
+// ---------- internal hook (uses React hooks) ----------
+export function useInternalResultHandle(initial: ResultSummary[] = []): UseSampleHandleReturn {
   const [results, setResults] = useState<ResultSummary[]>(initial);
   const [binFile, setBinFile] = useState<File | null>(null);
   const [segmentFile, setSegmentFile] = useState<File | null>(null);
@@ -31,38 +37,15 @@ export default function useResultHandle(initial: ResultSummary[] = []): UseSampl
   const [error, setError] = useState<string | null>(null);
   const [algo, setAlgo] = useState<Algorithm | null>(null);
   const [resultDtos, setResultDtos] = useState<ResultDto[]>([]);
-
-  useEffect(() => {
-    // await refresh and properly handle loading
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        await refresh();
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to load algorithms";
-        setError(message);
-        console.error("Failed initial load:", err);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []); // run once
+  const [selectedResultId, setSelectedResultId] = useState<string | null>(null);
 
   const fetchDtosFromSummaries = useCallback(async (summaries: ResultSummary[]) => {
-    // map over the passed-in summaries (avoid relying on state)
     const promises = summaries.map(async (s) => {
       const id = s.id;
       if (id === undefined || id === null) {
         console.warn("skip invalid id", id);
         return null;
       }
-      // ensure numeric check if needed, or just call by string id
-      // if (isNaN(Number(id))) {
-      //   // if id must be numeric, skip or handle otherwise
-      //   console.warn("skip non-numeric id", id);
-      //   return null;
-      // }
       try {
         const dto = await resultAPI.getById(String(id));
         return dto as ResultDto;
@@ -73,7 +56,6 @@ export default function useResultHandle(initial: ResultSummary[] = []): UseSampl
     });
 
     const maybeDtos = await Promise.all(promises);
-    // filter out nulls
     return maybeDtos.filter((d): d is ResultDto => d !== null);
   }, []);
 
@@ -85,10 +67,8 @@ export default function useResultHandle(initial: ResultSummary[] = []): UseSampl
       const all = (await resultAPI.getAll()) ?? [];
       setResults(all as ResultSummary[]);
 
-      // generate DTOs based on the freshly-fetched `all` variable
       const allDtos = await fetchDtosFromSummaries(all as ResultSummary[]);
-      setResultDtos(allDtos);
-      //return all;
+      setResultDtos(Array.isArray(allDtos) ? [...allDtos] : []);
     } catch (err) {
       console.error("Failed to refresh results", err);
       throw err;
@@ -96,6 +76,23 @@ export default function useResultHandle(initial: ResultSummary[] = []): UseSampl
       setLoading(false);
     }
   }, [fetchDtosFromSummaries]);
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        await refresh();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to load results";
+        setError(message);
+        console.error("Failed initial load:", err);
+      } finally {
+        setLoading(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const save = useCallback(async () => {
     if (!binFile || !segmentFile || !algo) return;
@@ -109,32 +106,31 @@ export default function useResultHandle(initial: ResultSummary[] = []): UseSampl
     }
   }, [binFile, segmentFile, algo, createdAt, refresh]);
 
-  const removeResults = useCallback(async (ids: Set<string>) => {
-    try {
-      console.log("start removing");
-      const promises = Array.from(ids).map(async (id) => {
-        if (!id) {
-          console.warn("skip invalid id", id);
-          return;
-        }
-        try {
-          await resultAPI.delete(id);
-          console.log("deleted", id);
-          ids.delete(id);
-          refresh()
-        } catch (err) {
-          console.error("delete failed", id, err);
-        }
-      });
+  const removeResults = useCallback(
+    async (ids: Set<string>) => {
+      try {
+        const promises = Array.from(ids).map(async (id) => {
+          if (!id) {
+            console.warn("skip invalid id", id);
+            return;
+          }
+          try {
+            await resultAPI.delete(id);
+            ids.delete(id);
+          } catch (err) {
+            console.error("delete failed", id, err);
+          }
+        });
 
-      await Promise.all(promises);
-      console.log("all removed");
-      await refresh();
-    } catch (err) {
-      console.error("Failed to delete samples", err);
-      throw err;
-    }
-  }, [refresh]);
+        await Promise.all(promises);
+        await refresh();
+      } catch (err) {
+        console.error("Failed to delete samples", err);
+        throw err;
+      }
+    },
+    [refresh]
+  );
 
   const getAll = useCallback(async () => {
     try {
@@ -146,6 +142,15 @@ export default function useResultHandle(initial: ResultSummary[] = []): UseSampl
     }
   }, []);
 
+  const selectedResultDto = useMemo(() => {
+    if (!selectedResultId) return null;
+    const found = resultDtos.find((d) => String(d.id) === String(selectedResultId));
+    if (found) return found;
+    const idx = results.findIndex((r) => String(r.id) === String(selectedResultId));
+    if (idx >= 0 && resultDtos[idx]) return resultDtos[idx];
+    return null;
+  }, [selectedResultId, resultDtos, results]);
+
   return {
     results,
     binFile,
@@ -155,6 +160,8 @@ export default function useResultHandle(initial: ResultSummary[] = []): UseSampl
     error,
     algo,
     resultDtos,
+    selectedResultId,
+    selectedResultDto,
     setBinFile,
     setSegmentFile,
     setCreatedAt,
@@ -163,5 +170,31 @@ export default function useResultHandle(initial: ResultSummary[] = []): UseSampl
     removeResults,
     getAll,
     setAlgo,
+    setSelectedResultId,
   };
+}
+
+// ---------- Context + Provider (keeps file as .ts by using React.createElement) ----------
+const ResultContext = React.createContext<UseSampleHandleReturn | undefined>(undefined);
+
+type ResultProviderProps = {
+  children?: React.ReactNode;
+  /** optional prebuilt store (mostly for tests) */
+  store?: UseSampleHandleReturn;
+};
+
+export function ResultProvider(props: ResultProviderProps) {
+  // call the internal hook (must be called unconditionally inside component)
+  const internal = useInternalResultHandle();
+  const storeToUse = props.store ?? internal;
+
+  // return Provider via React.createElement so file can be .ts (no JSX)
+  return React.createElement(ResultContext.Provider, { value: storeToUse }, props.children ?? null);
+}
+
+// consumer hook (use this in components)
+export default function useResultHandle(): UseSampleHandleReturn {
+  const ctx = React.useContext(ResultContext);
+  if (!ctx) throw new Error("useResultHandle must be used within a ResultProvider");
+  return ctx;
 }

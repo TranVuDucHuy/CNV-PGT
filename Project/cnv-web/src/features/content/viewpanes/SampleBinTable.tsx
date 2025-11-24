@@ -69,7 +69,7 @@ export default function SampleBinTable({
 }: Props) {
   const [order, setOrder] = React.useState<Order>("asc");
   const [orderBy, setOrderBy] = React.useState<keyof SampleBin | "gc_content_percent" | "result_name">(
-    "id"
+    "chromosome"
   );
 
   const handleRequestSort = (property: typeof orderBy) => {
@@ -99,25 +99,6 @@ export default function SampleBinTable({
         <Table size={dense ? "small" : "medium"} stickyHeader={!!fullHeight}>
           <TableHead>
             <TableRow>
-              <TableCell sortDirection={orderBy === "id" ? order : false}>
-                <TableSortLabel
-                  active={orderBy === "id"}
-                  direction={orderBy === "id" ? order : "asc"}
-                  onClick={() => handleRequestSort("id")}
-                >
-                  ID
-                </TableSortLabel>
-              </TableCell>
-
-              <TableCell sortDirection={orderBy === "result_id" ? order : false}>
-                <TableSortLabel
-                  active={orderBy === "result_id"}
-                  direction={orderBy === "result_id" ? order : "asc"}
-                  onClick={() => handleRequestSort("result_id")}
-                >
-                  Result ID
-                </TableSortLabel>
-              </TableCell>
 
               <TableCell sortDirection={orderBy === "chromosome" ? order : false}>
                 <TableSortLabel
@@ -179,15 +160,6 @@ export default function SampleBinTable({
                 </TableSortLabel>
               </TableCell>
 
-              <TableCell sortDirection={orderBy === "result_name" ? order : false}>
-                <TableSortLabel
-                  active={orderBy === "result_name"}
-                  direction={orderBy === "result_name" ? order : "asc"}
-                  onClick={() => handleRequestSort("result_name")}
-                >
-                  Result Name
-                </TableSortLabel>
-              </TableCell>
             </TableRow>
           </TableHead>
 
@@ -207,8 +179,6 @@ export default function SampleBinTable({
                 onClick={() => onRowClick?.(r)}
                 style={{ cursor: onRowClick ? "pointer" : "default" }}
               >
-                <TableCell>{r.id}</TableCell>
-                <TableCell>{r.result_id}</TableCell>
                 <TableCell>
                   {typeof r.chromosome === "string" ? r.chromosome : JSON.stringify(r.chromosome)}
                 </TableCell>
@@ -219,7 +189,6 @@ export default function SampleBinTable({
                 <TableCell align="right">
                   {r.gc_content != null ? (r.gc_content * 100).toFixed(2) + "%" : "-"}
                 </TableCell>
-                <TableCell>{r.result?.reference_genome}</TableCell>
               </TableRow>
             ))}
           </TableBody>
