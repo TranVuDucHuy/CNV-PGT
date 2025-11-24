@@ -10,18 +10,32 @@ import DraggableWindow from "@/components/DraggableWindow";
 import { SampleBin, SampleSegment } from "@/types/result";
 
 export default function ContentPane() {
-  const { checked, setChecked } = useViewHandle(); // presumes setChecked exists
-  const { resultDtos } = useResultHandle();
+  const { checked, setChecked } = useViewHandle();
+  const { selectedResultDto } = useResultHandle();
 
   const [bins, setBins] = React.useState<SampleBin[]>([]);
   const [segments, setSegments] = React.useState<SampleSegment[]>([]);
 
   React.useEffect(() => {
-    const newBins = resultDtos?.[0]?.bins ?? [];
-    setBins(newBins);
-    const newSegments = resultDtos?.[0]?.segments ?? [];
-    setSegments(newSegments);
-  }, [resultDtos]);
+    const srcBins = selectedResultDto?.bins ?? [];
+    const srcSegments = selectedResultDto?.segments ?? [];
+
+    const copyBins = Array.isArray(srcBins) ? structuredCloneSafe(srcBins) : [];
+    const copySegments = Array.isArray(srcSegments) ? structuredCloneSafe(srcSegments) : [];
+
+    setBins(copyBins);
+    setSegments(copySegments);
+  }, [selectedResultDto]);
+
+  // helper for structured clone fallback
+  function structuredCloneSafe<T>(v: T): T {
+    try {
+      // @ts-ignore
+      return structuredClone(v);
+    } catch {
+      return JSON.parse(JSON.stringify(v));
+    }
+  }
 
   // container ref to restrict windows
   const containerRef = React.useRef<HTMLDivElement | null>(null);
@@ -30,13 +44,11 @@ export default function ContentPane() {
   const zIndexRef = React.useRef<number>(100);
   const [windowsOrder, setWindowsOrder] = React.useState<string[]>([]); // order of ids, last = top
 
-  // initialize ordering when check changes
   React.useEffect(() => {
     const ids: string[] = [];
     if (checked.bin) ids.push("bin");
     if (checked.segment) ids.push("segment");
     setWindowsOrder((prev) => {
-      // keep prev order for existing ones, append new ones
       const merged = [...prev.filter((p) => ids.includes(p)), ...ids.filter((i) => !prev.includes(i))];
       return merged;
     });
@@ -48,7 +60,6 @@ export default function ContentPane() {
     setWindowsOrder((prev) => [...prev.filter((p) => p !== id), id]);
   };
 
-  // default positions (so windows don't fully overlap)
   const defaults: Record<string, Partial<{ top: number; left: number; width: number; height: number }>> = {
     bin: { top: 16, left: 16, width: 740, height: 360 },
     segment: { top: 56, left: 76, width: 740, height: 360 },
@@ -56,36 +67,34 @@ export default function ContentPane() {
 
   return (
     <div ref={containerRef} className="w-full h-full relative overflow-hidden">
-      {/* when none checked */}
       {!checked.bin && !checked.segment && (
         <div className="w-full h-full flex items-center justify-center">
           <span className="text-gray-600">Content Area</span>
         </div>
       )}
 
-      {/* SampleBin window */}
       {checked.bin && (
         <DraggableWindow
+          key={selectedResultDto ? `bin-${selectedResultDto.id}` : "bin-none"}
           id="bin"
-          title="Sample Bins"
+          title={`Sample Bins ${selectedResultDto?.sample_name} - ${selectedResultDto?.algorithm_name}`}
           initial={defaults.bin}
           containerRef={containerRef}
           onClose={() => setChecked?.({ ...checked, bin: false })}
           onBringToFront={() => bringToFront("bin")}
           zIndex={windowsOrder.indexOf("bin") >= 0 ? 100 + windowsOrder.indexOf("bin") : 100}
         >
-          {/* make table fill window content: pass fullHeight so table uses available space */}
           <div className="w-full h-full">
             <SampleBinTable data={bins} dense fullHeight />
           </div>
         </DraggableWindow>
       )}
 
-      {/* SampleSegment window */}
       {checked.segment && (
         <DraggableWindow
+          key={selectedResultDto ? `segment-${selectedResultDto.id}` : "segment-none"}
           id="segment"
-          title="Sample Segments"
+          title={`Sample Segments ${selectedResultDto?.sample_name} - ${selectedResultDto?.algorithm_name}`}
           initial={defaults.segment}
           containerRef={containerRef}
           onClose={() => setChecked?.({ ...checked, segment: false })}

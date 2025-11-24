@@ -1,12 +1,15 @@
+// ResultPane.tsx
 "use client";
 
-import React, { ChangeEvent, useEffect, useState, useMemo } from "react";
-import { Plus, Minus, Edit3, X } from "lucide-react";
+import React, { ChangeEvent, useEffect, useMemo, useState } from "react";
+import { Plus, Minus, Edit3 } from "lucide-react";
 import useResultHandle from "./resultHandle";
-import OperatingDialog from "@/components/OperatingDialog";
-import { Checkbox } from "@mui/material";
 import { useAlgorithms } from "../algorithm/useAlgorithms";
+import CenterDialog from "@/components/CenterDialog";
+import OperatingDialog from "@/components/OperatingDialog";
+import { Box, Button, Checkbox, Collapse, IconButton, Stack, Typography, CircularProgress, FormControlLabel } from "@mui/material";
 import { parseSampleNameToParts } from "@/features/sample/sampleUtils";
+import MUIAccordionPane from "@/components/MUIAccordionPane";
 
 export default function ResultPane() {
   const {
@@ -24,105 +27,67 @@ export default function ResultPane() {
     refresh,
     removeResults,
     setAlgo,
+    setSelectedResultId,
   } = useResultHandle();
 
-  const { algorithms } = useAlgorithms();
+  const { algorithms, loadAlgorithms } = useAlgorithms();
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [uploadDialog, setUploadDialog] = useState<boolean>(false);
-  const [removeDialog, setRemoveDialog] = useState<boolean>(false);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState<boolean>(false);
+  const [removeDialogOpen, setRemoveDialogOpen] = useState<boolean>(false);
   const [operating, setOperating] = useState(false);
   const [promise, setPromise] = useState<Promise<any> | undefined>();
 
+  // UI expand/collapse state
   const [openFlowcells, setOpenFlowcells] = useState<Set<string>>(new Set());
   const [openCycles, setOpenCycles] = useState<Set<string>>(new Set());
-  const [openEmbryos, setOpenEmbryos] = useState<Set<string>>(new Set());
 
-  // ======== Group results by Flowcell -> Cycle -> Embryo -> Algorithm -> Params =========
-  const groupedResults = useMemo(() => {
-    const map = new Map<
-      string,
-      Map<
-        string,
-        Map<
-          string,
-          Map<
-            string,
-            Array<{ result: typeof results[number]; paramIndex: number }>
-          >
-        >
-      >
-    >();
+  useEffect(() => {
+    if (selectedIds.size === 1) {
+      const first = Array.from(selectedIds.values())[0];
+      setSelectedResultId?.(first ?? null);
+    } else {
+      setSelectedResultId?.(null);
+    }
+  }, [selectedIds, setSelectedResultId]);
+
+  // Build grouping map: flowcell -> cycle -> array of results (flattened)
+  const grouped = useMemo(() => {
+    const map = new Map<string, Map<string, Array<{ result: any; parsed: ReturnType<typeof parseSampleNameToParts> }>>>();
 
     for (const r of results) {
-      const {flowcell, cycle, embryo} = parseSampleNameToParts(r.sample_name);
-      const algoId = r.algorithm_name ?? "UNKNOWN";
-      const params = [""];
+      const parsed = parseSampleNameToParts(r.sample_name);
+      const flowcell = parsed.flowcell ?? "UNKNOWN";
+      const cycle = parsed.cycle ?? "UNKNOWN";
 
       if (!map.has(flowcell)) map.set(flowcell, new Map());
       const cycleMap = map.get(flowcell)!;
-
-      if (!cycleMap.has(cycle)) cycleMap.set(cycle, new Map());
-      const embryoMap = cycleMap.get(cycle)!;
-
-      if (!embryoMap.has(embryo)) embryoMap.set(embryo, new Map());
-      const algoMap = embryoMap.get(embryo)!;
-
-      if (!algoMap.has(algoId)) algoMap.set(algoId, []);
-      const paramArray = algoMap.get(algoId)!;
-
-      params.forEach((pId, idx) => {
-        paramArray.push({ result: r, paramIndex: idx });
-      });
+      if (!cycleMap.has(cycle)) cycleMap.set(cycle, []);
+      cycleMap.get(cycle)!.push({ result: r, parsed });
     }
 
-    return map;
+    // sort for stable UI
+    const sortedMap = new Map<string, Map<string, Array<{ result: any; parsed: ReturnType<typeof parseSampleNameToParts> }>>>();
+    Array.from(map.keys())
+      .sort()
+      .forEach((flow) => {
+        const cycles = map.get(flow)!;
+        const sortedCycles = new Map<string, Array<{ result: any; parsed: ReturnType<typeof parseSampleNameToParts> }>>();
+        Array.from(cycles.keys())
+          .sort()
+          .forEach((c) => {
+            const arr = cycles.get(c)!.slice();
+            arr.sort((a, b) => (a.parsed.embryo > b.parsed.embryo ? 1 : -1));
+            sortedCycles.set(c, arr);
+          });
+        sortedMap.set(flow, sortedCycles);
+      });
+
+    return sortedMap;
   }, [results]);
 
-  // ======== Helpers for cascade select =========
-  const getAllResultIdsUnderFlowcell = (flowcell: string) => {
-    const cycleMap = groupedResults.get(flowcell);
-    if (!cycleMap) return [];
-    const ids: string[] = [];
-    for (const embryoMap of cycleMap.values()) {
-      for (const algoMap of embryoMap.values()) {
-        for (const arr of algoMap.values()) {
-          arr.forEach((item) => ids.push(item.result.id));
-        }
-      }
-    }
-    return ids;
-  };
-
-  const getAllResultIdsUnderCycle = (flowcell: string, cycle: string) => {
-    const cycleMap = groupedResults.get(flowcell)?.get(cycle);
-    if (!cycleMap) return [];
-    const ids: string[] = [];
-    for (const embryoMap of cycleMap.values()) {
-      for (const arr of embryoMap.values()) {
-        arr.forEach((item) => ids.push(item.result.id));
-      }
-    }
-    return ids;
-  };
-
-  const getAllResultIdsUnderEmbryo = (flowcell: string, cycle: string, embryo: string) => {
-    const embryoMap = groupedResults.get(flowcell)?.get(cycle)?.get(embryo);
-    if (!embryoMap) return [];
-    const ids: string[] = [];
-    for (const arr of embryoMap.values()) {
-      arr.forEach((item) => ids.push(item.result.id));
-    }
-    return ids;
-  };
-
-  const getAllResultIdsUnderAlgo = (flowcell: string, cycle: string, embryo: string, algoId: string) => {
-    const arr = groupedResults.get(flowcell)?.get(cycle)?.get(embryo)?.get(algoId);
-    if (!arr) return [];
-    return arr.map((item) => item.result.id);
-  };
-
-  const toggleSelect = (id: string) => {
+  const toggleSelect = (id?: string) => {
+    if (!id) return;
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -131,42 +96,32 @@ export default function ResultPane() {
     });
   };
 
-  const toggleSelectFlowcell = (flowcell: string) => {
-    const ids = getAllResultIdsUnderFlowcell(flowcell);
-    const anySelected = ids.some((id) => selectedIds.has(id));
-    setSelectedIds((prev) => {
+  const toggleSelectAll = (e: ChangeEvent<HTMLInputElement>) => {
+    const checked = e.target.checked;
+    if (checked) {
+      const next = new Set<string>();
+      for (const r of results) if (r.id) next.add(r.id);
+      setSelectedIds(next);
+    } else {
+      setSelectedIds(new Set());
+    }
+  };
+
+  const toggleOpenFlowcell = (flowcell: string) => {
+    setOpenFlowcells((prev) => {
       const next = new Set(prev);
-      ids.forEach((id) => (anySelected ? next.delete(id) : next.add(id)));
+      if (next.has(flowcell)) next.delete(flowcell);
+      else next.add(flowcell);
       return next;
     });
   };
 
-  const toggleSelectCycle = (flowcell: string, cycle: string) => {
-    const ids = getAllResultIdsUnderCycle(flowcell, cycle);
-    const anySelected = ids.some((id) => selectedIds.has(id));
-    setSelectedIds((prev) => {
+  const toggleOpenCycle = (flowcell: string, cycle: string) => {
+    const key = `${flowcell}|${cycle}`;
+    setOpenCycles((prev) => {
       const next = new Set(prev);
-      ids.forEach((id) => (anySelected ? next.delete(id) : next.add(id)));
-      return next;
-    });
-  };
-
-  const toggleSelectEmbryo = (flowcell: string, cycle: string, embryo: string) => {
-    const ids = getAllResultIdsUnderEmbryo(flowcell, cycle, embryo);
-    const anySelected = ids.some((id) => selectedIds.has(id));
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      ids.forEach((id) => (anySelected ? next.delete(id) : next.add(id)));
-      return next;
-    });
-  };
-
-  const toggleSelectAlgo = (flowcell: string, cycle: string, embryo: string, algoId: string) => {
-    const ids = getAllResultIdsUnderAlgo(flowcell, cycle, embryo, algoId);
-    const anySelected = ids.some((id) => selectedIds.has(id));
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      ids.forEach((id) => (anySelected ? next.delete(id) : next.add(id)));
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   };
@@ -176,293 +131,289 @@ export default function ResultPane() {
     setPromise(prom);
   };
 
-  // ======== Keyboard escape for upload dialog ========
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && uploadDialog) setUploadDialog(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [uploadDialog]);
+  const handleUploadConfirm = () => {
+    if (!operating && binFile && segmentFile) {
+      openOperatingDialog(save());
+      setUploadDialogOpen(false);
+    }
+  };
+
+  const handleRemoveConfirm = () => {
+    if (!operating) {
+      openOperatingDialog(removeResults(selectedIds));
+      setRemoveDialogOpen(false);
+    }
+  };
+
+  const headerRight = (
+    <Stack direction="row" spacing={1} alignItems="center">
+      <Button
+        onClick={(e) => {
+          e.stopPropagation();
+          setUploadDialogOpen(true);
+          loadAlgorithms();
+        }}
+        title="Add"
+        variant="contained"
+        size="small"
+        sx={{ minWidth: 0, px: 1, bgcolor: "#10B981", "&:hover": { bgcolor: "#059669" } }}
+      >
+        <Plus size={14} />
+      </Button>
+
+      <Button
+        onClick={(e) => {
+          e.stopPropagation();
+          if (selectedIds.size > 0) setRemoveDialogOpen(true);
+        }}
+        title="Remove"
+        variant="contained"
+        size="small"
+        sx={{ minWidth: 0, px: 1, bgcolor: "#EF4444", "&:hover": { bgcolor: "#DC2626" } }}
+      >
+        <Minus size={14} />
+      </Button>
+
+      <IconButton onClick={(e) => e.stopPropagation()} title="Edit" size="small" sx={{ bgcolor: "#3B82F6", color: "#fff", "&:hover": { bgcolor: "#2563EB" } }}>
+        <Edit3 size={16} />
+      </IconButton>
+    </Stack>
+  );
 
   return (
-    <details open className="border rounded-md">
-      <summary className="bg-gray-300 px-3 py-2 font-semibold cursor-pointer flex items-center justify-between">
-        <span>Result</span>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              setUploadDialog(true);
-            }}
-            title="Add"
-            className="p-1 bg-green-500 hover:bg-green-600 text-white rounded"
-          >
-            <Plus size={16} />
-          </button>
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              if (selectedIds.size > 0) setRemoveDialog(true);
-            }}
-            title="Remove"
-            className="p-1 bg-red-500 hover:bg-red-600 text-white rounded"
-          >
-            <Minus size={16} />
-          </button>
-          <button title="Edit" className="p-1 bg-blue-500 hover:bg-blue-600 text-white rounded">
-            <Edit3 size={16} />
-          </button>
-        </div>
-      </summary>
+    <MUIAccordionPane title="Result" defaultExpanded headerRight={headerRight}>
+      <Box>
+        <Box sx={{ display: "flex", gap: 2, alignItems: "center", mb: 1 }}>
+          <Typography variant="body2">{selectedIds.size} selected</Typography>
 
-      <div className="p-3 space-y-2 max-h-96 overflow-y-auto">
-        {results.length === 0 ? (
-          <div className="text-gray-500 text-sm text-center py-4">No results yet. Click + to add one.</div>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={results.length > 0 && selectedIds.size === results.length}
+                indeterminate={selectedIds.size > 0 && selectedIds.size < results.length}
+                onChange={toggleSelectAll}
+                size="small"
+              />
+            }
+            label={<Typography variant="body2">Select All</Typography>}
+          />
+        </Box>
+
+        {loading ? (
+          <Box sx={{ textAlign: "center", py: 3 }}>
+            <CircularProgress size={20} />
+            <Typography variant="body2" sx={{ mt: 1 }}>
+              Loading results...
+            </Typography>
+          </Box>
+        ) : results.length === 0 ? (
+          <Box sx={{ textAlign: "center", py: 3 }}>
+            <Typography variant="body2" color="text.secondary">
+              No results yet. Click Add to add one.
+            </Typography>
+          </Box>
         ) : (
-          Array.from(groupedResults.entries()).map(([flowcell, cycleMap]) => {
-            const flowcellAll = getAllResultIdsUnderFlowcell(flowcell).every((id) => selectedIds.has(id));
-            return (
-              <div key={flowcell} className="border p-2 rounded bg-white">
-                <div className="flex items-center gap-2">
-                  <Checkbox checked={flowcellAll} onChange={() => toggleSelectFlowcell(flowcell)} />
-                  <button
-                    className="font-medium"
-                    onClick={() => setOpenFlowcells((prev) => {
-                      const next = new Set(prev);
-                      next.has(flowcell) ? next.delete(flowcell) : next.add(flowcell);
-                      return next;
-                    })}
-                  >
-                    {flowcell}
-                  </button>
-                </div>
+          <Box sx={{ maxHeight: "40vh", overflowY: "auto", pr: 1 }}>
+            <Stack spacing={1}>
+              {Array.from(grouped.entries()).map(([flowcell, cycleMap]) => {
+                const isOpenFlow = openFlowcells.has(flowcell);
+                const totalCount = Array.from(cycleMap.values()).flat().length;
 
-                {openFlowcells.has(flowcell) &&
-                  Array.from(cycleMap.entries()).map(([cycle, embryoMap]) => {
-                    const cycleAll = getAllResultIdsUnderCycle(flowcell, cycle).every((id) =>
-                      selectedIds.has(id)
-                    );
-                    return (
-                      <div key={cycle} className="pl-5 mt-1">
-                        <div className="flex items-center gap-2">
-                          <Checkbox checked={cycleAll} onChange={() => toggleSelectCycle(flowcell, cycle)} />
-                          <button
-                            className="font-medium"
-                            onClick={() =>
-                              setOpenCycles((prev) => {
-                                const next = new Set(prev);
-                                const key = `${flowcell}|${cycle}`;
-                                next.has(key) ? next.delete(key) : next.add(key);
-                                return next;
-                              })
-                            }
-                          >
-                            {cycle}
-                          </button>
-                        </div>
+                return (
+                  <Box key={flowcell} sx={{ borderRadius: 1, border: 1, borderColor: "grey.200", bgcolor: "#fff", p: 1 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        <Button onClick={() => toggleOpenFlowcell(flowcell)} sx={{ textTransform: "none", p: 0, minWidth: 0 }}>
+                          <Typography sx={{ fontWeight: 600, textAlign: "left" }}>{flowcell}</Typography>
+                          <Typography sx={{ ml: 1, fontSize: "0.75rem", color: "text.secondary" }}>({totalCount})</Typography>
+                        </Button>
+                      </Box>
 
-                        {openCycles.has(`${flowcell}|${cycle}`) &&
-                          Array.from(embryoMap.entries()).map(([embryo, algoMap]) => {
-                            const embryoAll = getAllResultIdsUnderEmbryo(flowcell, cycle, embryo).every((id) =>
-                              selectedIds.has(id)
-                            );
+                      {/* no checkbox here */}
+                    </Box>
+
+                    <Collapse in={isOpenFlow} unmountOnExit>
+                      <Box sx={{ pl: 4, pt: 1, pb: 0 }}>
+                        <Stack spacing={1}>
+                          {Array.from(cycleMap.entries()).map(([cycle, arr]) => {
+                            const cycleKey = `${flowcell}|${cycle}`;
+                            const isOpenCycle = openCycles.has(cycleKey);
+
                             return (
-                              <div key={embryo} className="pl-5 mt-1">
-                                <div className="flex items-center gap-2">
-                                  <Checkbox checked={embryoAll} onChange={() => toggleSelectEmbryo(flowcell, cycle, embryo)} />
-                                  <button
-                                    className="font-medium"
-                                    onClick={() =>
-                                      setOpenEmbryos((prev) => {
-                                        const next = new Set(prev);
-                                        const key = `${flowcell}|${cycle}|${embryo}`;
-                                        next.has(key) ? next.delete(key) : next.add(key);
-                                        return next;
-                                      })
-                                    }
-                                  >
-                                    {embryo}
-                                  </button>
-                                </div>
+                              <Box key={cycle} sx={{ borderRadius: 1, p: 1, bgcolor: "#F9FAFB" }}>
+                                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                    <Button onClick={() => toggleOpenCycle(flowcell, cycle)} sx={{ textTransform: "none", p: 0, minWidth: 0 }}>
+                                      <Typography sx={{ fontWeight: 500, textAlign: "left" }}>{cycle}</Typography>
+                                      <Typography sx={{ ml: 1, fontSize: "0.75rem", color: "text.secondary" }}>({arr.length})</Typography>
+                                    </Button>
+                                  </Box>
 
-                                {openEmbryos.has(`${flowcell}|${cycle}|${embryo}`) &&
-                                  Array.from(algoMap.entries()).map(([algoId, params]) => {
-                                    const algoAll = getAllResultIdsUnderAlgo(flowcell, cycle, embryo, algoId).every(
-                                      (id) => selectedIds.has(id)
-                                    );
-                                    return (
-                                      <div key={algoId} className="pl-5 mt-1">
-                                        <div className="flex items-center gap-2">
-                                          <Checkbox checked={algoAll} onChange={() => toggleSelectAlgo(flowcell, cycle, embryo, algoId)} />
-                                          <span className="font-medium">{params[0]?.result.algorithm_name}</span>
-                                        </div>
-                                        <div className="pl-5">
-                                          {params.slice(0, 2).map((p) => (
-                                            <div key={p.paramIndex} className="flex items-center gap-2">
-                                              <Checkbox
-                                                checked={selectedIds.has(p.result.id)}
-                                                onChange={() => toggleSelect(p.result.id)}
-                                              />
-                                              <span>Param {p.paramIndex + 1}</span>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                              </div>
+                                  {/* no checkbox here */}
+                                </Box>
+
+                                <Collapse in={isOpenCycle} unmountOnExit>
+                                  <Box sx={{ pl: 4, pt: 1 }}>
+                                    <Stack spacing={1}>
+                                      {arr.map(({ result, parsed }) => {
+                                        const isSelected = result.id !== undefined && selectedIds.has(result.id);
+                                        return (
+                                          <Box
+                                            key={result.id}
+                                            role="button"
+                                            onClick={() => toggleSelect(result.id)}
+                                            aria-pressed={isSelected}
+                                            sx={{
+                                              p: 1,
+                                              borderRadius: 1,
+                                              cursor: "pointer",
+                                              border: isSelected ? "1px solid" : "1px solid transparent",
+                                              borderColor: isSelected ? "primary.main" : "transparent",
+                                              bgcolor: isSelected ? "#DBEAFE" : "#fff",
+                                              transition: "background-color 0.12s",
+                                              display: "flex",
+                                              alignItems: "center",
+                                              justifyContent: "space-between",
+                                            }}
+                                          >
+                                            <Typography variant="caption" color="text.secondary">
+                                              {parsed.embryo ?? result.id}
+                                            </Typography>
+                                            <Typography variant="caption" color="text.secondary">
+                                              {result.algorithm_name ?? "-"}
+                                            </Typography>
+                                          </Box>
+                                        );
+                                      })}
+                                    </Stack>
+                                  </Box>
+                                </Collapse>
+                              </Box>
                             );
                           })}
-                      </div>
+                        </Stack>
+                      </Box>
+                    </Collapse>
+                  </Box>
+                );
+              })}
+            </Stack>
+          </Box>
+        )}
+      </Box>
+
+      {operating && promise ? <OperatingDialog promise={promise} onDelayDone={() => setOperating(false)} autoCloseDelay={1000} /> : null}
+
+      {/* Upload dialog */}
+      <CenterDialog
+        open={uploadDialogOpen}
+        title="Upload Result"
+        onClose={() => setUploadDialogOpen(false)}
+        onConfirm={handleUploadConfirm}
+        confirmLabel="Upload"
+        cancelLabel="Cancel"
+      >
+        {/* ...upload dialog content unchanged from previous version... */}
+        <Stack spacing={2}>
+          <Box>
+            <Typography variant="body2" sx={{ mb: 0.5 }}>
+              Select Bin File
+            </Typography>
+            <input type="file" accept=".tsv" onChange={(e) => setBinFile(e.target.files?.[0] ?? null)} style={{ display: "block", width: "100%" }} required />
+          </Box>
+
+          <Box>
+            <Typography variant="body2" sx={{ mb: 0.5 }}>
+              Select Segment File
+            </Typography>
+            <input type="file" accept=".tsv" onChange={(e) => setSegmentFile(e.target.files?.[0] ?? null)} style={{ display: "block", width: "100%" }} required />
+          </Box>
+
+          <Box>
+            <Typography variant="body2" sx={{ mb: 0.5 }}>
+              Select Algorithm
+            </Typography>
+
+            <Box sx={{ mb: 1 }}>{algo ? <Typography variant="body2">Selected Algorithm {algo.name}</Typography> : <></>}</Box>
+
+            {algorithms.length === 0 ? (
+              <Box sx={{ textAlign: "center", py: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  No algorithms yet. Click Add to add one.
+                </Typography>
+              </Box>
+            ) : (
+              <Box sx={{ maxHeight: 160, overflowY: "auto" }}>
+                <Stack spacing={1}>
+                  {algorithms.map((al) => {
+                    const isSelected = al.id !== undefined && al === algo;
+                    return (
+                      <Box
+                        key={al.id}
+                        onClick={() => setAlgo(al)}
+                        sx={{
+                          border: 1,
+                          borderColor: isSelected ? "primary.main" : "grey.200",
+                          p: 1,
+                          borderRadius: 1,
+                          bgcolor: isSelected ? "#DBEAFE" : "#fff",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <Stack direction="row" alignItems="center" justifyContent="space-between">
+                          <Box>
+                            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                              {al.name} <Typography component="span" variant="caption" color="text.secondary">v{al.version}</Typography>
+                            </Typography>
+                          </Box>
+                          {isSelected && <Typography variant="caption" color="primary">(selected)</Typography>}
+                        </Stack>
+                      </Box>
                     );
                   })}
-              </div>
-            );
-          })
-        )}
-      </div>
+                </Stack>
+              </Box>
+            )}
+          </Box>
 
-      {operating && promise && <OperatingDialog promise={promise} onDelayDone={() => setOperating(false)} autoCloseDelay={1000} />}
+          <Box>
+            <Typography variant="body2" sx={{ mb: 0.5 }}>
+              Date
+            </Typography>
+            <input type="date" value={createdAt || ""} onChange={(e) => setCreatedAt(e.target.value || null)} style={{ display: "block", width: "100%", padding: 8, borderRadius: 4, border: "1px solid rgba(0,0,0,0.23)" }} />
+          </Box>
+        </Stack>
+      </CenterDialog>
 
-      {/* Upload Dialog */}
-      {uploadDialog && (
-        <dialog open className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setUploadDialog(false)}>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (!operating && binFile && segmentFile) {
-                openOperatingDialog(save());
-                setUploadDialog(false);
-              }
-            }}
-            method="dialog"
-            className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Upload Result</h3>
-              <button type="button" onClick={() => setUploadDialog(false)} className="p-1 rounded hover:bg-gray-100">
-                <X size={18} />
-              </button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Select Bin File</label>
-                <input type="file" accept=".tsv" onChange={(e) => setBinFile(e.target.files?.[0] ?? null)} className="mt-1 block w-full rounded border px-3 py-2" required />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Select Segment File</label>
-                <input type="file" accept=".tsv" onChange={(e) => setSegmentFile(e.target.files?.[0] ?? null)} className="mt-1 block w-full rounded border px-3 py-2" required />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Date</label>
-                <input 
-                  type="date" 
-                  value={createdAt || ""} 
-                  onChange={(e) => setCreatedAt(e.target.value || null)} 
-                  className="mt-1 block w-full rounded border px-3 py-2" 
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Select Algorithm</label>
-
-                <div>
-                  {algo ? <div>Selected Algorithm {algo.name}</div> : <div></div>}
-                </div>
-                <div>
-                  {algorithms.length === 0 ? (
-                    <div className="text-gray-500 text-sm text-center py-4">No algorithms yet. Click + to add one.</div>
-                  ) : (
-                    <div className="overflow-y-auto max-h-50 space-y-2">
-                      {algorithms.map((al) => {
-                        const isSelected = al.id !== undefined && al === algo;
-                        return (
-                          <div
-                            key={al.id}
-                            role="button"
-                            onClick={() => setAlgo(al)}
-                            aria-pressed={isSelected}
-                            className={`border p-2 rounded shadow-sm cursor-pointer transition-colors ${
-                              isSelected ? "bg-blue-100 border-blue-500" : "bg-white hover:bg-gray-50"
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="font-medium">
-                                {al.name} <span className="text-xs text-gray-500">v{al.version}</span>
-                                {isSelected && <span className="ml-2 text-xs text-blue-700">(selected)</span>}
-                              </span>
-                            </div>
-                            {al.description && <p className="text-xs text-gray-600 mt-1">{al.description}</p>}
-                            <div className="text-xs text-gray-500 mt-1">{al.parameters.length} parameter(s)</div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button type="button" onClick={() => setUploadDialog(false)} className="px-3 py-2 rounded border hover:bg-gray-50">
-                  Cancel
-                </button>
-                <button type="submit" className="px-3 py-2 rounded bg-green-600 text-white hover:bg-green-700">
-                  {operating ? <div>Uploading</div> : <div>Upload</div>}
-                </button>
-              </div>
-            </div>
-          </form>
-        </dialog>
-      )}
-      {/* Dialog xóa */}
-      {removeDialog && (
-        <dialog open className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setRemoveDialog(false)}>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              save();
-            }}
-            method="dialog"
-            className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative"
-            onClick={(e) => {
-              if (!operating) {
-                e.stopPropagation();
-                openOperatingDialog(removeResults(selectedIds));
-                setRemoveDialog(false);
-              }
-            }}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">You sure want to remove these samples</h3>
-            </div>
-
-            <div className="space-y-4">
-              <div className="overflow-y-auto max-h-50">
-                {results.map((r) => {
-                  const isSelected = r.id !== undefined && selectedIds.has(r.id);
-                  if (isSelected) {
-                    return (
-                      <div key={r.id} className={`border p-2 rounded shadow-sm transition-colors 'bg-white hover:bg-gray-50'`}>
-                        <div className="font-medium">{r.id}</div>
-                        <div className="font-medium">{r.reference_genome}</div>
-                        <div className="font-medium">{r.algorithm_name}</div>
-                      </div>
-                    );
-                  }
-                })}
-              </div>
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button type="button" onClick={() => setRemoveDialog(false)} className="px-3 py-2 rounded border hover:bg-gray-50">
-                  Cancel
-                </button>
-                <button type="submit" className="px-3 py-2 rounded bg-green-600 text-white hover:bg-green-700">
-                  Yes
-                </button>
-              </div>
-            </div>
-          </form>
-        </dialog>
-      )}
-    </details>
+      {/* Remove confirm dialog */}
+      <CenterDialog
+        open={removeDialogOpen}
+        title={`You sure want to remove these results (${selectedIds.size})`}
+        onClose={() => setRemoveDialogOpen(false)}
+        onConfirm={handleRemoveConfirm}
+        confirmLabel="Yes"
+        cancelLabel="Cancel"
+      >
+        <Box sx={{ maxHeight: 240, overflowY: "auto" }}>
+          <Stack spacing={1}>
+            {results.map((r: any) => {
+              const isSelected = r.id !== undefined && selectedIds.has(r.id);
+              if (!isSelected) return null;
+              return (
+                <Box key={r.id} sx={{ border: 1, borderColor: "grey.200", p: 1, borderRadius: 1, bgcolor: "#fff" }}>
+                  <Typography sx={{ fontWeight: 500 }}>{r.id}</Typography>
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    {r.reference_genome}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    {r.algorithm_name}
+                  </Typography>
+                </Box>
+              );
+            })}
+          </Stack>
+        </Box>
+      </CenterDialog>
+    </MUIAccordionPane>
   );
 }

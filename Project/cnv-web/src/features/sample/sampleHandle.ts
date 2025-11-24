@@ -19,7 +19,7 @@ export interface UseSampleHandleReturn {
   getAll: () => Promise<SampleSummary[]>
 }
 
-export default function useSampleHandle(initial: Sample[] = []): UseSampleHandleReturn {
+export default function useSampleHandle(initial: SampleSummary[] = []): UseSampleHandleReturn {
   const [samples, setSamples] = useState<SampleSummary[]>(initial);
   const [isOpen, setIsOpen] = useState(false);
   const [files, setFileState] = useState<File[] | null>(null);
