@@ -13,7 +13,6 @@ from .schemas import (
     AlgorithmMetadata,
     AlgorithmDto,
 )
-from result.service import ResultService
 from sample.service import SampleService
 from config import SandboxConfig
 
@@ -154,6 +153,7 @@ class AlgorithmService:
             raise ValueError(f"Algorithm execution failed: {resp.text}")
 
         output_json = resp.json()
+        from result.service import ResultService
         ResultService.add_from_algorithm_output(
             db=db,
             sample_id=sample_id,
