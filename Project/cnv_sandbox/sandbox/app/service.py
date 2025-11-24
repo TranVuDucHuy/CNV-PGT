@@ -123,22 +123,11 @@ class SandboxService:
                 # Directly extract all files
                 zip_ref.extractall(algo_dir)
 
-            # Run pip install -e <algo_dir>
-            algo_dir_abs_path = str(algo_dir.resolve())
-
-            # Install the algorithm in editable mode to preserve file structure
-            res = execute_rq_job(
-                runner_queue,
-                "tasks.install_editable_mode",
-                algo_dir_abs_path,
-            )
-            if not res["done"]:
-                raise RuntimeError(f"Algorithm installation failed: {res['error']}")
-
             # Install conda packages if specified in metadata
             env_metadata = metadata.get("environment", None)
             if not env_metadata:
                 return
+            print("Installing conda packages...")
             channels = env_metadata.get("channels", [])
             dependencies = env_metadata.get("dependencies", [])
             res = execute_rq_job(
@@ -149,6 +138,19 @@ class SandboxService:
             )
             if not res["done"]:
                 raise RuntimeError(f"Conda package installation failed: {res['error']}")
+            
+                        # Run pip install -e <algo_dir>
+            algo_dir_abs_path = str(algo_dir.resolve())
+
+            # Install the algorithm in editable mode to preserve file structure
+            print("Installing algorithm in editable mode...")
+            res = execute_rq_job(
+                runner_queue,
+                "tasks.install_editable_mode",
+                algo_dir_abs_path,
+            )
+            if not res["done"]:
+                raise RuntimeError(f"Algorithm installation failed: {res['error']}")
 
     @staticmethod
     def run_algorithm(

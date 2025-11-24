@@ -28,7 +28,7 @@ def install_editable_mode(algorithm_path):
     # Install the algorithm in editable mode to keep
     try:
         subprocess.run(
-            ["pip", "install", "-e", str(path)], check=True
+            ["pip", "install", "--force-reinstall", "-e", str(path)], check=True
         )
     except subprocess.CalledProcessError as e:
         return {"done": False, "error": str(e)}
@@ -47,7 +47,7 @@ def install_conda_pkgs(channels: list[str], packages: list[str]):
         dict: A dictionary indicating success or failure.
     """
     try:
-        command = ["conda", "install", "-y"]
+        command = ["conda", "install", "-y", "-f"]
         for channel in channels:
             command.extend(["-c", channel])
         command.extend(packages)
