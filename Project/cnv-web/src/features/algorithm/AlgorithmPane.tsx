@@ -11,7 +11,7 @@ import { useAlgorithms } from './useAlgorithms';
 import AlgorithmDetail from '@/components/AlgorithmDetail';
 
 export default function AlgorithmPane() {
-  const { algorithms, loading, deleteAlgorithm, loadAlgorithms, lastParameterIds, lastValues, recordParameterId, recordLastValues } = useAlgorithms();
+  const { algorithms, loading, deleteAlgorithm, loadAlgorithms, lastValues, recordLastValues } = useAlgorithms();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string | number>>(new Set());
   const [editOpen, setEditOpen] = useState(false);
@@ -146,10 +146,8 @@ export default function AlgorithmPane() {
       <AlgorithmDetail
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
-        onRecordParameterId={recordParameterId}
-        onRecordAlgorithmCreated={(algorithmId, values) => {
-          console.log('Algorithm created:', algorithmId, values);
-          recordLastValues(algorithmId, values);
+        onSaveValues={(vals) => {
+          // Values saved after creation, though not actively used yet
         }}
         onSuccess={() => {
           // Refresh list after creation
@@ -162,7 +160,6 @@ export default function AlgorithmPane() {
         open={editOpen}
         mode="edit"
         initialAlgorithm={editTarget}
-        lastParamValues={editTarget ? (lastValues[String(editTarget.id)] || (editTarget.parameters?.[editTarget.parameters.length - 1]?.value) || {}) : {}}
         onSaveValues={(vals) => {
           if (editTarget) {
             recordLastValues(String(editTarget.id), vals);
@@ -170,7 +167,7 @@ export default function AlgorithmPane() {
         }}
         onClose={() => setEditOpen(false)}
         onSuccess={() => {
-          // For now, no backend update; we just keep values in local state
+          loadAlgorithms();
           setEditOpen(false);
         }}
       />

@@ -15,6 +15,7 @@ export interface Algorithm {
   description?: string;
   references_required?: number;
   parameters: AlgorithmParameterDto[];
+  last_parameter_id?: string; // ID của parameter set mới nhất
 }
 
 // Upload response cơ bản

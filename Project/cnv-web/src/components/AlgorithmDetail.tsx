@@ -13,18 +13,13 @@ import { algorithmAPI } from '@/services';
 interface Props {
   open: boolean;
   onClose: () => void;
-  onSuccess: () => void; // called after successful action
-  // Edit mode support
+  onSuccess: () => void;
   mode?: 'create' | 'edit';
-  initialAlgorithm?: Algorithm; // for edit mode: prefill name/version/description
-  paramsSchema?: AlgorithmParameterCreateRequest[]; // optional schema; if absent, derive from lastParamValues keys
-  lastParamValues?: Record<string, any>; // last used params to prefill values
-  onSaveValues?: (values: Record<string, any>) => void; // edit mode: save values locally
-  onRecordParameterId?: (algorithmId: string, parameterId: string) => void; // called with (algorithm_id, algorithm_parameter_id) after successful register
-  onRecordAlgorithmCreated?: (algorithmId: string, values: Record<string, any>) => void; // called after successful register with algorithm_id and parameter values
+  initialAlgorithm?: Algorithm;
+  onSaveValues?: (values: Record<string, any>) => void;
 }
 
-export default function AlgorithmDetail({ open, onClose, onSuccess, mode = 'create', initialAlgorithm, paramsSchema, lastParamValues, onSaveValues, onRecordParameterId, onRecordAlgorithmCreated }: Props) {
+export default function AlgorithmDetail({ open, onClose, onSuccess, mode = 'create', initialAlgorithm, onSaveValues }: Props) {
   const [name, setName] = useState('');
   const [version, setVersion] = useState('');
   const [description, setDescription] = useState('');
@@ -52,17 +47,21 @@ export default function AlgorithmDetail({ open, onClose, onSuccess, mode = 'crea
       setReferencesRequired(initialAlgorithm.references_required || 0);
       setZipFile(null);
 
-      // Build params from provided schema or derive from lastParamValues
-      const valueDict = lastParamValues || (initialAlgorithm.parameters?.[initialAlgorithm.parameters.length - 1]?.value) || {};
-      let baseSchema: AlgorithmParameterCreateRequest[] = paramsSchema && paramsSchema.length
-        ? paramsSchema
-        : Object.keys(valueDict).map((k) => {
-            const v = (valueDict as any)[k];
-            const t = typeof v === 'number' ? 'number' : typeof v === 'boolean' ? 'boolean' : 'string';
-            return { name: k, type: t, default: '', value: v } as AlgorithmParameterCreateRequest;
-          });
-      // Ensure values pulled from valueDict; keep defaults blank (unknown)
-      baseSchema = baseSchema.map((p) => ({ ...p, value: valueDict[p.name] ?? p.value ?? '' }));
+      // Build params from backend data
+      // Backend format: {param_name: {type, default, value}}
+      const targetParam = initialAlgorithm.parameters?.find(p => p.id === initialAlgorithm.last_parameter_id);
+      const backendParams = targetParam?.value || {};
+      
+      const baseSchema = Object.keys(backendParams).map((paramName) => {
+        const paramData = backendParams[paramName];
+        return {
+          name: paramName,
+          type: paramData.type || 'string',
+          default: paramData.default ?? '',
+          value: paramData.value ?? '',
+        } as AlgorithmParameterCreateRequest;
+      });
+      
       setParams(baseSchema);
       setInitialParams(baseSchema.map(p => ({ ...p })));
     } else {
@@ -75,7 +74,7 @@ export default function AlgorithmDetail({ open, onClose, onSuccess, mode = 'crea
       setInitialParams([]);
       setZipFile(null);
     }
-  }, [open, mode, initialAlgorithm, paramsSchema, lastParamValues]);
+  }, [open, mode, initialAlgorithm]);
 
   const handleCloseAll = () => {
     setErrorMessage(null);
@@ -145,17 +144,40 @@ export default function AlgorithmDetail({ open, onClose, onSuccess, mode = 'crea
     if (isEdit) {
       try {
         setLoading(true);
-        // Prepare values dictionary from current params
+        // Prepare parameters theo format backend: {param_name: {type, default, value}}
+        const backendParams: Record<string, any> = {};
+        params.forEach(p => {
+          backendParams[p.name] = {
+            type: p.type,
+            default: p.default,
+            value: p.value,
+          };
+        });
+        
+        // Gọi API update parameters
+        const response = await algorithmAPI.updateParameters(
+          initialAlgorithm!.id,
+          backendParams
+        );
+        
+        // Cập nhật values (chỉ giữ value thôi, không cần type/default)
         const values: Record<string, any> = params.reduce((acc, p) => {
           acc[p.name] = p.value;
           return acc;
         }, {} as Record<string, any>);
-        onSaveValues && onSaveValues(values);
+        
+        if (onSaveValues) {
+          onSaveValues(values);
+        }
+        
         setShowSuccessAnnouncement(true);
         setTimeout(() => {
           onSuccess();
           handleCloseAll();
         }, 800);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to update parameters';
+        setErrorMessage(message);
       } finally {
         setLoading(false);
       }
@@ -177,17 +199,6 @@ export default function AlgorithmDetail({ open, onClose, onSuccess, mode = 'crea
         return acc;
       }, {} as Record<string, any>);
       
-      // Record algorithm_id and algorithm_parameter_id for later use
-      if (onRecordParameterId && res.algorithm_parameter_id) {
-        onRecordParameterId(res.algorithm_id, res.algorithm_parameter_id);
-      }
-      
-      // Record algorithm creation with values using the new callback
-      if (onRecordAlgorithmCreated) {
-        onRecordAlgorithmCreated(res.algorithm_id, values);
-      }
-      
-      // Also call onSaveValues for backward compatibility
       if (onSaveValues) {
         onSaveValues(values);
       }

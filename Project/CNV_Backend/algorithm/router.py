@@ -7,6 +7,8 @@ from .schemas import (
     AlgorithmMetadata,
     RegisterAlgorithmResponse,
     AlgorithmDto,
+    UpdateParameterRequest,
+    UpdateParameterResponse,
 )
 from common.schemas import BasicResponse
 from database import get_db
@@ -107,6 +109,27 @@ def download_algorithm(
             io.BytesIO(algorithm_zip), media_type="application/zip"
         )
     except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.put("/{algorithm_id}/parameters", response_model=UpdateParameterResponse)
+def update_algorithm_parameters(
+    algorithm_id: str,
+    request: UpdateParameterRequest,
+    db: Session = Depends(get_db),
+):
+    try:
+        parameter_id = AlgorithmService.update_parameters(
+            db=db,
+            algorithm_id=algorithm_id,
+            new_params=request.parameters,
+        )
+        return UpdateParameterResponse(
+            message="Parameters updated successfully",
+            algorithm_parameter_id=parameter_id,
+        )
+    except Exception as e:
+        traceback.print_exc()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 

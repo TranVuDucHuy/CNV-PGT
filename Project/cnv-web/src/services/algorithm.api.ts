@@ -53,6 +53,23 @@ export const algorithmAPI = {
   // Note: `upload(file)` removed. Use `register(metadata)` then `uploadZip(id, file)`.
 
   /**
+   * Cập nhật parameters cho algorithm
+   */
+  async updateParameters(algorithmId: string, parameters: Record<string, any>): Promise<{ message: string; algorithm_parameter_id: string }> {
+    const response = await fetch(getApiUrl(`/algorithms/${algorithmId}/parameters`), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ parameters }),
+    });
+    console.log(`API Response [/algorithms/${algorithmId}/parameters]:`, response);
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ detail: 'Unknown error' }));
+      throw new Error(err.detail || `HTTP ${response.status}: ${response.statusText}`);
+    }
+    return response.json();
+  },
+
+  /**
    * Xóa algorithm
    */
   async delete(id: string): Promise<BasicResponse> {
