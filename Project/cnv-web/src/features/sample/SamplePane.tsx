@@ -46,6 +46,7 @@ export default function SamplePane() {
   const [referenceGenome, setReferenceGenome] = useState<ReferenceGenome>(ReferenceGenome.HG19);
   const [cellType, setCellType] = useState<string>("Other");
   const [uploadDate, setUploadDate] = useState<string>(new Date().toISOString().split("T")[0]);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState<boolean>(false);
 
   // UI expand/collapse state
   const [openFlowcells, setOpenFlowcells] = useState<Set<string>>(new Set());
@@ -61,6 +62,15 @@ export default function SamplePane() {
 
   // sync selectedIds when samples removed/changed
   useEffect(() => {
+    if (!loading && (samples?.length ?? 0) > 0) {
+      setHasLoadedOnce(true);
+    }
+    if (loading) {
+      return;
+    }
+    if (!hasLoadedOnce && (!samples || samples.length === 0)) {
+      return;
+    }
     if (!samples || samples.length === 0) {
       setSelectedIds(new Set());
       setIsSelectAll(false);
@@ -78,7 +88,7 @@ export default function SamplePane() {
 
     const availableSampleIds = new Set(samples.map((s: any) => s.id));
     syncWithSamples(availableSampleIds);
-  }, [samples]);
+  }, [samples, loading, hasLoadedOnce]);
 
   useEffect(() => {
     const total = samples.length;
