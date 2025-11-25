@@ -1,4 +1,15 @@
-from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, status, Request, Form, BackgroundTasks
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    UploadFile,
+    HTTPException,
+    status,
+    Request,
+    Form,
+)
+import time
+
 from fastapi.responses import StreamingResponse, JSONResponse
 from typing import List
 from sqlalchemy.orm import Session
@@ -31,8 +42,13 @@ def upload_result(
         # basic filename checks
         seg_fname = segments_tsv.filename or ""
         bin_fname = bins_tsv.filename or ""
-        if not (seg_fname.lower().endswith("_segments.tsv") and bin_fname.lower().endswith("_bins.tsv")):
-            raise ValueError("Uploaded files must be named correctly with _segments.tsv and _bins.tsv suffixes.")
+        if not (
+            seg_fname.lower().endswith("_segments.tsv")
+            and bin_fname.lower().endswith("_bins.tsv")
+        ):
+            raise ValueError(
+                "Uploaded files must be named correctly with _segments.tsv and _bins.tsv suffixes."
+            )
 
         sample_name = seg_fname.rsplit("_segments.tsv", 1)[0]
 
@@ -48,15 +64,18 @@ def upload_result(
             created_at=created_at,
         )
 
-        return JSONResponse(status_code=201, content={
-            "message": "Result uploaded successfully",
-            "result_id": result.id
-        })
+        return JSONResponse(
+            status_code=201,
+            content={"message": "Result uploaded successfully", "result_id": result.id},
+        )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         logger.exception(e)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal error")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal error"
+        )
+
 
 @router.get("/", response_model=List[ResultSummary])
 def get_all_results(db: Session = Depends(get_db)):
@@ -76,7 +95,7 @@ def get_result(result_id: str, db: Session = Depends(get_db)):
 @router.get("/{result_id}/report", response_model=ResultReportResponse)
 def get_result_report(result_id: str, db: Session = Depends(get_db)):
     try:
-        report = ResultService.get_report(db=db, result_id=result_id)
+        report = ResultService.get_mock_report(db=db, result_id=result_id)
         return report
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
@@ -89,22 +108,3 @@ def delete_result(result_id: str, db: Session = Depends(get_db)):
         return BasicResponse(message="Result deleted successfully")
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-
-
-@router.post("/{result_id}/annotation", status_code=202)
-def start_result_annotation(result_id: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-    try:
-        def _bg(rid: str):
-            db_session = SessionLocal()
-            try:
-                AberrationService.annotate_result(rid, db_session)
-            finally:
-                db_session.close()
-
-        # schedule background annotation
-        background_tasks.add_task(_bg, result_id)
-
-        return JSONResponse(status_code=202, content={"message": "Annotation scheduled", "result_id": result_id})
-    except Exception as e:
-        logger.exception(e)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal error")

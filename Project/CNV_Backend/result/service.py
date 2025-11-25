@@ -402,6 +402,53 @@ class ResultService:
         )
 
     @staticmethod
+    def get_mock_report(db: Session, result_id: str) -> ResultReportResponse:
+        # This is a mock implementation for testing purposes
+
+        sample_info = SampleInfo(
+            flowcell_id="FC123",
+            cycle_id="C1",
+            embryo_id="E456",
+            cell_type="TypeA",
+            reference_genome="GRCh38",
+            date="2024-01-01",
+        )
+
+        algorithm_info = AlgorithmInfo(
+            name="MockAlgorithm",
+            version="1.0",
+            parameters=[
+                AlgorithmParameterInfo(name="param1", type="int", default=10, value=15)
+            ],
+        )
+
+        aberration_info = AberrationInfo(
+            aberration_summary=["Mock aberration summary"],
+            aberration_segments=[
+                AberrationSegmentInfo(
+                    chromosome="1",
+                    start=100000,
+                    end=200000,
+                    copy_number=2.5,
+                    confidence=0.95,
+                    size=100000,
+                    type="deletion",
+                    mosaicism=0.1,
+                    aberration_code="DEL1",
+                    assessment="pathogenic",
+                    annotation_for_segment="Mock annotation",
+                )
+            ],
+        )
+
+        return ResultReportResponse(
+            result_id=result_id,
+            sample=sample_info,
+            algorithm=algorithm_info,
+            aberration=aberration_info,
+        )
+
+    @staticmethod
     def get(db: Session, result_id: str) -> ResultDto:
         stmt = (
             select(
