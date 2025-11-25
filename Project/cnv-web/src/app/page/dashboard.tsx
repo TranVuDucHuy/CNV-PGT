@@ -28,47 +28,58 @@ const DashboardView: React.FC = () => {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   // handler start drag
-  const onPointerDown = useCallback((e: React.PointerEvent) => {
-    // only left mouse or touch
-    if (e.pointerType === "mouse" && (e as any).button !== 0) return;
-    draggingRef.current = true;
-    startXRef.current = e.clientX;
-    startWidthRef.current = leftWidth;
+  const onPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      // only left mouse or touch
+      if (e.pointerType === "mouse" && (e as any).button !== 0) return;
+      draggingRef.current = true;
+      startXRef.current = e.clientX;
+      startWidthRef.current = leftWidth;
 
-    try {
-      (e.target as Element).setPointerCapture?.(e.pointerId);
-    } catch (err) {
-      // ignore
-    }
+      try {
+        (e.target as Element).setPointerCapture?.(e.pointerId);
+      } catch (err) {
+        // ignore
+      }
 
-    document.body.style.userSelect = "none";
-    document.body.style.cursor = "col-resize";
-    e.preventDefault();
-  }, [leftWidth]);
+      document.body.style.userSelect = "none";
+      document.body.style.cursor = "col-resize";
+      e.preventDefault();
+    },
+    [leftWidth]
+  );
 
   // move
   const onPointerMove = useCallback((ev: PointerEvent) => {
     if (!draggingRef.current) return;
     const dx = ev.clientX - startXRef.current;
     const newWidth = Math.round(startWidthRef.current + dx);
-    const clamped = Math.max(MIN_LEFT_WIDTH, Math.min(MAX_LEFT_WIDTH, newWidth));
+    const clamped = Math.max(
+      MIN_LEFT_WIDTH,
+      Math.min(MAX_LEFT_WIDTH, newWidth)
+    );
     setLeftWidth(clamped);
   }, []);
 
   // end drag
-  const onPointerUp = useCallback((ev?: PointerEvent) => {
-    if (!draggingRef.current) return;
-    draggingRef.current = false;
-    startWidthRef.current = leftWidth;
-    document.body.style.userSelect = "";
-    document.body.style.cursor = "";
-    try {
-      // if pointer capture was set, release for all elements (best-effort)
-      (ev?.target as Element)?.releasePointerCapture?.((ev as any)?.pointerId);
-    } catch (err) {
-      // ignore
-    }
-  }, [leftWidth]);
+  const onPointerUp = useCallback(
+    (ev?: PointerEvent) => {
+      if (!draggingRef.current) return;
+      draggingRef.current = false;
+      startWidthRef.current = leftWidth;
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+      try {
+        // if pointer capture was set, release for all elements (best-effort)
+        (ev?.target as Element)?.releasePointerCapture?.(
+          (ev as any)?.pointerId
+        );
+      } catch (err) {
+        // ignore
+      }
+    },
+    [leftWidth]
+  );
 
   // attach global listeners while mounted
   useEffect(() => {
@@ -92,7 +103,7 @@ const DashboardView: React.FC = () => {
   return (
     <div className="flex flex-col h-screen font-sans">
       {/* Menu Bar */}
-      <nav className="bg-gray-200 border-b border-gray-400 px-4 py-2 flex items-center">
+      <nav className="bg-gray-200  border-gray-400 px-4 py-2 flex items-center">
         <h1 className="text-lg font-bold">CNV Analysis Dashboard</h1>
       </nav>
 
@@ -102,8 +113,13 @@ const DashboardView: React.FC = () => {
           <ResultProvider>
             {/* Left Pane - resizable */}
             <div
-              className="border-r border-gray-300 bg-gray-50 p-3 max-h-[80vh] overflow-y-auto space-y-3"
-              style={{ width: leftWidth, minWidth: MIN_LEFT_WIDTH, maxWidth: MAX_LEFT_WIDTH }}
+              className="border-r border-gray-300 bg-gray-50 p-3 max-h-[100vh] overflow-y-auto space-y-3"
+              style={{
+                width: leftWidth,
+                minWidth: MIN_LEFT_WIDTH,
+                maxWidth: MAX_LEFT_WIDTH,
+                height: "100%",
+              }}
             >
               <SamplePane />
               <ReferencePane samples={samples} onRefresh={refresh} />
@@ -120,7 +136,7 @@ const DashboardView: React.FC = () => {
               onDoubleClick={onDividerDoubleClick}
               className="relative"
               style={{
-                width: 12, // hit area
+                width: 6, // hit area
                 cursor: "col-resize",
                 display: "flex",
                 alignItems: "stretch",
@@ -147,7 +163,7 @@ const DashboardView: React.FC = () => {
             <div className="flex-1 bg-gray-100 flex min-w-0">
               <div
                 id="contentArea"
-                className="w-full h-full bg-gray-200 border rounded-lg flex flex-col min-w-0"
+                className="w-full h-full bg-gray-200  rounded-lg flex flex-col min-w-0"
               >
                 <ContentPane />
               </div>

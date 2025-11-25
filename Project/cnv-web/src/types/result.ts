@@ -8,15 +8,38 @@
  * - SampleBin
  * - ResultSummary
  * - ResultDto
+ * - ResultReportResponse and its dependencies
  */
 
 export type Chromosome =
-  | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10'
-  | '11' | '12' | '13' | '14' | '15' | '16' | '17' | '18' | '19' | '20'
-  | '21' | '22' | 'X' | 'Y' | 'MT'
+  | "1"
+  | "2"
+  | "3"
+  | "4"
+  | "5"
+  | "6"
+  | "7"
+  | "8"
+  | "9"
+  | "10"
+  | "11"
+  | "12"
+  | "13"
+  | "14"
+  | "15"
+  | "16"
+  | "17"
+  | "18"
+  | "19"
+  | "20"
+  | "21"
+  | "22"
+  | "X"
+  | "Y"
+  | "MT"
   | string;
 
-export type ReferenceGenome = 'GRCh37/hg19' | 'GRCh38/hg38' | string;
+export type ReferenceGenome = "GRCh37/hg19" | "GRCh38/hg38" | string;
 
 /* -------------------- SAMPLE BIN -------------------- */
 export interface SampleBin {
@@ -80,6 +103,62 @@ export interface ResultSummary {
 export interface ResultDto extends ResultSummary {
   segments: SampleSegment[];
   bins: SampleBin[];
+}
+
+/* -------------------- RESULT REPORT RESPONSE -------------------- */
+
+/** Tương ứng với lớp `SampleInfo` trong backend */
+export interface SampleInfo {
+  flowcell_id: string;
+  cycle_id: string;
+  embryo_id: string;
+  cell_type: string;
+  reference_genome: string;
+  date: string; // ISO format date
+}
+
+/** Tương ứng với lớp `AlgorithmParameterInfo` trong backend */
+export interface AlgorithmParameterInfo {
+  name: string;
+  type: string;
+  default: any;
+  value: any;
+}
+
+/** Tương ứng với lớp `AlgorithmInfo` trong backend */
+export interface AlgorithmInfo {
+  name: string;
+  version: string;
+  parameters: AlgorithmParameterInfo[];
+}
+
+/** Tương ứng với lớp `AberrationSegmentInfo` trong backend */
+export interface AberrationSegmentInfo {
+  chromosome: string;
+  start: number;
+  end: number;
+  copy_number: number;
+  confidence?: number | null;
+  size: number;
+  type: string;
+  mosaicism: number;
+  aberration_code: string;
+  assessment: string;
+  annotation_for_segment?: string | null;
+}
+
+/** Tương ứng với lớp `AberrationInfo` trong backend */
+export interface AberrationInfo {
+  aberration_summary?: string[] | null;
+  aberration_segments: AberrationSegmentInfo[];
+}
+
+/** Tương ứng với lớp `ResultReportResponse` trong backend */
+export interface ResultReportResponse {
+  result_id: string;
+  sample: SampleInfo;
+  algorithm: AlgorithmInfo;
+  aberration: AberrationInfo;
 }
 
 /* -------------------- Helper -------------------- */
