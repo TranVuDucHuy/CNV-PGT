@@ -75,7 +75,8 @@ class AberrationSegment(Base):
     assessment = Column(
         SqlEnum(AssessmentType), nullable=False, default=AssessmentType.UNKNOWN
     )
-    annotation_for_segment = Column(String(2048), nullable=True)
+    # Store annotations as JSON (list of objects). Use JSON column so large content is supported.
+    annotation_for_segment = Column(JSON, nullable=True)
     man_change = Column(Boolean, nullable=False, default=False)
 
     aberration = relationship("Aberration", back_populates="aberration_segments")
