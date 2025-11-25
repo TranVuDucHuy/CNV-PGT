@@ -143,20 +143,12 @@ export default function ReferencePane({ samples, onRefresh }: ReferencePaneProps
     }
     setAddDialogOpen(false);
     setSelectedForAdd(new Set());
-    // Auto reload page after adding references
-    setTimeout(() => {
-      window.location.reload();
-    }, 10);
   };
 
   const handleRemoveClick = () => {
     if (selectedForRemove.size > 0) {
       removeReferences(selectedForRemove);
       setSelectedForRemove(new Set());
-      // Auto reload page after removing references
-      setTimeout(() => {
-        window.location.reload();
-      }, 10);
     }
   };
 

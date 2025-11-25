@@ -84,10 +84,10 @@ export function subscribeReferences(cb: () => void) {
 }
 
 export function useReferencesStore() {
-  const [tick, setTick] = useState(0);
+  const [referenceIds, setReferenceIds] = useState<Set<string>>(() => getReferenceIds());
   
   useEffect(() => {
-    const cb = () => setTick((t) => t + 1);
+    const cb = () => setReferenceIds(getReferenceIds());
     const unsub = subscribeReferences(cb);
     return () => {
       unsub();
@@ -95,7 +95,7 @@ export function useReferencesStore() {
   }, []);
   
   return {
-    referenceIds: getReferenceIds(),
+    referenceIds,
     addReferences,
     removeReferences,
     syncWithSamples,
