@@ -81,3 +81,7 @@ instance/
 .env
 
 plugins_runtime/
+
+# AnnotSV workspace - ignore all files including annotations DB (31GB)
+annotsv_workspace/
+!annotsv_workspace/README.md
