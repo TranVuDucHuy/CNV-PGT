@@ -12,7 +12,16 @@ from algorithm.plugin import (
     SampleBin as AlgoSampleBin,
 )
 from algorithm.models import Algorithm, AlgorithmParameter
-from .schemas import ResultDto, ResultSummary, ResultReportResponse, SampleInfo, AlgorithmInfo, AlgorithmParameterInfo, AberrationInfo, AberrationSegmentInfo
+from .schemas import (
+    ResultDto,
+    ResultSummary,
+    ResultReportResponse,
+    SampleInfo,
+    AlgorithmInfo,
+    AlgorithmParameterInfo,
+    AberrationInfo,
+    AberrationSegmentInfo,
+)
 from common.models import Chromosome
 from sample.models import Sample
 
@@ -179,9 +188,12 @@ class ResultService:
         # 7. Generate and save aberrations
         try:
             from aberration.service import AberrationService
+
             AberrationService.generate_and_save_aberrations(result_id, db)
         except Exception as e:
-            print(f"Warning: Could not generate aberrations for result {result_id}: {e}")
+            print(
+                f"Warning: Could not generate aberrations for result {result_id}: {e}"
+            )
 
         return result
 
@@ -250,14 +262,17 @@ class ResultService:
 
         db.add(result)
         db.commit()
-        
+
         # Generate and save aberrations
         try:
             from aberration.service import AberrationService
+
             AberrationService.generate_and_save_aberrations(result.id, db)
         except Exception as e:
-            print(f"Warning: Could not generate aberrations for result {result.id}: {e}")
-        
+            print(
+                f"Warning: Could not generate aberrations for result {result.id}: {e}"
+            )
+
         return result
 
     @staticmethod
@@ -290,7 +305,7 @@ class ResultService:
     @staticmethod
     def get_report(db: Session, result_id: str) -> ResultReportResponse:
         from aberration.models import Aberration, AberrationSegment
-        
+
         # 1. Query Result
         result = db.query(Result).filter(Result.id == result_id).first()
         if not result:
@@ -300,18 +315,20 @@ class ResultService:
         sample = db.query(Sample).filter(Sample.id == result.sample_id).first()
         if not sample:
             raise ValueError(f"Sample {result.sample_id} not found")
-        
+
         sample_info = SampleInfo(
             flowcell_id=sample.flowcell_id,
             cycle_id=sample.cycle_id,
             embryo_id=sample.embryo_id,
             cell_type=sample.cell_type.value,
             reference_genome=result.reference_genome.value,
-            date=sample.date
+            date=sample.date,
         )
 
         # 3. Query Algorithm and AlgorithmParameter info
-        algorithm = db.query(Algorithm).filter(Algorithm.id == result.algorithm_id).first()
+        algorithm = (
+            db.query(Algorithm).filter(Algorithm.id == result.algorithm_id).first()
+        )
         if not algorithm:
             raise ValueError(f"Algorithm {result.algorithm_id} not found")
 
@@ -329,32 +346,32 @@ class ResultService:
                             name=param_name,
                             type=param_detail.get("type", ""),
                             default=param_detail.get("default", None),
-                            value=param_detail.get("value", None)
+                            value=param_detail.get("value", None),
                         )
                     )
-        
+
         algorithm_info = AlgorithmInfo(
-            name=algorithm.name,
-            version=algorithm.version,
-            parameters=algorithm_params
+            name=algorithm.name, version=algorithm.version, parameters=algorithm_params
         )
 
         # 4. Query Aberration info
-        aberration = db.query(Aberration).filter(Aberration.result_id == result_id).first()
-        
+        aberration = (
+            db.query(Aberration).filter(Aberration.result_id == result_id).first()
+        )
+
         aberration_summary = []
         aberration_segments = []
 
         if aberration:
             if aberration.aberration_summary:
                 aberration_summary = aberration.aberration_summary
-            
+
             segments = (
                 db.query(AberrationSegment)
                 .filter(AberrationSegment.aberration_id == aberration.id)
                 .all()
             )
-            
+
             for segment in segments:
                 aberration_segments.append(
                     AberrationSegmentInfo(
@@ -368,22 +385,23 @@ class ResultService:
                         mosaicism=segment.mosaicism,
                         aberration_code=segment.aberration_code,
                         assessment=segment.assessment.value,
-                        annotation_for_segment=segment.annotation_for_segment
+                        annotation_for_segment=segment.annotation_for_segment,
                     )
                 )
 
         aberration_info = AberrationInfo(
             aberration_summary=aberration_summary,
-            aberration_segments=aberration_segments
+            aberration_segments=aberration_segments,
         )
 
         return ResultReportResponse(
             result_id=result_id,
             sample=sample_info,
             algorithm=algorithm_info,
-            aberration=aberration_info
+            aberration=aberration_info,
         )
 
+    @staticmethod
     def get(db: Session, result_id: str) -> ResultDto:
         stmt = (
             select(
