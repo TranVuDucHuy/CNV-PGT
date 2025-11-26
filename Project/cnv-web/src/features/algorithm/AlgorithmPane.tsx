@@ -8,7 +8,7 @@
 import React, { useMemo, useState } from 'react';
 import { Plus, Minus, StepForward, Edit } from 'lucide-react';
 import { useAlgorithms } from './useAlgorithms';
-import AlgorithmDetail from '@/components/AlgorithmDetail';
+import AlgorithmDetail from '@/features/algorithm/AlgorithmDetail';
 import { useSelectionStore, setSelectedAlgorithm } from '@/features/selection/selectionStore';
 import { useReferencesStore } from '@/features/reference/useReferences';
 import { algorithmAPI } from '@/services';
