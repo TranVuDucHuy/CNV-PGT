@@ -205,7 +205,9 @@ export default function AlgorithmDetail({ open, onClose, onSuccess, mode = 'crea
 
       if (zipFile) {
         try {
-          await algorithmAPI.uploadZip(res.algorithm_id, zipFile);
+          const uploadRes = await algorithmAPI.uploadZip(res.algorithm_id, zipFile);
+          // Upload thành công - exe_class đã được cập nhật ở backend
+          console.log('Upload successful, exe_class:', uploadRes.exe_class);
         } catch (uploadErr) {
           // Upload failed - delete the registered algorithm
           try {

@@ -9,18 +9,24 @@ export interface AlgorithmParameterDto {
 
 // Thuật toán trả về dạng tóm tắt từ backend
 export interface Algorithm {
-  id: string; // ví dụ: "Name_Version"
+  id: string; 
   name: string;
   version: string;
   description?: string;
   references_required?: number;
   parameters: AlgorithmParameterDto[];
-  last_parameter_id?: string; // ID của parameter set mới nhất
+  last_parameter_id?: string;
+  exe_class?: string | null; 
 }
 
 // Upload response cơ bản
 export interface BasicResponse {
   message: string;
+}
+
+// Upload ZIP response với exe_class
+export interface UploadZipResponse extends BasicResponse {
+  exe_class?: string | null;
 }
 
 // Backend input types for creating/registering algorithms
@@ -37,7 +43,6 @@ export interface AlgorithmMetadata {
   description?: string;
   references_required?: number;
   parameters?: AlgorithmParameterCreateRequest[];
-  url?: string; // optional field for algorithm source URL
 }
 
 export interface RegisterAlgorithmResponse extends BasicResponse {

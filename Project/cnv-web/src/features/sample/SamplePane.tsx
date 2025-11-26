@@ -11,6 +11,7 @@ import { ReferenceGenome, CellType } from "@/types/sample";
 import { syncWithSamples } from "@/features/reference/useReferences";
 import { parseSampleNameToParts } from "./sampleUtils";
 import MUIAccordionPane from "@/components/MUIAccordionPane";
+import { setSelectedSample } from "@/features/selection/selectionStore";
 
 type SampleItem = {
   id: string;
@@ -75,6 +76,7 @@ export default function SamplePane() {
       setSelectedIds(new Set());
       setIsSelectAll(false);
       syncWithSamples(new Set());
+      setSelectedSample(null); // Clear selection store
       return;
     }
     setSelectedIds((prev) => {
@@ -89,6 +91,21 @@ export default function SamplePane() {
     const availableSampleIds = new Set(samples.map((s: any) => s.id));
     syncWithSamples(availableSampleIds);
   }, [samples, loading, hasLoadedOnce]);
+
+  // Sync selection store khi selectedIds thay đổi
+  useEffect(() => {
+    if (selectedIds.size === 1) {
+      const selectedId = Array.from(selectedIds)[0];
+      const sample = samples.find((s: any) => s.id === selectedId);
+      if (sample) {
+        setSelectedSample(sample);
+      } else {
+        setSelectedSample(null);
+      }
+    } else {
+      setSelectedSample(null);
+    }
+  }, [selectedIds, samples]);
 
   useEffect(() => {
     const total = samples.length;

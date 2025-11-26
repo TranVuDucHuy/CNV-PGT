@@ -89,6 +89,7 @@ class AlgorithmService:
                 description=algo.description,
                 references_required=algo.references_required,
                 last_parameter_id=algo.last_parameter_id,
+                exe_class=algo.exe_class,
                 parameters=[
                     AlgorithmParameterDto(id=param.id, value=param.value)
                     for param in algo.parameters
@@ -210,6 +211,7 @@ class AlgorithmService:
             references_required=algorithm.references_required,
             upload_date=str(algorithm.upload_date),
             last_parameter_id=algorithm.last_parameter_id,
+            exe_class=algorithm.exe_class,
             parameters=[
                 AlgorithmParameterDto(id=param.id, value=param.value)
                 for param in algorithm.parameters

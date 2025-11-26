@@ -9,6 +9,7 @@ from .schemas import (
     AlgorithmDto,
     UpdateParameterRequest,
     UpdateParameterResponse,
+    UploadZipResponse,
 )
 from common.schemas import BasicResponse
 from database import get_db
@@ -41,7 +42,7 @@ def register_algorithm(
     )
 
 
-@router.post("/{algorithm_id}/upload", response_model=BasicResponse)
+@router.post("/{algorithm_id}/upload", response_model=UploadZipResponse)
 def upload_algorithm_zip(
     request: Request,
     algorithm_id: str,
@@ -56,7 +57,13 @@ def upload_algorithm_zip(
             algorithm_zip=algorithm_zip,
         )
         print(f"✅ Algorithm {file.filename} uploaded successfully")
-        return BasicResponse(message="Algorithm uploaded successfully")
+        
+        # Lấy algorithm để trả về exe_class
+        algorithm = AlgorithmService.get_by_id(db=db, algorithm_id=algorithm_id)
+        return UploadZipResponse(
+            message="Algorithm uploaded successfully",
+            exe_class=algorithm.exe_class,
+        )
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))

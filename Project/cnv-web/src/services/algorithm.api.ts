@@ -4,7 +4,7 @@
  */
 
 import { fetchAPI, getApiUrl } from './api-client';
-import { Algorithm, BasicResponse, AlgorithmMetadata, RegisterAlgorithmResponse } from '@/types/algorithm';
+import { Algorithm, BasicResponse, AlgorithmMetadata, RegisterAlgorithmResponse, UploadZipResponse } from '@/types/algorithm';
 
 export const algorithmAPI = {
   /**
@@ -36,7 +36,7 @@ export const algorithmAPI = {
   /**
    * Upload ZIP cho thuật toán đã đăng ký
    */
-  async uploadZip(algorithmId: string, file: File): Promise<BasicResponse> {
+  async uploadZip(algorithmId: string, file: File): Promise<UploadZipResponse> {
     const form = new FormData();
     form.append('file', file);
     const res = await fetch(getApiUrl(`/algorithms/${algorithmId}/upload`), {
@@ -77,6 +77,24 @@ export const algorithmAPI = {
       method: 'DELETE',
     });
     console.log(`API Response [/algorithms/${id}]:`, response);
+    return response.json();
+  },
+
+  /**
+   * Chạy algorithm với sample_id (backend dùng last_parameter_id tự động)
+   */
+  async run(algorithmId: string, sampleId: string): Promise<any> {
+    const url = getApiUrl(`/algorithms/${algorithmId}/run?sample_id=${encodeURIComponent(sampleId)}`);
+    const response = await fetch(url, {
+      method: 'GET',
+    });
+    console.log(`API Response [/algorithms/${algorithmId}/run]:`, response);
+    
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ detail: 'Unknown error' }));
+      throw new Error(err.detail || `HTTP ${response.status}: ${response.statusText}`);
+    }
+    
     return response.json();
   },
 };

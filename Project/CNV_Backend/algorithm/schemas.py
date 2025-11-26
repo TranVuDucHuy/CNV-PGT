@@ -21,11 +21,11 @@ class AlgorithmSummary(BaseModel):
     references_required: int = 0
     parameters: List[AlgorithmParameterDto] = None
     last_parameter_id: Optional[str] = None
+    exe_class: Optional[str] = None
 
 
 class AlgorithmDto(AlgorithmSummary):
     upload_date: str
-    url: str
 
 
 class AlgorithmParameterCreateRequest(BaseModel):
@@ -49,6 +49,10 @@ class UpdateParameterRequest(BaseModel):
 
 class UpdateParameterResponse(BasicResponse):
     algorithm_parameter_id: str
+
+
+class UploadZipResponse(BasicResponse):
+    exe_class: Optional[str] = None
 
 
 # class AlgorithmRunRequest(BaseModel):
