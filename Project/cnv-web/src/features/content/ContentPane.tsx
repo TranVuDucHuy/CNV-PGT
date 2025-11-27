@@ -8,6 +8,7 @@ import SampleBinTable from "./viewpanes/SampleBinTable";
 import SampleSegmentTable from "./viewpanes/SampleSegmentTable";
 import DraggableWindow from "@/components/DraggableWindow";
 import { SampleBin, SampleSegment } from "@/types/result";
+import CNVChart from "./viewpanes/CNVChart";
 
 export default function ContentPane() {
   const { checked, setChecked } = useViewHandle();
@@ -103,6 +104,23 @@ export default function ContentPane() {
         >
           <div className="w-full h-full">
             <SampleSegmentTable data={segments} dense fullHeight />
+          </div>
+        </DraggableWindow>
+      )}
+
+      {checked.table && (
+        <DraggableWindow
+          key={selectedResultDto ? `table-${selectedResultDto.id}` : "table-none"}
+          id="table"
+          title={`Sample Table ${selectedResultDto?.sample_name} - ${selectedResultDto?.algorithm_name}`}
+          initial={defaults.table}
+          containerRef={containerRef}
+          onClose={() => setChecked?.({ ...checked, table: false })}
+          onBringToFront={() => bringToFront("table")}
+          zIndex={windowsOrder.indexOf("table") >= 0 ? 100 + windowsOrder.indexOf("table") : 100}
+        >
+          <div className="w-full h-full">
+            <CNVChart bins={bins} segments={segments} />
           </div>
         </DraggableWindow>
       )}

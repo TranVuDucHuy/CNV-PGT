@@ -3,15 +3,20 @@
  * Tất cả API calls liên quan đến results
  */
 
-import { fetchAPI } from './api-client';
-import { Result, ResultSummary, ResultDto } from '@/types/result';
+import { fetchAPI } from "./api-client";
+import {
+  Result,
+  ResultSummary,
+  ResultDto,
+  ResultReportResponse,
+} from "@/types/result";
 
 export const resultAPI = {
   /**
    * Lấy danh sách tất cả results
    */
   async getAll(): Promise<ResultSummary[]> {
-    return fetchAPI<ResultSummary[]>('/results');
+    return fetchAPI<ResultSummary[]>("/results/");
   },
 
   /**
@@ -24,10 +29,13 @@ export const resultAPI = {
   /**
    * Tạo result mới
    */
-  /**
-   * Tạo sample mới
-   */
-  async create(bins_tsv: File, segments_tsv: File, algorithm_id: string, algorithm_parameter_id: string, created_at?: string): Promise<void> {
+  async create(
+    bins_tsv: File,
+    segments_tsv: File,
+    algorithm_id: string,
+    algorithm_parameter_id: string,
+    created_at?: string
+  ): Promise<void> {
     const formData = new FormData();
     formData.append("bins_tsv", bins_tsv);
     formData.append("segments_tsv", segments_tsv);
@@ -37,8 +45,8 @@ export const resultAPI = {
       formData.append("created_at", created_at);
     }
 
-    const res = await fetchAPI<void>('/results', {
-      method: 'POST',
+    const res = await fetchAPI<void>("/results", {
+      method: "POST",
       body: formData, // browser tự set multipart/form-data
     });
 
@@ -50,7 +58,7 @@ export const resultAPI = {
    */
   async update(id: string, data: Partial<Result>): Promise<Result> {
     return fetchAPI<Result>(`/results/${id}`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify(data),
     });
   },
@@ -60,7 +68,14 @@ export const resultAPI = {
    */
   async delete(id: string): Promise<void> {
     return fetchAPI<void>(`/results/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
+  },
+
+  /**
+   * Lấy report chi tiết của một result
+   */
+  async getReport(id: string): Promise<ResultReportResponse> {
+    return fetchAPI<ResultReportResponse>(`/results/${id}/report`);
   },
 };
