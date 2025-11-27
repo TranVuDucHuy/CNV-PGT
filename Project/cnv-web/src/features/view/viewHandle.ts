@@ -9,6 +9,7 @@ export type ViewChecked = {
   aberration: boolean;
   trash: boolean;
   report: boolean;
+  table: boolean;
 };
 
 export interface ViewContextValue {
@@ -23,6 +24,7 @@ const defaultChecked: ViewChecked = {
   aberration: false,
   trash: false,
   report: false,
+  table: false
 };
 
 // export explicitly in case other files reference ViewContext directly
