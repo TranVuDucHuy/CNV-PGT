@@ -20,11 +20,12 @@ class AlgorithmSummary(BaseModel):
     description: Optional[str] = None
     references_required: int = 0
     parameters: List[AlgorithmParameterDto] = None
+    last_parameter_id: Optional[str] = None
+    exe_class: Optional[str] = None
 
 
 class AlgorithmDto(AlgorithmSummary):
     upload_date: str
-    url: str
 
 
 class AlgorithmParameterCreateRequest(BaseModel):
@@ -40,6 +41,18 @@ class AlgorithmMetadata(BaseModel):
     description: Optional[str] = None
     references_required: int = 0
     parameters: List[AlgorithmParameterCreateRequest] = None
+
+
+class UpdateParameterRequest(BaseModel):
+    parameters: dict  # Format: {param_name: {type, default, value}}
+
+
+class UpdateParameterResponse(BasicResponse):
+    algorithm_parameter_id: str
+
+
+class UploadZipResponse(BasicResponse):
+    exe_class: Optional[str] = None
 
 
 # class AlgorithmRunRequest(BaseModel):

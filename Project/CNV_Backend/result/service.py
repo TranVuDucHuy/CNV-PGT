@@ -88,6 +88,11 @@ class ResultService:
         if not alg:
             raise ValueError(f"Algorithm {algorithm_id} not found")
 
+        # Lấy parameter ID từ last_parameter_id của algorithm
+        algorithm_parameter_id = alg.last_parameter_id
+        if not algorithm_parameter_id:
+            raise ValueError(f"Algorithm {algorithm_id} has no current parameters set")
+
         alg_param = (
             db.query(AlgorithmParameter)
             .filter(AlgorithmParameter.id == algorithm_parameter_id)
@@ -209,6 +214,14 @@ class ResultService:
         sample_obj = db.query(Sample).filter(Sample.id == sample_id).first()
         if not sample_obj:
             raise ValueError(f"Sample {sample_id} not found")
+
+        alg = db.query(Algorithm).filter(Algorithm.id == algorithm_id).first()
+        if not alg:
+            raise ValueError(f"Algorithm {algorithm_id} not found")
+
+        algorithm_parameter_id = alg.last_parameter_id
+        if not algorithm_parameter_id:
+            raise ValueError(f"Algorithm {algorithm_id} has no current parameters set")
 
         # Kiểm tra trùng
         existing = (

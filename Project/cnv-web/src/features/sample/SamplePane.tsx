@@ -11,6 +11,7 @@ import { ReferenceGenome, CellType } from "@/types/sample";
 import { syncWithSamples } from "@/features/reference/useReferences";
 import { parseSampleNameToParts } from "./sampleUtils";
 import MUIAccordionPane from "@/components/MUIAccordionPane";
+import { setSelectedSample } from "@/features/selection/selectionStore";
 
 type SampleItem = {
   id: string;
@@ -46,6 +47,7 @@ export default function SamplePane() {
   const [referenceGenome, setReferenceGenome] = useState<ReferenceGenome>(ReferenceGenome.HG19);
   const [cellType, setCellType] = useState<string>("Other");
   const [uploadDate, setUploadDate] = useState<string>(new Date().toISOString().split("T")[0]);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState<boolean>(false);
 
   // UI expand/collapse state
   const [openFlowcells, setOpenFlowcells] = useState<Set<string>>(new Set());
@@ -61,10 +63,20 @@ export default function SamplePane() {
 
   // sync selectedIds when samples removed/changed
   useEffect(() => {
+    if (!loading && (samples?.length ?? 0) > 0) {
+      setHasLoadedOnce(true);
+    }
+    if (loading) {
+      return;
+    }
+    if (!hasLoadedOnce && (!samples || samples.length === 0)) {
+      return;
+    }
     if (!samples || samples.length === 0) {
       setSelectedIds(new Set());
       setIsSelectAll(false);
       syncWithSamples(new Set());
+      setSelectedSample(null); // Clear selection store
       return;
     }
     setSelectedIds((prev) => {
@@ -78,7 +90,22 @@ export default function SamplePane() {
 
     const availableSampleIds = new Set(samples.map((s: any) => s.id));
     syncWithSamples(availableSampleIds);
-  }, [samples]);
+  }, [samples, loading, hasLoadedOnce]);
+
+  // Sync selection store khi selectedIds thay đổi
+  useEffect(() => {
+    if (selectedIds.size === 1) {
+      const selectedId = Array.from(selectedIds)[0];
+      const sample = samples.find((s: any) => s.id === selectedId);
+      if (sample) {
+        setSelectedSample(sample);
+      } else {
+        setSelectedSample(null);
+      }
+    } else {
+      setSelectedSample(null);
+    }
+  }, [selectedIds, samples]);
 
   useEffect(() => {
     const total = samples.length;

@@ -8,14 +8,31 @@
 import React, { useMemo, useState } from 'react';
 import { Plus, Minus, StepForward, Edit } from 'lucide-react';
 import { useAlgorithms } from './useAlgorithms';
-import AlgorithmDetail from '@/components/AlgorithmDetail';
+import AlgorithmDetail from '@/features/algorithm/AlgorithmDetail';
+import { useSelectionStore, setSelectedAlgorithm } from '@/features/selection/selectionStore';
+import { useReferencesStore } from '@/features/reference/useReferences';
+import { algorithmAPI } from '@/services';
+import RunAlgorithmWarningDialog from './RunAlgorithmWarningDialog';
+import RunningAlgorithmDialog from './RunningAlgorithmDialog';
+import RunAlgorithmErrorDialog from './RunAlgorithmErrorDialog';
+import useResultHandle from '@/features/result/resultHandle';
 
 export default function AlgorithmPane() {
-  const { algorithms, loading, deleteAlgorithm, loadAlgorithms, lastParameterIds, lastValues, recordParameterId, recordLastValues } = useAlgorithms();
+  const { algorithms, loading, deleteAlgorithm, loadAlgorithms, lastValues, recordLastValues } = useAlgorithms();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string | number>>(new Set());
   const [editOpen, setEditOpen] = useState(false);
   const [editTargetId, setEditTargetId] = useState<string | number | null>(null);
+
+  // Selection store để biết sample và algorithm đang chọn
+  const { selectedSample, selectedAlgorithm: selectedAlgoFromStore } = useSelectionStore();
+  const { referenceIds } = useReferencesStore();
+  const { refresh: refreshResults } = useResultHandle();
+
+  // Warning & Running dialogs
+  const [warningOpen, setWarningOpen] = useState(false);
+  const [runningOpen, setRunningOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const editTarget = useMemo(() => algorithms.find(a => a.id === editTargetId), [algorithms, editTargetId]);
 
@@ -52,10 +69,57 @@ export default function AlgorithmPane() {
     });
   };
 
-  const handleRun = () => {
-    if (algorithms.length > 0) {
-      console.log('Running algorithm:', algorithms[algorithms.length - 1]);
-      alert('Algorithm execution feature coming soon!');
+  // Sync selection store khi chọn algorithm (chỉ khi đúng 1 algorithm được chọn)
+  React.useEffect(() => {
+    if (selectedIds.size === 1) {
+      const selectedId = Array.from(selectedIds)[0];
+      const algo = algorithms.find((a) => a.id === selectedId);
+      if (algo) {
+        setSelectedAlgorithm(algo);
+      } else {
+        setSelectedAlgorithm(null);
+      }
+    } else {
+      setSelectedAlgorithm(null);
+    }
+  }, [selectedIds, algorithms]);
+
+  const handleRun = async () => {
+    // Kiểm tra điều kiện: đúng 1 sample và 1 algorithm
+    if (!selectedSample || !selectedAlgoFromStore) {
+      alert('Please select exactly 1 sample and 1 algorithm to run.');
+      return;
+    }
+
+    const algo = selectedAlgoFromStore;
+    const referencesRequired = algo.references_required ?? 0;
+    const currentReferenceCount = referenceIds.size;
+
+    // Kiểm tra exe_class và số references
+    if (!algo.exe_class || currentReferenceCount < referencesRequired) {
+      console.log('Cannot run algorithm, missing conditions:', {
+        exe_class: algo.exe_class,
+        referencesRequired,
+        currentReferenceCount,
+      });
+      setWarningOpen(true);
+      return;
+    }
+
+    // Đủ điều kiện, tiến hành chạy
+    setRunningOpen(true);
+    setErrorMessage(null);
+
+    try {
+      await algorithmAPI.run(algo.id, selectedSample.id);
+      // Thành công -> refresh results
+      setRunningOpen(false);
+      await refreshResults();
+      alert('Algorithm completed successfully! Check Results pane.');
+    } catch (err) {
+      setRunningOpen(false);
+      const message = err instanceof Error ? err.message : String(err);
+      setErrorMessage(message);
     }
   };
 
@@ -64,6 +128,18 @@ export default function AlgorithmPane() {
     setEditTargetId(id);
     setEditOpen(true);
   };
+
+  // Enable nút Run chỉ khi đúng 1 sample và 1 algorithm
+  const canRun = selectedSample !== null && selectedAlgoFromStore !== null;
+
+  // Lấy parameters để hiển thị trong Running dialog
+  const currentParams = React.useMemo(() => {
+    if (!selectedAlgoFromStore?.last_parameter_id) return {};
+    const paramSet = selectedAlgoFromStore.parameters?.find(
+      (p) => p.id === selectedAlgoFromStore.last_parameter_id
+    );
+    return paramSet?.value || {};
+  }, [selectedAlgoFromStore]);
 
   return (
     <>
@@ -85,11 +161,16 @@ export default function AlgorithmPane() {
             >
               <Minus size={16} />
             </button>
-            {/* Edit is not supported by backend currently */}
+            {/* Run Algorithm button */}
             <button
               onClick={handleRun}
-              title="Run Algorithm"
-              className="p-1 bg-blue-500 hover:bg-blue-600 text-white rounded"
+              title={canRun ? "Run Algorithm" : "Select exactly 1 sample and 1 algorithm to run"}
+              disabled={!canRun}
+              className={`p-1 text-white rounded ${
+                canRun 
+                  ? 'bg-blue-500 hover:bg-blue-600' 
+                  : 'bg-gray-400 cursor-not-allowed'
+              }`}
             >
               <StepForward size={16} />
             </button>
@@ -146,10 +227,8 @@ export default function AlgorithmPane() {
       <AlgorithmDetail
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
-        onRecordParameterId={recordParameterId}
-        onRecordAlgorithmCreated={(algorithmId, values) => {
-          console.log('Algorithm created:', algorithmId, values);
-          recordLastValues(algorithmId, values);
+        onSaveValues={(vals) => {
+          // Values saved after creation, though not actively used yet
         }}
         onSuccess={() => {
           // Refresh list after creation
@@ -162,7 +241,6 @@ export default function AlgorithmPane() {
         open={editOpen}
         mode="edit"
         initialAlgorithm={editTarget}
-        lastParamValues={editTarget ? (lastValues[String(editTarget.id)] || (editTarget.parameters?.[editTarget.parameters.length - 1]?.value) || {}) : {}}
         onSaveValues={(vals) => {
           if (editTarget) {
             recordLastValues(String(editTarget.id), vals);
@@ -170,8 +248,42 @@ export default function AlgorithmPane() {
         }}
         onClose={() => setEditOpen(false)}
         onSuccess={() => {
-          // For now, no backend update; we just keep values in local state
+          loadAlgorithms();
           setEditOpen(false);
+        }}
+      />
+
+      {/* Warning Dialog - thiếu điều kiện */}
+      <RunAlgorithmWarningDialog
+        open={warningOpen}
+        onClose={() => setWarningOpen(false)}
+        referencesRequired={selectedAlgoFromStore?.references_required ?? 0}
+        onUploadModule={() => {
+          // Mở edit dialog để upload module
+          if (selectedAlgoFromStore) {
+            setEditTargetId(selectedAlgoFromStore.id);
+            setEditOpen(true);
+          }
+        }}
+      />
+
+      {/* Running Dialog */}
+      <RunningAlgorithmDialog
+        open={runningOpen}
+        sampleName={selectedSample?.name || ''}
+        algorithmName={selectedAlgoFromStore?.name || ''}
+        algorithmVersion={selectedAlgoFromStore?.version || ''}
+        parameters={currentParams}
+      />
+
+      {/* Error Dialog */}
+      <RunAlgorithmErrorDialog
+        open={!!errorMessage}
+        errorMessage={errorMessage || ''}
+        onClose={() => setErrorMessage(null)}
+        onRetry={() => {
+          setErrorMessage(null);
+          handleRun();
         }}
       />
     </>

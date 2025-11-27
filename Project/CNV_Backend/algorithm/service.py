@@ -36,6 +36,7 @@ class AlgorithmService:
             version=algorithm_metadata.version,
             description=algorithm_metadata.description,
             references_required=algorithm_metadata.references_required,
+            last_parameter_id=new_param_id,
             parameters=[AlgorithmParameter(id=new_param_id, value=init_params)],
         )
 
@@ -87,6 +88,8 @@ class AlgorithmService:
                 version=algo.version,
                 description=algo.description,
                 references_required=algo.references_required,
+                last_parameter_id=algo.last_parameter_id,
+                exe_class=algo.exe_class,
                 parameters=[
                     AlgorithmParameterDto(id=param.id, value=param.value)
                     for param in algo.parameters
@@ -207,10 +210,61 @@ class AlgorithmService:
             description=algorithm.description,
             references_required=algorithm.references_required,
             upload_date=str(algorithm.upload_date),
-            url=algorithm.url,
+            last_parameter_id=algorithm.last_parameter_id,
+            exe_class=algorithm.exe_class,
             parameters=[
                 AlgorithmParameterDto(id=param.id, value=param.value)
                 for param in algorithm.parameters
             ],
         )
         return algo_dto
+
+    @staticmethod
+    def update_parameters(db: Session, algorithm_id: str, new_params: dict) -> str:
+        from result.models import Result
+        
+        # Kiểm tra algorithm tồn tại
+        algorithm = db.query(Algorithm).filter(Algorithm.id == algorithm_id).first()
+        if not algorithm:
+            raise ValueError(f"Algorithm with id {algorithm_id} not found")
+        
+        # Bước 1: Xóa các parameter không được sử dụng trong result
+        used_param_ids = set(
+            db.query(Result.algorithm_parameter_id)
+            .filter(
+                Result.algorithm_id == algorithm_id,
+                Result.algorithm_parameter_id.isnot(None)
+            )
+            .distinct()
+            .all()
+        )
+        used_param_ids = {pid[0] for pid in used_param_ids if pid[0]}
+        
+        for param in list(algorithm.parameters):
+            if param.id not in used_param_ids:
+                db.delete(param)
+        
+        db.flush()  
+        
+        # Bước 2: Kiểm tra parameter mới có tồn tại chưa
+        for existing_param in algorithm.parameters:
+            if existing_param.value == new_params:
+                # Parameter đã tồn tại, cập nhật last_parameter_id và trả về ID cũ
+                algorithm.last_parameter_id = existing_param.id
+                db.commit()
+                return existing_param.id
+        
+        # Bước 3: Parameter chưa tồn tại, tạo mới
+        new_param_id = uuid4().hex
+        new_param = AlgorithmParameter(
+            id=new_param_id,
+            algorithm_id=algorithm_id,
+            value=new_params
+        )
+        db.add(new_param)
+        
+        # Cập nhật last_parameter_id
+        algorithm.last_parameter_id = new_param_id
+        db.commit()
+        
+        return new_param_id

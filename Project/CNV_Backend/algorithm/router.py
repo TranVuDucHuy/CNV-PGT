@@ -7,6 +7,9 @@ from .schemas import (
     AlgorithmMetadata,
     RegisterAlgorithmResponse,
     AlgorithmDto,
+    UpdateParameterRequest,
+    UpdateParameterResponse,
+    UploadZipResponse,
 )
 from common.schemas import BasicResponse
 from database import get_db
@@ -39,7 +42,7 @@ def register_algorithm(
     )
 
 
-@router.post("/{algorithm_id}/upload", response_model=BasicResponse)
+@router.post("/{algorithm_id}/upload", response_model=UploadZipResponse)
 def upload_algorithm_zip(
     request: Request,
     algorithm_id: str,
@@ -54,7 +57,13 @@ def upload_algorithm_zip(
             algorithm_zip=algorithm_zip,
         )
         print(f"✅ Algorithm {file.filename} uploaded successfully")
-        return BasicResponse(message="Algorithm uploaded successfully")
+        
+        # Lấy algorithm để trả về exe_class
+        algorithm = AlgorithmService.get_by_id(db=db, algorithm_id=algorithm_id)
+        return UploadZipResponse(
+            message="Algorithm uploaded successfully",
+            exe_class=algorithm.exe_class,
+        )
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
@@ -107,6 +116,27 @@ def download_algorithm(
             io.BytesIO(algorithm_zip), media_type="application/zip"
         )
     except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.put("/{algorithm_id}/parameters", response_model=UpdateParameterResponse)
+def update_algorithm_parameters(
+    algorithm_id: str,
+    request: UpdateParameterRequest,
+    db: Session = Depends(get_db),
+):
+    try:
+        parameter_id = AlgorithmService.update_parameters(
+            db=db,
+            algorithm_id=algorithm_id,
+            new_params=request.parameters,
+        )
+        return UpdateParameterResponse(
+            message="Parameters updated successfully",
+            algorithm_parameter_id=parameter_id,
+        )
+    except Exception as e:
+        traceback.print_exc()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 

@@ -17,6 +17,7 @@ class Algorithm(Base):
     output_class = Column(String(256), nullable=True)
     exe_class = Column(String(256), nullable=True)
     references_required = Column(Integer, nullable=False, default=0)
+    last_parameter_id = Column(String(64), nullable=True)  # Theo dõi parameter set mới nhất
 
     parameters = relationship(
         "AlgorithmParameter",
