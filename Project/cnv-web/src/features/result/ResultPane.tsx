@@ -2,6 +2,7 @@
 "use client";
 
 import React, { ChangeEvent, useEffect, useMemo, useState } from "react";
+import { useSelector, useDispatch } from "react-redux"; // Redux hooks
 import { Plus, Minus, Edit3 } from "lucide-react";
 import useResultHandle from "./resultHandle";
 import { useAlgorithms } from "../algorithm/useAlgorithms";
@@ -23,20 +24,34 @@ import { parseSampleNameToParts } from "@/features/sample/sampleUtils";
 import MUIAccordionPane from "@/components/MUIAccordionPane";
 import { useRouter } from "next/navigation";
 
+// --- Imports mới cho Type và Redux ---
+import { ResultSummary } from "@/types/result"; // Import type chính xác để sửa lỗi 'any'
+import { RootState } from "@/utils/store"; // Đường dẫn tới store của bạn
+import { 
+  toggleResultSelection, 
+  setSelectedResults, 
+  clearSelection 
+} from "@/utils/appSlice"; // Đường dẫn tới slice của bạn
+
 export default function ResultPane() {
+  const dispatch = useDispatch();
+  
+  // 1. Lấy danh sách ID đang chọn từ Redux
+  const selectedResultIds = useSelector((state: RootState) => state.app.selectedResults);
+
   const {
     results,
     binFile,
     segmentFile,
     createdAt,
     loading,
-    error,
+    // error,
     algo,
     setBinFile,
     setSegmentFile,
     setCreatedAt,
     save,
-    refresh,
+    // refresh,
     removeResults,
     setAlgo,
     setSelectedResultId,
@@ -44,7 +59,9 @@ export default function ResultPane() {
 
   const { algorithms, loadAlgorithms } = useAlgorithms();
 
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // 2. Chuyển mảng ID từ Redux sang Set để tối ưu hiệu năng tìm kiếm (O(1)) khi render
+  const selectedIdsSet = useMemo(() => new Set(selectedResultIds), [selectedResultIds]);
+
   const [uploadDialogOpen, setUploadDialogOpen] = useState<boolean>(false);
   const [removeDialogOpen, setRemoveDialogOpen] = useState<boolean>(false);
   const [operating, setOperating] = useState(false);
@@ -56,28 +73,27 @@ export default function ResultPane() {
 
   const router = useRouter();
 
+  // Logic: Nếu chọn đúng 1 item thì set SelectedResultId để hiển thị chi tiết bên phải (nếu có)
   useEffect(() => {
-    if (selectedIds.size === 1) {
-      const first = Array.from(selectedIds.values())[0];
-      setSelectedResultId?.(first ?? null);
+    if (selectedResultIds.length === 1) {
+      setSelectedResultId?.(selectedResultIds[0]);
     } else {
       setSelectedResultId?.(null);
     }
-  }, [selectedIds, setSelectedResultId]);
+  }, [selectedResultIds, setSelectedResultId]);
 
   const handleOpenResultsPage = () => {
-    // Open result page in a new tab
     window.open("/result", "_blank", "noopener,noreferrer");
   };
 
-  // Build grouping map: flowcell -> cycle -> array of results (flattened)
+  // 3. FIX LỖI: Định nghĩa kiểu dữ liệu cụ thể cho Map thay vì dùng 'any'
   const grouped = useMemo(() => {
     const map = new Map<
       string,
       Map<
         string,
         Array<{
-          result: any;
+          result: ResultSummary; // <--- SỬA TẠI ĐÂY: Dùng type chuẩn thay vì any
           parsed: ReturnType<typeof parseSampleNameToParts>;
         }>
       >
@@ -95,27 +111,23 @@ export default function ResultPane() {
     }
 
     // sort for stable UI
+    // Cũng cần định nghĩa lại type cho sortedMap giống map ở trên
     const sortedMap = new Map<
       string,
       Map<
         string,
         Array<{
-          result: any;
+          result: ResultSummary; // <--- SỬA TẠI ĐÂY
           parsed: ReturnType<typeof parseSampleNameToParts>;
         }>
       >
     >();
+
     Array.from(map.keys())
       .sort()
       .forEach((flow) => {
         const cycles = map.get(flow)!;
-        const sortedCycles = new Map<
-          string,
-          Array<{
-            result: any;
-            parsed: ReturnType<typeof parseSampleNameToParts>;
-          }>
-        >();
+        const sortedCycles = new Map(); // TS tự suy luận được từ sortedMap
         Array.from(cycles.keys())
           .sort()
           .forEach((c) => {
@@ -129,24 +141,21 @@ export default function ResultPane() {
     return sortedMap;
   }, [results]);
 
+  // 4. Các hàm xử lý chọn bằng Redux Actions
   const toggleSelect = (id?: string) => {
     if (!id) return;
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    dispatch(toggleResultSelection(id));
   };
 
   const toggleSelectAll = (e: ChangeEvent<HTMLInputElement>) => {
     const checked = e.target.checked;
     if (checked) {
-      const next = new Set<string>();
-      for (const r of results) if (r.id) next.add(r.id);
-      setSelectedIds(next);
+      const allIds = results
+        .map((r) => r.id)
+        .filter((id): id is string => !!id); // Lọc bỏ undefined/null
+      dispatch(setSelectedResults(allIds));
     } else {
-      setSelectedIds(new Set());
+      dispatch(clearSelection());
     }
   };
 
@@ -183,7 +192,8 @@ export default function ResultPane() {
 
   const handleRemoveConfirm = () => {
     if (!operating) {
-      openOperatingDialog(removeResults(selectedIds));
+      // Truyền mảng string[] (selectedResultIds) thay vì Set
+      openOperatingDialog(removeResults(selectedResultIds));
       setRemoveDialogOpen(false);
     }
   };
@@ -212,7 +222,7 @@ export default function ResultPane() {
       <Button
         onClick={(e) => {
           e.stopPropagation();
-          if (selectedIds.size > 0) setRemoveDialogOpen(true);
+          if (selectedResultIds.length > 0) setRemoveDialogOpen(true);
         }}
         title="Remove"
         variant="contained"
@@ -259,16 +269,16 @@ export default function ResultPane() {
     <MUIAccordionPane title="Result" defaultExpanded headerRight={headerRight}>
       <Box>
         <Box sx={{ display: "flex", gap: 2, alignItems: "center", mb: 1 }}>
-          <Typography variant="body2">{selectedIds.size} selected</Typography>
+          <Typography variant="body2">{selectedResultIds.length} selected</Typography>
 
           <FormControlLabel
             control={
               <Checkbox
                 checked={
-                  results.length > 0 && selectedIds.size === results.length
+                  results.length > 0 && selectedResultIds.length === results.length
                 }
                 indeterminate={
-                  selectedIds.size > 0 && selectedIds.size < results.length
+                  selectedResultIds.length > 0 && selectedResultIds.length < results.length
                 }
                 onChange={toggleSelectAll}
                 size="small"
@@ -339,8 +349,6 @@ export default function ResultPane() {
                           </Typography>
                         </Button>
                       </Box>
-
-                      {/* no checkbox here */}
                     </Box>
 
                     <Collapse in={isOpenFlow} unmountOnExit>
@@ -403,8 +411,6 @@ export default function ResultPane() {
                                         </Typography>
                                       </Button>
                                     </Box>
-
-                                    {/* no checkbox here */}
                                   </Box>
 
                                   <Collapse in={isOpenCycle} unmountOnExit>
@@ -413,7 +419,7 @@ export default function ResultPane() {
                                         {arr.map(({ result, parsed }) => {
                                           const isSelected =
                                             result.id !== undefined &&
-                                            selectedIds.has(result.id);
+                                            selectedIdsSet.has(result.id);
                                           return (
                                             <Box
                                               key={result.id}
@@ -492,7 +498,6 @@ export default function ResultPane() {
         confirmLabel="Upload"
         cancelLabel="Cancel"
       >
-        {/* ...upload dialog content unchanged from previous version... */}
         <Stack spacing={2}>
           <Box>
             <Typography variant="body2" sx={{ mb: 0.5 }}>
@@ -616,7 +621,7 @@ export default function ResultPane() {
       {/* Remove confirm dialog */}
       <CenterDialog
         open={removeDialogOpen}
-        title={`You sure want to remove these results (${selectedIds.size})`}
+        title={`You sure want to remove these results (${selectedResultIds.length})`}
         onClose={() => setRemoveDialogOpen(false)}
         onConfirm={handleRemoveConfirm}
         confirmLabel="Yes"
@@ -625,7 +630,8 @@ export default function ResultPane() {
         <Box sx={{ maxHeight: 240, overflowY: "auto" }}>
           <Stack spacing={1}>
             {results.map((r: any) => {
-              const isSelected = r.id !== undefined && selectedIds.has(r.id);
+              const isSelected =
+                r.id !== undefined && selectedIdsSet.has(r.id);
               if (!isSelected) return null;
               return (
                 <Box
