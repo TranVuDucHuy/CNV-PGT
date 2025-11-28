@@ -12,6 +12,8 @@ import { ResultProvider } from "@/features/result/resultHandle";
 import ReferencePane from "@/features/reference/ReferencePane";
 import useSampleHandle from "@/features/sample/sampleHandle";
 import TiledContentPane from "@/features/content/TiledContentPane";
+import { Provider } from "react-redux";
+import { store } from "@/utils/store"; // Import store của bạn
 
 const MIN_LEFT_WIDTH = 275; // px - min width of left pane
 const MAX_LEFT_WIDTH = 350; // px - max width of left pane
@@ -110,68 +112,71 @@ const DashboardView: React.FC = () => {
 
       {/* Split Pane */}
       <div ref={containerRef} className="flex flex-1" style={{ minHeight: 0 }}>
-        <ViewProvider>
-          <ResultProvider>
-            {/* Left Pane - resizable */}
-            <div
-              className="border-r border-gray-300 bg-gray-50 p-3 max-h-[100vh] overflow-y-auto space-y-3"
-              style={{
-                width: leftWidth,
-                minWidth: MIN_LEFT_WIDTH,
-                maxWidth: MAX_LEFT_WIDTH,
-                height: "100%",
-              }}
-            >
-              <SamplePane />
-              <ReferencePane samples={samples} onRefresh={refresh} />
-              <AlgorithmPane />
-              <ResultPane />
-              <ViewPane />
-            </div>
-
-            {/* Divider / Resizer */}
-            <div
-              role="separator"
-              aria-orientation="vertical"
-              onPointerDown={onPointerDown}
-              onDoubleClick={onDividerDoubleClick}
-              className="relative"
-              style={{
-                width: 6, // hit area
-                cursor: "col-resize",
-                display: "flex",
-                alignItems: "stretch",
-                justifyContent: "center",
-                userSelect: "none",
-                touchAction: "none",
-                background: "transparent",
-              }}
-              title="Drag to resize left pane (double-click to reset)"
-            >
-              {/* thin visible bar centered in the hit area */}
+        <Provider store={store}>
+          <ViewProvider>
+            <ResultProvider>
+              {/* Left Pane - resizable */}
               <div
+                className="border-r border-gray-300 bg-gray-50 p-3 max-h-[100vh] overflow-y-auto space-y-3"
                 style={{
-                  width: 2,
-                  background: "rgba(0,0,0,0.08)",
-                  borderRadius: 2,
-                  alignSelf: "stretch",
-                  margin: "6px 0",
+                  width: leftWidth,
+                  minWidth: MIN_LEFT_WIDTH,
+                  maxWidth: MAX_LEFT_WIDTH,
+                  height: "100%",
                 }}
-              />
-            </div>
-
-            {/* Right Pane - Content Area */}
-            <div className="flex-1 bg-gray-100 flex min-w-0">
-              <div
-                id="contentArea"
-                className="w-full h-full bg-gray-200  rounded-lg flex flex-col min-w-0"
               >
                 {/* <ContentPane /> */}
                 <TiledContentPane />
+                <SamplePane />
+                <ReferencePane samples={samples} onRefresh={refresh} />
+                <AlgorithmPane />
+                <ResultPane />
+                <ViewPane />
               </div>
-            </div>
-          </ResultProvider>
-        </ViewProvider>
+
+              {/* Divider / Resizer */}
+              <div
+                role="separator"
+                aria-orientation="vertical"
+                onPointerDown={onPointerDown}
+                onDoubleClick={onDividerDoubleClick}
+                className="relative"
+                style={{
+                  width: 6, // hit area
+                  cursor: "col-resize",
+                  display: "flex",
+                  alignItems: "stretch",
+                  justifyContent: "center",
+                  userSelect: "none",
+                  touchAction: "none",
+                  background: "transparent",
+                }}
+                title="Drag to resize left pane (double-click to reset)"
+              >
+                {/* thin visible bar centered in the hit area */}
+                <div
+                  style={{
+                    width: 2,
+                    background: "rgba(0,0,0,0.08)",
+                    borderRadius: 2,
+                    alignSelf: "stretch",
+                    margin: "6px 0",
+                  }}
+                />
+              </div>
+
+              {/* Right Pane - Content Area */}
+              <div className="flex-1 bg-gray-100 flex min-w-0">
+                <div
+                  id="contentArea"
+                  className="w-full h-full bg-gray-200  rounded-lg flex flex-col min-w-0"
+                >
+                  <TiledContentPane />
+                </div>
+              </div>
+            </ResultProvider>
+          </ViewProvider>
+        </Provider>
       </div>
     </div>
   );

@@ -29,7 +29,6 @@ import { Chromosome, SampleBin, SampleSegment } from "@/types/result";
 // }
 
 // --- CONSTANTS ---
-// Thứ tự hiển thị nhiễm sắc thể trên trục X
 const CHROMOSOME_ORDER: Chromosome[] = [
   "1",
   "2",
@@ -57,8 +56,6 @@ const CHROMOSOME_ORDER: Chromosome[] = [
   "Y",
 ];
 
-// Độ dài tương đối của các NST (hg19) để tính toán offset hiển thị đẹp mắt
-// Nếu dữ liệu thực tế lớn hơn, code sẽ tự động điều chỉnh based trên max end
 const HG19_LENGTHS: Record<string, number> = {
   "1": 249250621,
   "2": 243199373,
@@ -95,10 +92,10 @@ interface CNVChartProps {
 }
 
 // --- HELPER COMPONENTS ---
-
-// Custom shape cho điểm scatter để tối ưu hiệu năng hơn default circle của Recharts một chút
 const CustomDot = (props: any) => {
   const { cx, cy } = props;
+  // Chỉ vẽ nếu tọa độ hợp lệ
+  if (!Number.isFinite(cx) || !Number.isFinite(cy)) return null;
   return <circle cx={cx} cy={cy} r={1.5} fill="#888888" opacity={0.6} />;
 };
 
@@ -300,28 +297,12 @@ const CNVChart: React.FC<CNVChartProps> = ({ bins, segments, title, sx }) => {
               }}
             />
 
-            {/* --- DATA LAYERS --- */}
-
-            {/* 1. BINS (Scatter Points) */}
-            <Scatter
-              name="Bins"
-              data={processedBins}
-              shape={<CustomDot />}
-              isAnimationActive={false} // Tắt animation để render nhanh hơn với data lớn
-            />
-
-            {/* 2. SEGMENTS (Lines) */}
-            {/* Normal Segments (Màu đen/xám đậm) */}
-            <Line
-              type="linear"
-              data={processedSegments.normal}
-              dataKey="y"
-              stroke="#333333"
-              strokeWidth={3}
-              dot={false}
-              connectNulls={false} // QUAN TRỌNG: Không nối các điểm null
-              isAnimationActive={false}
-            />
+          <Scatter
+            name="Bins"
+            data={processedBins}
+            shape={<CustomDot />}
+            isAnimationActive={false}
+          />
 
             {/* Gain Segments (Màu đỏ) */}
             <Line
