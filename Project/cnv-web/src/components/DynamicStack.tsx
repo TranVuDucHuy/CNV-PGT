@@ -464,7 +464,6 @@ export const DynamicStack = <T,>({
                 style={{
                   position: "relative",
                   flexShrink: 0,
-                  backgroundColor: "red",
                 }}
               >
                 <Box
