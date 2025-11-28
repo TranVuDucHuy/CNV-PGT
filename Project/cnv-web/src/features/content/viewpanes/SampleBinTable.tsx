@@ -9,6 +9,8 @@ import {
   TableRow,
   Paper,
   TableSortLabel,
+  SxProps,
+  Theme,
 } from "@mui/material";
 
 import { SampleBin } from "@/types/result";
@@ -20,6 +22,7 @@ type Props = {
   dense?: boolean;
   onRowClick?: (row: SampleBin) => void;
   fullHeight?: boolean; // new
+  sx?: SxProps<Theme>;
 };
 
 function descendingComparator<T>(a: T, b: T, orderBy: keyof T) {
@@ -66,11 +69,12 @@ export default function SampleBinTable({
   dense = false,
   onRowClick,
   fullHeight = false,
+  sx,
 }: Props) {
   const [order, setOrder] = React.useState<Order>("asc");
-  const [orderBy, setOrderBy] = React.useState<keyof SampleBin | "gc_content_percent" | "result_name">(
-    "chromosome"
-  );
+  const [orderBy, setOrderBy] = React.useState<
+    keyof SampleBin | "gc_content_percent" | "result_name"
+  >("chromosome");
 
   const handleRequestSort = (property: typeof orderBy) => {
     const isAsc = orderBy === property && order === "asc";
@@ -92,15 +96,19 @@ export default function SampleBinTable({
 
   return (
     <Paper
-      className={`space-y-3 overflow-y-auto ${fullHeight ? "w-full h-full" : "max-h-[120vh]"}`}
-      style={fullHeight ? { display: "flex", flexDirection: "column" } : undefined}
+      className={`space-y-3 ${fullHeight ? "w-full h-full" : "max-h-[120vh]"}`}
+      style={
+        fullHeight ? { display: "flex", flexDirection: "column" } : undefined
+      }
+      sx={{ overflow: "auto", ...sx }}
     >
       <TableContainer style={fullHeight ? { height: "100%" } : undefined}>
         <Table size={dense ? "small" : "medium"} stickyHeader={!!fullHeight}>
           <TableHead>
             <TableRow>
-
-              <TableCell sortDirection={orderBy === "chromosome" ? order : false}>
+              <TableCell
+                sortDirection={orderBy === "chromosome" ? order : false}
+              >
                 <TableSortLabel
                   active={orderBy === "chromosome"}
                   direction={orderBy === "chromosome" ? order : "asc"}
@@ -110,7 +118,10 @@ export default function SampleBinTable({
                 </TableSortLabel>
               </TableCell>
 
-              <TableCell align="right" sortDirection={orderBy === "start" ? order : false}>
+              <TableCell
+                align="right"
+                sortDirection={orderBy === "start" ? order : false}
+              >
                 <TableSortLabel
                   active={orderBy === "start"}
                   direction={orderBy === "start" ? order : "asc"}
@@ -120,7 +131,10 @@ export default function SampleBinTable({
                 </TableSortLabel>
               </TableCell>
 
-              <TableCell align="right" sortDirection={orderBy === "end" ? order : false}>
+              <TableCell
+                align="right"
+                sortDirection={orderBy === "end" ? order : false}
+              >
                 <TableSortLabel
                   active={orderBy === "end"}
                   direction={orderBy === "end" ? order : "asc"}
@@ -130,7 +144,10 @@ export default function SampleBinTable({
                 </TableSortLabel>
               </TableCell>
 
-              <TableCell align="right" sortDirection={orderBy === "copy_number" ? order : false}>
+              <TableCell
+                align="right"
+                sortDirection={orderBy === "copy_number" ? order : false}
+              >
                 <TableSortLabel
                   active={orderBy === "copy_number"}
                   direction={orderBy === "copy_number" ? order : "asc"}
@@ -140,7 +157,10 @@ export default function SampleBinTable({
                 </TableSortLabel>
               </TableCell>
 
-              <TableCell align="right" sortDirection={orderBy === "read_count" ? order : false}>
+              <TableCell
+                align="right"
+                sortDirection={orderBy === "read_count" ? order : false}
+              >
                 <TableSortLabel
                   active={orderBy === "read_count"}
                   direction={orderBy === "read_count" ? order : "asc"}
@@ -150,7 +170,10 @@ export default function SampleBinTable({
                 </TableSortLabel>
               </TableCell>
 
-              <TableCell align="right" sortDirection={orderBy === "gc_content_percent" ? order : false}>
+              <TableCell
+                align="right"
+                sortDirection={orderBy === "gc_content_percent" ? order : false}
+              >
                 <TableSortLabel
                   active={orderBy === "gc_content_percent"}
                   direction={orderBy === "gc_content_percent" ? order : "asc"}
@@ -159,7 +182,6 @@ export default function SampleBinTable({
                   GC %
                 </TableSortLabel>
               </TableCell>
-
             </TableRow>
           </TableHead>
 
@@ -180,14 +202,18 @@ export default function SampleBinTable({
                 style={{ cursor: onRowClick ? "pointer" : "default" }}
               >
                 <TableCell>
-                  {typeof r.chromosome === "string" ? r.chromosome : JSON.stringify(r.chromosome)}
+                  {typeof r.chromosome === "string"
+                    ? r.chromosome
+                    : JSON.stringify(r.chromosome)}
                 </TableCell>
                 <TableCell align="right">{r.start}</TableCell>
                 <TableCell align="right">{r.end}</TableCell>
                 <TableCell align="right">{r.copy_number}</TableCell>
                 <TableCell align="right">{r.read_count}</TableCell>
                 <TableCell align="right">
-                  {r.gc_content != null ? (r.gc_content * 100).toFixed(2) + "%" : "-"}
+                  {r.gc_content != null
+                    ? (r.gc_content * 100).toFixed(2) + "%"
+                    : "-"}
                 </TableCell>
               </TableRow>
             ))}

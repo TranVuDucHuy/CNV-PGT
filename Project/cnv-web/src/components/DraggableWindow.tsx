@@ -51,13 +51,22 @@ export default function DraggableWindow({
   });
 
   const rectRef = React.useRef(rect);
-  React.useEffect(() => { rectRef.current = rect; }, [rect]);
+  React.useEffect(() => {
+    rectRef.current = rect;
+  }, [rect]);
 
   const draggingRef = React.useRef(false);
   const resizingRef = React.useRef<ResizeHandle>(null);
 
   const dragStart = React.useRef({ x: 0, y: 0, left: 0, top: 0 });
-  const resizeStart = React.useRef({ x: 0, y: 0, left: 0, top: 0, width: 0, height: 0 });
+  const resizeStart = React.useRef({
+    x: 0,
+    y: 0,
+    left: 0,
+    top: 0,
+    width: 0,
+    height: 0,
+  });
 
   const rafRef = React.useRef<number | null>(null);
   const pendingRef = React.useRef<Partial<Rect> | null>(null);
@@ -76,23 +85,33 @@ export default function DraggableWindow({
     setRect(next);
   }, []);
 
-  const scheduleUpdate = React.useCallback((update: Partial<Rect>) => {
-    pendingRef.current = { ...(pendingRef.current ?? {}), ...update };
-    if (rafRef.current == null) {
-      rafRef.current = requestAnimationFrame(commitPending);
-    }
-  }, [commitPending]);
+  const scheduleUpdate = React.useCallback(
+    (update: Partial<Rect>) => {
+      pendingRef.current = { ...(pendingRef.current ?? {}), ...update };
+      if (rafRef.current == null) {
+        rafRef.current = requestAnimationFrame(commitPending);
+      }
+    },
+    [commitPending]
+  );
 
-  // ----------- Dragging -----------  
+  // ----------- Dragging -----------
   const onHeaderPointerDown = (e: React.PointerEvent) => {
     const target = e.target as HTMLElement;
     // Nếu nhấn vào button/icon, không drag
     if (target.closest("button")) return;
 
     if (e.pointerType === "mouse" && e.button !== 0) return;
-    try { (e.currentTarget as Element).setPointerCapture(e.pointerId); } catch {}
+    try {
+      (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    } catch {}
     draggingRef.current = true;
-    dragStart.current = { x: e.clientX, y: e.clientY, left: rectRef.current.left, top: rectRef.current.top };
+    dragStart.current = {
+      x: e.clientX,
+      y: e.clientY,
+      left: rectRef.current.left,
+      top: rectRef.current.top,
+    };
     onBringToFront?.();
     document.body.style.userSelect = "none";
     e.preventDefault();
@@ -106,8 +125,16 @@ export default function DraggableWindow({
         const dy = ev.clientY - y;
         const container = getContainerBounds();
         if (!container) return;
-        const newLeft = clamp(left + dx, 0, container.width - rectRef.current.width);
-        const newTop = clamp(top + dy, 0, container.height - rectRef.current.height);
+        const newLeft = clamp(
+          left + dx,
+          0,
+          container.width - rectRef.current.width
+        );
+        const newTop = clamp(
+          top + dy,
+          0,
+          container.height - rectRef.current.height
+        );
         scheduleUpdate({ left: newLeft, top: newTop });
       }
     };
@@ -129,18 +156,28 @@ export default function DraggableWindow({
     };
   }, [getContainerBounds, scheduleUpdate]);
 
-  // ----------- Resizing -----------  
-  const onResizerPointerDown = (handle: ResizeHandle) => (e: React.PointerEvent) => {
-    if (e.pointerType === "mouse" && e.button !== 0) return;
-    try { (e.currentTarget as Element).setPointerCapture(e.pointerId); } catch {}
-    resizingRef.current = handle;
-    const r = rectRef.current;
-    resizeStart.current = { x: e.clientX, y: e.clientY, left: r.left, top: r.top, width: r.width, height: r.height };
-    onBringToFront?.();
-    document.body.style.userSelect = "none";
-    e.stopPropagation();
-    e.preventDefault();
-  };
+  // ----------- Resizing -----------
+  const onResizerPointerDown =
+    (handle: ResizeHandle) => (e: React.PointerEvent) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      try {
+        (e.currentTarget as Element).setPointerCapture(e.pointerId);
+      } catch {}
+      resizingRef.current = handle;
+      const r = rectRef.current;
+      resizeStart.current = {
+        x: e.clientX,
+        y: e.clientY,
+        left: r.left,
+        top: r.top,
+        width: r.width,
+        height: r.height,
+      };
+      onBringToFront?.();
+      document.body.style.userSelect = "none";
+      e.stopPropagation();
+      e.preventDefault();
+    };
 
   React.useEffect(() => {
     const onPointerMove = (ev: PointerEvent) => {
@@ -152,20 +189,25 @@ export default function DraggableWindow({
       const container = getContainerBounds();
       if (!container) return;
 
-      let newLeft = left, newTop = top, newW = width, newH = height;
+      let newLeft = left,
+        newTop = top,
+        newW = width,
+        newH = height;
 
       if (handle.includes("left")) {
         const proposedLeft = clamp(left + dx, 0, left + width - minWidth);
         newLeft = proposedLeft;
         newW = width - (proposedLeft - left);
       }
-      if (handle.includes("right")) newW = clamp(width + dx, minWidth, container.width - left);
+      if (handle.includes("right"))
+        newW = clamp(width + dx, minWidth, container.width - left);
       if (handle.includes("top")) {
         const proposedTop = clamp(top + dy, 0, top + height - minHeight);
         newTop = proposedTop;
         newH = height - (proposedTop - top);
       }
-      if (handle.includes("bottom")) newH = clamp(height + dy, minHeight, container.height - top);
+      if (handle.includes("bottom"))
+        newH = clamp(height + dy, minHeight, container.height - top);
 
       newLeft = clamp(newLeft, 0, container.width - newW);
       newTop = clamp(newTop, 0, container.height - newH);
@@ -192,7 +234,7 @@ export default function DraggableWindow({
     };
   }, [getContainerBounds, minWidth, minHeight, scheduleUpdate]);
 
-  // ----------- Render -----------  
+  // ----------- Render -----------
   const style: React.CSSProperties = {
     position: "absolute",
     top: rect.top,
@@ -211,7 +253,10 @@ export default function DraggableWindow({
   };
 
   const EDGE = 12;
-  const resizerCommon: React.CSSProperties = { position: "absolute", zIndex: 20 };
+  const resizerCommon: React.CSSProperties = {
+    position: "absolute",
+    zIndex: 20,
+  };
 
   return (
     <div style={style} onPointerDown={() => onBringToFront?.()}>
@@ -234,7 +279,10 @@ export default function DraggableWindow({
         <div>
           <button
             aria-label="close"
-            onClick={(ev) => { ev.stopPropagation(); onClose?.(); }}
+            onClick={(ev) => {
+              ev.stopPropagation();
+              onClose?.();
+            }}
             style={{
               width: 28,
               height: 28,
@@ -255,18 +303,100 @@ export default function DraggableWindow({
 
       {/* Content */}
       <div style={{ flex: 1, overflow: "hidden" }}>
-        <div style={{ width: "100%", height: "100%", overflow: "auto" }}>{children}</div>
+        <div style={{ width: "100%", height: "100%", overflow: "auto" }}>
+          {children}
+        </div>
       </div>
 
       {/* Resizers */}
-      <div onPointerDown={onResizerPointerDown("left")} style={{ ...resizerCommon, left: 0, top: EDGE, bottom: EDGE, width: EDGE, cursor: "ew-resize" }} />
-      <div onPointerDown={onResizerPointerDown("right")} style={{ ...resizerCommon, right: 0, top: EDGE, bottom: EDGE, width: EDGE, cursor: "ew-resize" }} />
-      <div onPointerDown={onResizerPointerDown("top")} style={{ ...resizerCommon, top: 0, left: EDGE, right: EDGE, height: EDGE, cursor: "ns-resize" }} />
-      <div onPointerDown={onResizerPointerDown("bottom")} style={{ ...resizerCommon, bottom: 0, left: EDGE, right: EDGE, height: EDGE, cursor: "ns-resize" }} />
-      <div onPointerDown={onResizerPointerDown("top-left")} style={{ ...resizerCommon, top: 0, left: 0, width: EDGE, height: EDGE, cursor: "nwse-resize" }} />
-      <div onPointerDown={onResizerPointerDown("top-right")} style={{ ...resizerCommon, top: 0, right: 0, width: EDGE, height: EDGE, cursor: "nesw-resize" }} />
-      <div onPointerDown={onResizerPointerDown("bottom-left")} style={{ ...resizerCommon, bottom: 0, left: 0, width: EDGE, height: EDGE, cursor: "nesw-resize" }} />
-      <div onPointerDown={onResizerPointerDown("bottom-right")} style={{ ...resizerCommon, bottom: 0, right: 0, width: EDGE, height: EDGE, cursor: "nwse-resize" }} />
+      <div
+        onPointerDown={onResizerPointerDown("left")}
+        style={{
+          ...resizerCommon,
+          left: 0,
+          top: EDGE,
+          bottom: EDGE,
+          width: EDGE,
+          cursor: "ew-resize",
+        }}
+      />
+      <div
+        onPointerDown={onResizerPointerDown("right")}
+        style={{
+          ...resizerCommon,
+          right: 0,
+          top: EDGE,
+          bottom: EDGE,
+          width: EDGE,
+          cursor: "ew-resize",
+        }}
+      />
+      <div
+        onPointerDown={onResizerPointerDown("top")}
+        style={{
+          ...resizerCommon,
+          top: 0,
+          left: EDGE,
+          right: EDGE,
+          height: EDGE,
+          cursor: "ns-resize",
+        }}
+      />
+      <div
+        onPointerDown={onResizerPointerDown("bottom")}
+        style={{
+          ...resizerCommon,
+          bottom: 0,
+          left: EDGE,
+          right: EDGE,
+          height: EDGE,
+          cursor: "ns-resize",
+        }}
+      />
+      <div
+        onPointerDown={onResizerPointerDown("top-left")}
+        style={{
+          ...resizerCommon,
+          top: 0,
+          left: 0,
+          width: EDGE,
+          height: EDGE,
+          cursor: "nwse-resize",
+        }}
+      />
+      <div
+        onPointerDown={onResizerPointerDown("top-right")}
+        style={{
+          ...resizerCommon,
+          top: 0,
+          right: 0,
+          width: EDGE,
+          height: EDGE,
+          cursor: "nesw-resize",
+        }}
+      />
+      <div
+        onPointerDown={onResizerPointerDown("bottom-left")}
+        style={{
+          ...resizerCommon,
+          bottom: 0,
+          left: 0,
+          width: EDGE,
+          height: EDGE,
+          cursor: "nesw-resize",
+        }}
+      />
+      <div
+        onPointerDown={onResizerPointerDown("bottom-right")}
+        style={{
+          ...resizerCommon,
+          bottom: 0,
+          right: 0,
+          width: EDGE,
+          height: EDGE,
+          cursor: "nwse-resize",
+        }}
+      />
     </div>
   );
 }

@@ -9,6 +9,8 @@ import {
   TableRow,
   Paper,
   TableSortLabel,
+  SxProps,
+  Theme,
 } from "@mui/material";
 
 import { SampleSegment } from "@/types/result";
@@ -20,16 +22,47 @@ type Props = {
   dense?: boolean;
   onRowClick?: (row: SampleSegment) => void;
   fullHeight?: boolean;
+  sx?: SxProps<Theme>;
 };
 
-type ColId = "chromosome" | "start" | "end" | "copy_number" | "confidence" | "man_change";
+type ColId =
+  | "chromosome"
+  | "start"
+  | "end"
+  | "copy_number"
+  | "confidence"
+  | "man_change";
 
-const DEFAULT_COLS: { id: ColId; label: string; align?: "right" | "left" | "center"; minWidth?: number; defaultWidth: number }[] = [
+const DEFAULT_COLS: {
+  id: ColId;
+  label: string;
+  align?: "right" | "left" | "center";
+  minWidth?: number;
+  defaultWidth: number;
+}[] = [
   { id: "chromosome", label: "Chromosome", defaultWidth: 140, minWidth: 80 },
-  { id: "start", label: "Start", align: "right", defaultWidth: 110, minWidth: 80 },
+  {
+    id: "start",
+    label: "Start",
+    align: "right",
+    defaultWidth: 110,
+    minWidth: 80,
+  },
   { id: "end", label: "End", align: "right", defaultWidth: 110, minWidth: 80 },
-  { id: "copy_number", label: "Copy #", align: "right", defaultWidth: 100, minWidth: 70 },
-  { id: "confidence", label: "Confidence", align: "right", defaultWidth: 140, minWidth: 90 },
+  {
+    id: "copy_number",
+    label: "Copy #",
+    align: "right",
+    defaultWidth: 100,
+    minWidth: 70,
+  },
+  {
+    id: "confidence",
+    label: "Confidence",
+    align: "right",
+    defaultWidth: 140,
+    minWidth: 90,
+  },
   { id: "man_change", label: "Manual Change", defaultWidth: 140, minWidth: 90 },
 ];
 
@@ -52,8 +85,10 @@ function descendingComparator<T>(a: T, b: T, orderBy: keyof T) {
 
 function getComparator<Key extends keyof any>(order: Order, orderBy: Key) {
   return order === "desc"
-    ? (a: { [key in Key]: any }, b: { [key in Key]: any }) => descendingComparator(a, b, orderBy)
-    : (a: { [key in Key]: any }, b: { [key in Key]: any }) => -descendingComparator(a, b, orderBy);
+    ? (a: { [key in Key]: any }, b: { [key in Key]: any }) =>
+        descendingComparator(a, b, orderBy)
+    : (a: { [key in Key]: any }, b: { [key in Key]: any }) =>
+        -descendingComparator(a, b, orderBy);
 }
 
 function stableSort<T>(array: T[], comparator: (a: T, b: T) => number) {
@@ -71,9 +106,12 @@ export default function SampleSegmentTable({
   dense = false,
   onRowClick,
   fullHeight = false,
+  sx,
 }: Props) {
   const [order, setOrder] = React.useState<Order>("asc");
-  const [orderBy, setOrderBy] = React.useState<keyof SampleSegment | "result_name">("chromosome");
+  const [orderBy, setOrderBy] = React.useState<
+    keyof SampleSegment | "result_name"
+  >("chromosome");
 
   const handleRequestSort = (property: typeof orderBy) => {
     const isAsc = orderBy === property && order === "asc";
@@ -111,14 +149,20 @@ export default function SampleSegmentTable({
 
   // ---- refs & pending (we keep refs but will update immediately)
   const resizingRef = React.useRef<ColId | null>(null);
-  const resizeStartRef = React.useRef<{ startX: number; startWidth: number; minWidth: number } | null>(null);
+  const resizeStartRef = React.useRef<{
+    startX: number;
+    startWidth: number;
+    minWidth: number;
+  } | null>(null);
 
   // guide
   const [guideLeft, setGuideLeft] = React.useState<number | null>(null);
   const guideRef = React.useRef<number | null>(null);
   const tableContainerRef = React.useRef<HTMLDivElement | null>(null);
 
-  const [hoveredResizer, setHoveredResizer] = React.useState<ColId | null>(null);
+  const [hoveredResizer, setHoveredResizer] = React.useState<ColId | null>(
+    null
+  );
 
   const getContainerRect = React.useCallback(() => {
     const c = tableContainerRef.current;
@@ -127,39 +171,51 @@ export default function SampleSegmentTable({
   }, []);
 
   // immediate width update (no RAF) - simpler and reliable
-  const scheduleWidthUpdateImmediate = React.useCallback((col: ColId, width: number) => {
-    console.log("[SST] scheduleWidthUpdateImmediate", { col, width });
-    setWidths((prev) => {
-      const next = { ...prev, [col]: width };
-      // debug
-      // console.log("[SST] applied widths:", next);
-      return next;
-    });
-  }, []);
+  const scheduleWidthUpdateImmediate = React.useCallback(
+    (col: ColId, width: number) => {
+      console.log("[SST] scheduleWidthUpdateImmediate", { col, width });
+      setWidths((prev) => {
+        const next = { ...prev, [col]: width };
+        // debug
+        // console.log("[SST] applied widths:", next);
+        return next;
+      });
+    },
+    []
+  );
 
   // unified move/up handlers
-  const internalPointerMove = React.useCallback((clientX: number) => {
-    if (!resizingRef.current) return;
-    const col = resizingRef.current;
-    const rs = resizeStartRef.current;
-    if (!rs) return;
+  const internalPointerMove = React.useCallback(
+    (clientX: number) => {
+      if (!resizingRef.current) return;
+      const col = resizingRef.current;
+      const rs = resizeStartRef.current;
+      if (!rs) return;
 
-    const cb = tableContainerRef.current;
-    if (cb) {
-      const rect = cb.getBoundingClientRect();
-      const left = clientX - rect.left + cb.scrollLeft;
-      const clamped = Math.max(0, Math.min(cb.scrollWidth, left));
-      guideRef.current = clamped;
-      setGuideLeft(guideRef.current);
-    }
+      const cb = tableContainerRef.current;
+      if (cb) {
+        const rect = cb.getBoundingClientRect();
+        const left = clientX - rect.left + cb.scrollLeft;
+        const clamped = Math.max(0, Math.min(cb.scrollWidth, left));
+        guideRef.current = clamped;
+        setGuideLeft(guideRef.current);
+      }
 
-    const dx = clientX - rs.startX;
-    const newW = Math.max(rs.minWidth, Math.round(rs.startWidth + dx));
+      const dx = clientX - rs.startX;
+      const newW = Math.max(rs.minWidth, Math.round(rs.startWidth + dx));
 
-    console.log("[SST] internalPointerMove:", { col, clientX, dx, newW, startWidth: rs.startWidth });
-    scheduleWidthUpdateImmediate(col, newW);
-    document.body.style.userSelect = "none";
-  }, [scheduleWidthUpdateImmediate]);
+      console.log("[SST] internalPointerMove:", {
+        col,
+        clientX,
+        dx,
+        newW,
+        startWidth: rs.startWidth,
+      });
+      scheduleWidthUpdateImmediate(col, newW);
+      document.body.style.userSelect = "none";
+    },
+    [scheduleWidthUpdateImmediate]
+  );
 
   const internalPointerUp = React.useCallback(() => {
     console.log("[SST] internalPointerUp - ending resize");
@@ -179,15 +235,21 @@ export default function SampleSegmentTable({
   }, []);
 
   // fallback doc handlers
-  const docMouseMove = React.useCallback((ev: MouseEvent) => {
-    // console.log("[SST] doc mousemove", { clientX: ev.clientX });
-    internalPointerMove(ev.clientX);
-  }, [internalPointerMove]);
+  const docMouseMove = React.useCallback(
+    (ev: MouseEvent) => {
+      // console.log("[SST] doc mousemove", { clientX: ev.clientX });
+      internalPointerMove(ev.clientX);
+    },
+    [internalPointerMove]
+  );
 
-  const docMouseUp = React.useCallback((ev: MouseEvent) => {
-    // console.log("[SST] doc mouseup");
-    internalPointerUp();
-  }, [internalPointerUp]);
+  const docMouseUp = React.useCallback(
+    (ev: MouseEvent) => {
+      // console.log("[SST] doc mouseup");
+      internalPointerUp();
+    },
+    [internalPointerUp]
+  );
 
   React.useEffect(() => {
     const onPointerMove = (ev: PointerEvent) => {
@@ -215,53 +277,73 @@ export default function SampleSegmentTable({
   }, [internalPointerMove, internalPointerUp]);
 
   // start resize
-  const startResize = React.useCallback((colId: ColId, clientX: number, minWidth = 60) => {
-    console.log("[SST] startResize", { colId, clientX, minWidth });
-    resizingRef.current = colId;
-    resizeStartRef.current = { startX: clientX, startWidth: widths[colId], minWidth };
+  const startResize = React.useCallback(
+    (colId: ColId, clientX: number, minWidth = 60) => {
+      console.log("[SST] startResize", { colId, clientX, minWidth });
+      resizingRef.current = colId;
+      resizeStartRef.current = {
+        startX: clientX,
+        startWidth: widths[colId],
+        minWidth,
+      };
 
-    const cb = tableContainerRef.current;
-    if (cb) {
-      const rect = cb.getBoundingClientRect();
-      const left = clientX - rect.left + cb.scrollLeft;
-      const clamped = Math.max(0, Math.min(cb.scrollWidth, left));
-      guideRef.current = clamped;
-      setGuideLeft(clamped);
-    }
+      const cb = tableContainerRef.current;
+      if (cb) {
+        const rect = cb.getBoundingClientRect();
+        const left = clientX - rect.left + cb.scrollLeft;
+        const clamped = Math.max(0, Math.min(cb.scrollWidth, left));
+        guideRef.current = clamped;
+        setGuideLeft(clamped);
+      }
 
-    try {
-      document.addEventListener("mousemove", docMouseMove);
-      document.addEventListener("mouseup", docMouseUp);
-      console.log("[SST] attached document mouse listeners (fallback)");
-    } catch (err) {
-      console.log("[SST] failed attach document listeners", err);
-    }
+      try {
+        document.addEventListener("mousemove", docMouseMove);
+        document.addEventListener("mouseup", docMouseUp);
+        console.log("[SST] attached document mouse listeners (fallback)");
+      } catch (err) {
+        console.log("[SST] failed attach document listeners", err);
+      }
 
-    document.body.style.userSelect = "none";
-  }, [docMouseMove, docMouseUp, widths]);
+      document.body.style.userSelect = "none";
+    },
+    [docMouseMove, docMouseUp, widths]
+  );
 
-  const onResizerPointerDown = (colId: ColId, minWidth = 60) => (e: React.PointerEvent) => {
-    console.log("[SST] resizer onPointerDown event", { colId, pointerType: e.pointerType, button: (e as any).button, clientX: e.clientX });
-    if (e.pointerType === "mouse" && e.button !== 0) return;
-    try {
-      (e.currentTarget as Element).setPointerCapture(e.pointerId);
-      console.log("[SST] setPointerCapture ok");
-    } catch (err) {
-      console.log("[SST] setPointerCapture failed", err);
-    }
-    startResize(colId, e.clientX, minWidth);
-    e.stopPropagation();
-    e.preventDefault();
-  };
+  const onResizerPointerDown =
+    (colId: ColId, minWidth = 60) =>
+    (e: React.PointerEvent) => {
+      console.log("[SST] resizer onPointerDown event", {
+        colId,
+        pointerType: e.pointerType,
+        button: (e as any).button,
+        clientX: e.clientX,
+      });
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      try {
+        (e.currentTarget as Element).setPointerCapture(e.pointerId);
+        console.log("[SST] setPointerCapture ok");
+      } catch (err) {
+        console.log("[SST] setPointerCapture failed", err);
+      }
+      startResize(colId, e.clientX, minWidth);
+      e.stopPropagation();
+      e.preventDefault();
+    };
 
-  const onResizerMouseDown = (colId: ColId, minWidth = 60) => (e: React.MouseEvent<HTMLDivElement>) => {
-    console.log("[SST] resizer onMouseDown (fallback)", { colId, button: e.button, clientX: e.clientX });
-    if (e.button !== 0) return;
-    e.currentTarget.focus?.();
-    startResize(colId, e.clientX, minWidth);
-    e.stopPropagation();
-    e.preventDefault();
-  };
+  const onResizerMouseDown =
+    (colId: ColId, minWidth = 60) =>
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      console.log("[SST] resizer onMouseDown (fallback)", {
+        colId,
+        button: e.button,
+        clientX: e.clientX,
+      });
+      if (e.button !== 0) return;
+      e.currentTarget.focus?.();
+      startResize(colId, e.clientX, minWidth);
+      e.stopPropagation();
+      e.preventDefault();
+    };
 
   const cellStyle = (colId: ColId): React.CSSProperties => {
     return {
@@ -278,12 +360,19 @@ export default function SampleSegmentTable({
 
   return (
     <Paper
-      className={`space-y-3 overflow-y-auto ${fullHeight ? "w-full h-full" : "max-h-[120vh]"}`}
-      style={fullHeight ? { display: "flex", flexDirection: "column" } : undefined}
+      className={`space-y-3 ${fullHeight ? "w-full h-full" : "max-h-[120vh]"}`}
+      style={
+        fullHeight ? { display: "flex", flexDirection: "column" } : undefined
+      }
+      sx={{ overflow: "auto", ...sx }}
     >
       <TableContainer
         ref={tableContainerRef}
-        style={{ ...(fullHeight ? { height: "100%" } : {}), overflowX: "auto", position: "relative" }}
+        style={{
+          ...(fullHeight ? { height: "100%" } : {}),
+          overflowX: "auto",
+          position: "relative",
+        }}
       >
         {/* Guide */}
         {guideLeft != null && (
@@ -322,9 +411,20 @@ export default function SampleSegmentTable({
                     key={col.id}
                     sortDirection={orderBy === col.id ? order : false}
                     align={col.align ?? "left"}
-                    style={{ position: "relative", paddingRight: 0, ...cellStyle(col.id as ColId) }}
+                    style={{
+                      position: "relative",
+                      paddingRight: 0,
+                      ...cellStyle(col.id as ColId),
+                    }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", height: "100%", paddingLeft: 8 }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        height: "100%",
+                        paddingLeft: 8,
+                      }}
+                    >
                       <TableSortLabel
                         active={orderBy === col.id}
                         direction={orderBy === col.id ? order : "asc"}
@@ -338,10 +438,20 @@ export default function SampleSegmentTable({
                       <div
                         role="separator"
                         aria-orientation="horizontal"
-                        onPointerDown={onResizerPointerDown(col.id as ColId, col.minWidth ?? 60)}
-                        onMouseDown={onResizerMouseDown(col.id as ColId, col.minWidth ?? 60)}
+                        onPointerDown={onResizerPointerDown(
+                          col.id as ColId,
+                          col.minWidth ?? 60
+                        )}
+                        onMouseDown={onResizerMouseDown(
+                          col.id as ColId,
+                          col.minWidth ?? 60
+                        )}
                         onMouseEnter={() => setHoveredResizer(col.id)}
-                        onMouseLeave={() => setHoveredResizer((cur) => (cur === col.id ? null : cur))}
+                        onMouseLeave={() =>
+                          setHoveredResizer((cur) =>
+                            cur === col.id ? null : cur
+                          )
+                        }
                         style={{
                           position: "absolute",
                           right: 0,
@@ -351,7 +461,9 @@ export default function SampleSegmentTable({
                           transform: `translateX(${-(RESIZER_HIT / 2)}px)`,
                           cursor: "ew-resize",
                           touchAction: "none",
-                          background: isHovered ? "rgba(33,150,243,0.06)" : "transparent",
+                          background: isHovered
+                            ? "rgba(33,150,243,0.06)"
+                            : "transparent",
                           display: "inline-block",
                         }}
                         onClick={(e) => e.stopPropagation()}
@@ -365,7 +477,9 @@ export default function SampleSegmentTable({
                           top: 8,
                           bottom: 8,
                           width: 1,
-                          background: isHovered ? "rgba(33,150,243,0.9)" : "rgba(0,0,0,0.12)",
+                          background: isHovered
+                            ? "rgba(33,150,243,0.9)"
+                            : "rgba(0,0,0,0.12)",
                           pointerEvents: "none",
                         }}
                       />
@@ -393,7 +507,9 @@ export default function SampleSegmentTable({
                 style={{ cursor: onRowClick ? "pointer" : "default" }}
               >
                 <TableCell style={cellStyle("chromosome")}>
-                  {typeof r.chromosome === "string" ? r.chromosome : JSON.stringify(r.chromosome)}
+                  {typeof r.chromosome === "string"
+                    ? r.chromosome
+                    : JSON.stringify(r.chromosome)}
                 </TableCell>
                 <TableCell align="right" style={cellStyle("start")}>
                   {r.start}
@@ -407,7 +523,9 @@ export default function SampleSegmentTable({
                 <TableCell align="right" style={cellStyle("confidence")}>
                   {r.confidence != null ? Number(r.confidence).toFixed(4) : "-"}
                 </TableCell>
-                <TableCell style={cellStyle("man_change")}>{r.man_change ? "Yes" : "No"}</TableCell>
+                <TableCell style={cellStyle("man_change")}>
+                  {r.man_change ? "Yes" : "No"}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

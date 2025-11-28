@@ -11,6 +11,7 @@ import { ViewProvider } from "@/features/view/viewHandle";
 import { ResultProvider } from "@/features/result/resultHandle";
 import ReferencePane from "@/features/reference/ReferencePane";
 import useSampleHandle from "@/features/sample/sampleHandle";
+import TiledContentPane from "@/features/content/TiledContentPane";
 
 const MIN_LEFT_WIDTH = 275; // px - min width of left pane
 const MAX_LEFT_WIDTH = 350; // px - max width of left pane
@@ -165,7 +166,8 @@ const DashboardView: React.FC = () => {
                 id="contentArea"
                 className="w-full h-full bg-gray-200  rounded-lg flex flex-col min-w-0"
               >
-                <ContentPane />
+                {/* <ContentPane /> */}
+                <TiledContentPane />
               </div>
             </div>
           </ResultProvider>

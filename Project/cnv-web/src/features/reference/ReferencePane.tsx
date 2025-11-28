@@ -5,12 +5,16 @@
 
 "use client";
 
-import React, { ChangeEvent, useEffect, useMemo, useState } from 'react';
-import { Plus, Minus, X } from 'lucide-react';
-import { useReferencesStore, addReferences, removeReferences } from './useReferences';
-import { parseSampleNameToParts } from '@/features/sample/sampleUtils';
-import { SampleSummary } from '@/types/sample';
-import { Checkbox } from '@mui/material';
+import React, { ChangeEvent, useEffect, useMemo, useState } from "react";
+import { Plus, Minus, X } from "lucide-react";
+import {
+  useReferencesStore,
+  addReferences,
+  removeReferences,
+} from "./useReferences";
+import { parseSampleNameToParts } from "@/features/sample/sampleUtils";
+import { SampleSummary } from "@/types/sample";
+import { Checkbox } from "@mui/material";
 
 type SampleItem = {
   id: string;
@@ -28,11 +32,16 @@ interface ReferencePaneProps {
   onRefresh?: () => Promise<void>;
 }
 
-export default function ReferencePane({ samples, onRefresh }: ReferencePaneProps) {
+export default function ReferencePane({
+  samples,
+  onRefresh,
+}: ReferencePaneProps) {
   const { referenceIds } = useReferencesStore();
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [selectedForAdd, setSelectedForAdd] = useState<Set<string>>(new Set());
-  const [selectedForRemove, setSelectedForRemove] = useState<Set<string>>(new Set());
+  const [selectedForRemove, setSelectedForRemove] = useState<Set<string>>(
+    new Set()
+  );
   const [openFlowcells, setOpenFlowcells] = useState<Set<string>>(new Set());
   const [openCycles, setOpenCycles] = useState<Set<string>>(new Set());
 
@@ -50,15 +59,28 @@ export default function ReferencePane({ samples, onRefresh }: ReferencePaneProps
   const groupedReferences = useMemo(() => {
     const map = new Map<
       string,
-      Map<string, Array<{ sample: SampleItem; parsed: ReturnType<typeof parseSampleNameToParts> }>>
+      Map<
+        string,
+        Array<{
+          sample: SampleItem;
+          parsed: ReturnType<typeof parseSampleNameToParts>;
+        }>
+      >
     >();
 
     for (const sRaw of referenceSamples as SampleItem[]) {
       const s = sRaw as SampleItem;
       const fallbackParsed = parseSampleNameToParts(s.name);
-      const flowcell = s.flowcell_id && s.flowcell_id !== "rand" ? s.flowcell_id : fallbackParsed.flowcell;
-      const cycle = s.cycle_id && s.cycle_id !== "rand" ? s.cycle_id : fallbackParsed.cycle;
-      const embryo = s.embryo_id && s.embryo_id !== "rand" ? s.embryo_id : fallbackParsed.embryo;
+      const flowcell =
+        s.flowcell_id && s.flowcell_id !== "rand"
+          ? s.flowcell_id
+          : fallbackParsed.flowcell;
+      const cycle =
+        s.cycle_id && s.cycle_id !== "rand" ? s.cycle_id : fallbackParsed.cycle;
+      const embryo =
+        s.embryo_id && s.embryo_id !== "rand"
+          ? s.embryo_id
+          : fallbackParsed.embryo;
       const display = embryo;
 
       const parsed = { flowcell, cycle, embryo, displayName: display };
@@ -68,19 +90,35 @@ export default function ReferencePane({ samples, onRefresh }: ReferencePaneProps
       if (!cycleMap.has(cycle)) cycleMap.set(cycle, []);
       cycleMap.get(cycle)!.push({ sample: s, parsed });
     }
-
     // Sort
-    const sortedMap = new Map<string, Map<string, Array<{ sample: SampleItem; parsed: ReturnType<typeof parseSampleNameToParts> }>>>();
+    const sortedMap = new Map<
+      string,
+      Map<
+        string,
+        Array<{
+          sample: SampleItem;
+          parsed: ReturnType<typeof parseSampleNameToParts>;
+        }>
+      >
+    >();
     Array.from(map.keys())
       .sort()
       .forEach((flow) => {
         const cycles = map.get(flow)!;
-        const sortedCycles = new Map<string, Array<{ sample: SampleItem; parsed: ReturnType<typeof parseSampleNameToParts> }>>();
+        const sortedCycles = new Map<
+          string,
+          Array<{
+            sample: SampleItem;
+            parsed: ReturnType<typeof parseSampleNameToParts>;
+          }>
+        >();
         Array.from(cycles.keys())
           .sort()
           .forEach((c) => {
             const arr = cycles.get(c)!;
-            arr.sort((a, b) => (a.parsed.displayName > b.parsed.displayName ? 1 : -1));
+            arr.sort((a, b) =>
+              a.parsed.displayName > b.parsed.displayName ? 1 : -1
+            );
             sortedCycles.set(c, arr);
           });
         sortedMap.set(flow, sortedCycles);
@@ -93,15 +131,28 @@ export default function ReferencePane({ samples, onRefresh }: ReferencePaneProps
   const groupedAvailable = useMemo(() => {
     const map = new Map<
       string,
-      Map<string, Array<{ sample: SampleItem; parsed: ReturnType<typeof parseSampleNameToParts> }>>
+      Map<
+        string,
+        Array<{
+          sample: SampleItem;
+          parsed: ReturnType<typeof parseSampleNameToParts>;
+        }>
+      >
     >();
 
     for (const sRaw of availableSamples as SampleItem[]) {
       const s = sRaw as SampleItem;
       const fallbackParsed = parseSampleNameToParts(s.name);
-      const flowcell = s.flowcell_id && s.flowcell_id !== "rand" ? s.flowcell_id : fallbackParsed.flowcell;
-      const cycle = s.cycle_id && s.cycle_id !== "rand" ? s.cycle_id : fallbackParsed.cycle;
-      const embryo = s.embryo_id && s.embryo_id !== "rand" ? s.embryo_id : fallbackParsed.embryo;
+      const flowcell =
+        s.flowcell_id && s.flowcell_id !== "rand"
+          ? s.flowcell_id
+          : fallbackParsed.flowcell;
+      const cycle =
+        s.cycle_id && s.cycle_id !== "rand" ? s.cycle_id : fallbackParsed.cycle;
+      const embryo =
+        s.embryo_id && s.embryo_id !== "rand"
+          ? s.embryo_id
+          : fallbackParsed.embryo;
       const display = embryo;
 
       const parsed = { flowcell, cycle, embryo, displayName: display };
@@ -112,17 +163,34 @@ export default function ReferencePane({ samples, onRefresh }: ReferencePaneProps
       cycleMap.get(cycle)!.push({ sample: s, parsed });
     }
 
-    const sortedMap = new Map<string, Map<string, Array<{ sample: SampleItem; parsed: ReturnType<typeof parseSampleNameToParts> }>>>();
+    const sortedMap = new Map<
+      string,
+      Map<
+        string,
+        Array<{
+          sample: SampleItem;
+          parsed: ReturnType<typeof parseSampleNameToParts>;
+        }>
+      >
+    >();
     Array.from(map.keys())
       .sort()
       .forEach((flow) => {
         const cycles = map.get(flow)!;
-        const sortedCycles = new Map<string, Array<{ sample: SampleItem; parsed: ReturnType<typeof parseSampleNameToParts> }>>();
+        const sortedCycles = new Map<
+          string,
+          Array<{
+            sample: SampleItem;
+            parsed: ReturnType<typeof parseSampleNameToParts>;
+          }>
+        >();
         Array.from(cycles.keys())
           .sort()
           .forEach((c) => {
             const arr = cycles.get(c)!;
-            arr.sort((a, b) => (a.parsed.displayName > b.parsed.displayName ? 1 : -1));
+            arr.sort((a, b) =>
+              a.parsed.displayName > b.parsed.displayName ? 1 : -1
+            );
             sortedCycles.set(c, arr);
           });
         sortedMap.set(flow, sortedCycles);
@@ -225,57 +293,82 @@ export default function ReferencePane({ samples, onRefresh }: ReferencePaneProps
             </div>
           ) : (
             <div className="space-y-3 max-h-[40vh] overflow-y-auto">
-              {Array.from(groupedReferences.entries()).map(([flowcell, cycleMap]) => {
-                const isOpenFlow = openFlowcells.has(flowcell);
-                return (
-                  <div key={flowcell} className="border rounded p-2 bg-white">
-                    <div className="flex items-center justify-between">
-                      <button
-                        onClick={() => toggleOpenFlowcell(flowcell)}
-                        className="text-left font-semibold"
-                      >
-                        {flowcell} <span className="text-sm text-gray-500">({Array.from(cycleMap.values()).flat().length})</span>
-                      </button>
-                    </div>
-
-                    {isOpenFlow && (
-                      <div className="pl-3 pt-1 space-y-2">
-                        {Array.from(cycleMap.entries()).map(([cycle, arr]) => {
-                          const cycleKey = `${flowcell}|${cycle}`;
-                          const isOpenCycle = openCycles.has(cycleKey);
-                          return (
-                            <div key={cycle} className="rounded p-1 bg-gray-50">
-                              <button onClick={() => toggleOpenCycle(flowcell, cycle)} className="text-left font-medium">
-                                {cycle} <span className="text-sm text-gray-500">({arr.length})</span>
-                              </button>
-
-                              {isOpenCycle && (
-                                <div className="pl-3 pt-1 space-y-1">
-                                  {arr.map(({ sample, parsed }) => {
-                                    const isSelected = selectedForRemove.has(sample.id);
-                                    return (
-                                      <div
-                                        key={sample.id}
-                                        role="button"
-                                        onClick={() => toggleSelectForRemove(sample.id)}
-                                        className={`p-1 rounded cursor-pointer transition-colors ${
-                                          isSelected ? "bg-blue-100 border-blue-500" : "bg-white hover:bg-gray-50"
-                                        }`}
-                                      >
-                                        <div className="text-sm font-medium">{parsed.displayName}</div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
+              {Array.from(groupedReferences.entries()).map(
+                ([flowcell, cycleMap]) => {
+                  const isOpenFlow = openFlowcells.has(flowcell);
+                  return (
+                    <div key={flowcell} className="border rounded p-2 bg-white">
+                      <div className="flex items-center justify-between">
+                        <button
+                          onClick={() => toggleOpenFlowcell(flowcell)}
+                          className="text-left font-semibold"
+                        >
+                          {flowcell}{" "}
+                          <span className="text-sm text-gray-500">
+                            ({Array.from(cycleMap.values()).flat().length})
+                          </span>
+                        </button>
                       </div>
-                    )}
-                  </div>
-                );
-              })}
+
+                      {isOpenFlow && (
+                        <div className="pl-3 pt-1 space-y-2">
+                          {Array.from(cycleMap.entries()).map(
+                            ([cycle, arr]) => {
+                              const cycleKey = `${flowcell}|${cycle}`;
+                              const isOpenCycle = openCycles.has(cycleKey);
+                              return (
+                                <div
+                                  key={cycle}
+                                  className="rounded p-1 bg-gray-50"
+                                >
+                                  <button
+                                    onClick={() =>
+                                      toggleOpenCycle(flowcell, cycle)
+                                    }
+                                    className="text-left font-medium"
+                                  >
+                                    {cycle}{" "}
+                                    <span className="text-sm text-gray-500">
+                                      ({arr.length})
+                                    </span>
+                                  </button>
+
+                                  {isOpenCycle && (
+                                    <div className="pl-3 pt-1 space-y-1">
+                                      {arr.map(({ sample, parsed }) => {
+                                        const isSelected =
+                                          selectedForRemove.has(sample.id);
+                                        return (
+                                          <div
+                                            key={sample.id}
+                                            role="button"
+                                            onClick={() =>
+                                              toggleSelectForRemove(sample.id)
+                                            }
+                                            className={`p-1 rounded cursor-pointer transition-colors ${
+                                              isSelected
+                                                ? "bg-blue-100 border-blue-500"
+                                                : "bg-white hover:bg-gray-50"
+                                            }`}
+                                          >
+                                            <div className="text-sm font-medium">
+                                              {parsed.displayName}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            }
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+              )}
             </div>
           )}
         </div>
@@ -283,60 +376,92 @@ export default function ReferencePane({ samples, onRefresh }: ReferencePaneProps
 
       {/* Add Dialog */}
       {addDialogOpen && (
-        <dialog open className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setAddDialogOpen(false)}>
+        <dialog
+          open
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={() => setAddDialogOpen(false)}
+        >
           <div
             className="bg-white rounded-lg shadow-xl w-full max-w-2xl m-4 max-h-[80vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-lg font-semibold">Add Samples to Reference</h3>
-              <button onClick={() => setAddDialogOpen(false)} className="text-gray-500 hover:text-gray-700">
+              <h3 className="text-lg font-semibold">
+                Add Samples to Reference
+              </h3>
+              <button
+                onClick={() => setAddDialogOpen(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
                 <X size={20} />
               </button>
             </div>
 
             <div className="p-4 overflow-y-auto flex-1">
               {availableSamples.length === 0 ? (
-                <div className="text-gray-500 text-center py-8">All samples are already references</div>
+                <div className="text-gray-500 text-center py-8">
+                  All samples are already references
+                </div>
               ) : (
                 <div className="space-y-3">
-                  {Array.from(groupedAvailable.entries()).map(([flowcell, cycleMap]) => (
-                    <div key={flowcell} className="border rounded p-2">
-                      <div className="font-semibold mb-2">{flowcell}</div>
-                      <div className="pl-3 space-y-2">
-                        {Array.from(cycleMap.entries()).map(([cycle, arr]) => (
-                          <div key={cycle}>
-                            <div className="font-medium text-sm mb-1">{cycle}</div>
-                            <div className="pl-3 space-y-1">
-                              {arr.map(({ sample, parsed }) => {
-                                const isSelected = selectedForAdd.has(sample.id);
-                                return (
-                                  <div
-                                    key={sample.id}
-                                    className={`flex items-center gap-2 p-2 rounded cursor-pointer transition-colors ${
-                                      isSelected ? "bg-blue-50 border border-blue-300" : "bg-gray-50 hover:bg-gray-100"
-                                    }`}
-                                    onClick={() => toggleSelectForAdd(sample.id)}
-                                  >
-                                    <Checkbox checked={isSelected} onChange={() => toggleSelectForAdd(sample.id)} />
-                                    <div className="flex-1">
-                                      <div className="text-sm font-medium">{parsed.displayName}</div>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        ))}
+                  {Array.from(groupedAvailable.entries()).map(
+                    ([flowcell, cycleMap]) => (
+                      <div key={flowcell} className="border rounded p-2">
+                        <div className="font-semibold mb-2">{flowcell}</div>
+                        <div className="pl-3 space-y-2">
+                          {Array.from(cycleMap.entries()).map(
+                            ([cycle, arr]) => (
+                              <div key={cycle}>
+                                <div className="font-medium text-sm mb-1">
+                                  {cycle}
+                                </div>
+                                <div className="pl-3 space-y-1">
+                                  {arr.map(({ sample, parsed }) => {
+                                    const isSelected = selectedForAdd.has(
+                                      sample.id
+                                    );
+                                    return (
+                                      <div
+                                        key={sample.id}
+                                        className={`flex items-center gap-2 p-2 rounded cursor-pointer transition-colors ${
+                                          isSelected
+                                            ? "bg-blue-50 border border-blue-300"
+                                            : "bg-gray-50 hover:bg-gray-100"
+                                        }`}
+                                        onClick={() =>
+                                          toggleSelectForAdd(sample.id)
+                                        }
+                                      >
+                                        <Checkbox
+                                          checked={isSelected}
+                                          onChange={() =>
+                                            toggleSelectForAdd(sample.id)
+                                          }
+                                        />
+                                        <div className="flex-1">
+                                          <div className="text-sm font-medium">
+                                            {parsed.displayName}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  )}
                 </div>
               )}
             </div>
 
             <div className="flex items-center justify-between p-4 border-t">
-              <div className="text-sm text-gray-600">{selectedForAdd.size} selected</div>
+              <div className="text-sm text-gray-600">
+                {selectedForAdd.size} selected
+              </div>
               <div className="flex gap-2">
                 <button
                   onClick={() => setAddDialogOpen(false)}

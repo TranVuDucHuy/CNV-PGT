@@ -18,7 +18,6 @@ import {
   CircularProgress,
   FormControlLabel,
 } from "@mui/material";
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { parseSampleNameToParts } from "@/features/sample/sampleUtils";
 import MUIAccordionPane from "@/components/MUIAccordionPane";
 import { useRouter } from "next/navigation";
@@ -238,19 +237,6 @@ export default function ResultPane() {
         }}
       >
         <Edit3 size={16} />
-      </IconButton>
-
-      <IconButton
-        onClick={() => handleOpenResultsPage()}
-        title="Open Results Page"
-        size="small"
-        sx={{
-          bgcolor: "#3B82F6",
-          color: "#fff",
-          "&:hover": { bgcolor: "#2563EB" },
-        }}
-      >
-        <OpenInNewIcon sx={{ fontSize: 16 }} />
       </IconButton>
     </Stack>
   );
