@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useRef, useState, useCallback, useEffect } from "react";
+import { Typography } from '@mui/material';
 import SamplePane from "@/features/sample/SamplePane";
 import AlgorithmPane from "@/features/algorithm/AlgorithmPane";
 import ResultPane from "@/features/result/ResultPane";
@@ -107,7 +108,9 @@ const DashboardView: React.FC = () => {
     <div className="flex flex-col h-screen font-sans">
       {/* Menu Bar */}
       <nav className="bg-gray-200 border border-gray-400 px-4 py-2 flex items-center">
-        <h1 className="text-lg font-bold">CNV Analysis Dashboard</h1>
+        <Typography variant="h1" component="h1" sx={{ fontWeight: 700 }}>
+          CNV Analysis Dashboard
+        </Typography>
       </nav>
 
       {/* Split Pane */}
