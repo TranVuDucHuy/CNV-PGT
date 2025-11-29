@@ -1,12 +1,33 @@
 import { createTheme } from '@mui/material/styles';
+import colors from './colors';
 
 const theme = createTheme({
+  palette: {
+    primary1: {
+      main: colors.primary1,
+      dark: colors.primary1Dark,
+      light: colors.primary1Light,
+      contrastText: colors.neutralWhite,
+    },
+    primary2: {
+      main: colors.primary2,
+      dark: colors.primary2Dark,
+      light: colors.primary2Light,
+      contrastText: colors.neutralWhite,
+    },
+    error: {
+      main: colors.error,
+    },
+    success: {
+      main: colors.success,
+    },
+  },
   typography: {
     // Use IBM Plex Sans as primary UI font
     fontFamily: "'IBM Plex Sans', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', Arial, sans-serif",
     // Style 1: CNV Analysis Dashboard (Heading 1)
     h1: {
-      fontSize: '28px',
+      fontSize: '20px',
       fontWeight: 700,
       lineHeight: 1.25,
       letterSpacing: '-0.5px',
