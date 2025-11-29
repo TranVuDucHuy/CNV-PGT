@@ -4,7 +4,18 @@
  */
 
 import React from 'react';
-import { AlertCircle } from 'lucide-react';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Box,
+  Typography,
+  Alert,
+  AlertTitle,
+} from '@mui/material';
+import { AlertTriangle } from 'lucide-react';
 
 interface Props {
   open: boolean;
@@ -14,33 +25,39 @@ interface Props {
 }
 
 export default function RunAlgorithmErrorDialog({ open, errorMessage, onClose, onRetry }: Props) {
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md m-4 p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <AlertCircle className="text-red-500" size={32} />
-          <h3 className="text-lg font-semibold text-red-600">Error Running Algorithm</h3>
-        </div>
-        
-        <p className="text-gray-700 mb-4 whitespace-pre-wrap">{errorMessage}</p>
-        
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
-          >
-            Close
-          </button>
-          <button
-            onClick={onRetry}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    </div>
+    <Dialog open={open} maxWidth="sm" fullWidth onClose={onClose}>
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, fontWeight: 600, color: '#EF4444' }}>
+        <AlertTriangle size={24} color="#EF4444" />
+        Error Running Algorithm
+      </DialogTitle>
+
+      <DialogContent sx={{ pt: 3 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          <AlertTitle>Algorithm Execution Failed</AlertTitle>
+        </Alert>
+
+        <Typography
+          variant="body2"
+          sx={{
+            whiteSpace: 'pre-wrap',
+            fontFamily: 'monospace',
+            p: 1.5,
+            bgcolor: '#F3F4F6',
+            borderRadius: 1,
+            border: '1px solid #E5E7EB',
+          }}
+        >
+          {errorMessage}
+        </Typography>
+      </DialogContent>
+
+      <DialogActions sx={{ gap: 1, p: 2 }}>
+        <Button onClick={onClose}>Close</Button>
+        <Button onClick={onRetry} variant="contained">
+          Retry
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }

@@ -6,7 +6,34 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { X, Plus, Minus, CheckCircle, AlertCircle } from 'lucide-react';
+import { X, Plus, Minus, Check as CheckIcon, AlertTriangle } from 'lucide-react';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Button,
+  Box,
+  Stack,
+  Typography,
+  FormHelperText,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  Paper,
+  CircularProgress,
+  FormGroup,
+  FormControlLabel,
+  Checkbox,
+  Tooltip,
+} from '@mui/material';
 import { Algorithm, AlgorithmMetadata, AlgorithmParameterCreateRequest } from '@/types/algorithm';
 import { algorithmAPI } from '@/services';
 
@@ -125,8 +152,13 @@ export default function AlgorithmDetail({ open, onClose, onSuccess, mode = 'crea
   const deleteSelectedParam = () => {
     if (selectedParamIndex === null) return;
     setParams(prev => prev.filter((_, i) => i !== selectedParamIndex));
-    setSelectedParamIndex(null);
     setInitialParams(prev => prev.filter((_, i) => i !== selectedParamIndex));
+    // Adjust selectedParamIndex after deletion
+    setSelectedParamIndex(prev => {
+      if (prev === null) return null;
+      if (prev >= params.length - 1) return params.length - 2 >= 0 ? params.length - 2 : null;
+      return prev;
+    });
   };
 
   const updateParam = (index: number, field: keyof AlgorithmParameterCreateRequest, value: any) => {
@@ -239,280 +271,354 @@ export default function AlgorithmDetail({ open, onClose, onSuccess, mode = 'crea
 
   if (showSuccessAnnouncement) {
     return (
-      <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg shadow-xl p-8 text-center max-w-md">
-          <CheckCircle size={64} className="text-green-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold mb-2">{isEdit ? 'Saved!' : 'Saved!'}</h2>
-          <p className="text-gray-600 mb-2">
+      <Dialog open={true} maxWidth="sm" fullWidth>
+        <DialogContent sx={{ textAlign: 'center', py: 6 }}>
+          <Box sx={{ mb: 2 }}>
+            <CheckIcon size={64} color="#10B981" style={{ margin: '0 auto', display: 'block' }} />
+          </Box>
+          <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
+            {isEdit ? 'Saved!' : 'Saved!'}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
             {isEdit
               ? 'Parameters have been saved.'
               : `Algorithm has been registered${zipFile ? ' and uploaded' : ''} successfully.`}
-          </p>
-        </div>
-      </div>
+          </Typography>
+        </DialogContent>
+      </Dialog>
     );
   }
 
   if (errorMessage) {
     return (
-      <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg shadow-xl p-6 text-center max-w-md">
-          <AlertCircle size={56} className="text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold mb-2 text-red-600">Error</h2>
-          <p className="text-gray-700 mb-4 whitespace-pre-wrap">{errorMessage}</p>
-          <div className="flex justify-center gap-2">
-            <button onClick={() => setErrorMessage(null)} className="px-4 py-2 border rounded">Close</button>
-            <button onClick={handleCloseAll} className="px-4 py-2 bg-gray-600 text-white rounded">Close Dialog</button>
-          </div>
-        </div>
-      </div>
+      <Dialog open={true} maxWidth="sm" fullWidth>
+        <DialogContent sx={{ textAlign: 'center', py: 4 }}>
+          <Box sx={{ mb: 2 }}>
+            <AlertTriangle size={56} color="#EF4444" style={{ margin: '0 auto', display: 'block' }} />
+          </Box>
+          <Typography variant="h5" sx={{ fontWeight: 600, color: '#EF4444', mb: 2 }}>
+            Error
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap', mb: 3 }}>
+            {errorMessage}
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'center', gap: 1, pb: 2 }}>
+          <Button onClick={() => setErrorMessage(null)} variant="outlined">
+            Close
+          </Button>
+          <Button onClick={handleCloseAll} variant="contained" color="inherit">
+            Close Dialog
+          </Button>
+        </DialogActions>
+      </Dialog>
     );
   }
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-40 mb-0">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl m-4">
-        <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
-          <h2 className="text-2xl font-bold">New Algorithm</h2>
-          <button onClick={handleCloseAll} className="text-gray-500 hover:text-gray-700" disabled={loading}>
-            <X size={24} />
-          </button>
-        </div>
+    <Dialog open={open} maxWidth="md" fullWidth onClose={handleCloseAll}>
+      <DialogTitle sx={{ fontWeight: 600, fontSize: '1.25rem', pb: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span>{isEdit ? 'Edit Algorithm' : 'New Algorithm'}</span>
+        <button
+          type="button"
+          aria-label="Close dialog"
+          onClick={handleCloseAll}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', borderRadius: '4px', color: 'inherit' }}
+          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F3F4F6')}
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+        >
+          ✕
+        </button>
+      </DialogTitle>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Basic Info */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Name <span className="text-red-500">*</span></label>
-              <input
-                type="text"
+      <DialogContent dividers sx={{ p: 3, maxHeight: '64vh', overflow: 'auto', scrollbarGutter: 'stable' }}>
+        <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          {/* Basic Info - Name & Version */}
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="body2" sx={{ mb: 0.5, fontWeight: 500 }}>
+                Name <span style={{ color: '#EF4444' }}>*</span>
+              </Typography>
+              <TextField
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="e.g., MyAlgorithm"
+                fullWidth
                 required
                 disabled={isEdit}
+                inputProps={{ placeholder: 'e.g., MyAlgorithm' }}
+                variant="outlined"
+                size="small"
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Version <span className="text-red-500">*</span></label>
-              <input
-                type="text"
+            </Box>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="body2" sx={{ mb: 0.5, fontWeight: 500 }}>
+                Version <span style={{ color: '#EF4444' }}>*</span>
+              </Typography>
+              <TextField
                 value={version}
                 onChange={(e) => setVersion(e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="e.g., 1.0.0"
+                fullWidth
                 required
                 disabled={isEdit}
+                inputProps={{ placeholder: 'e.g., 1.0.0' }}
+                variant="outlined"
+                size="small"
               />
-            </div>
-          </div>
+            </Box>
+          </Stack>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4"> 
-            <div>
-              <label className="block text-sm font-medium mb-1">References Required (minimum)</label>
-              <input
-                type="number"
+          {/* References & Module ZIP */}
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="body2" sx={{ mb: 0.5, fontWeight: 500 }}>
+                References Required (minimum)
+              </Typography>
+              <TextField
+                type="text"
                 value={referencesRequired}
                 onChange={(e) => setReferencesRequired(Math.max(0, parseInt(e.target.value) || 0))}
-                className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
-                placeholder="0"
-                min="0"
+                fullWidth
                 disabled={isEdit}
+                inputProps={{ placeholder: '0' }}
+                variant="outlined"
+                size="small"
               />
-              <p className="text-xs text-gray-500 mt-1">Number of reference samples required for this algorithm</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Module ZIP (optional)</label>
-              <input
+            </Box>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="body2" sx={{ mb: 0.5, fontWeight: 500 }}>
+                Plug-in Module
+              </Typography>
+              <TextField
                 type="file"
-                accept=".zip"
-                onChange={(e) => setZipFile(e.target.files?.[0] || null)}
-                className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
+                inputProps={{ accept: '.zip' }}
+                onChange={(e) => setZipFile((e.target as HTMLInputElement).files?.[0] || null)}
+                fullWidth
                 disabled={isEdit}
+                variant="outlined"
+                size="small"
+                slotProps={{
+                  input: {
+                    style: { padding: 0 }
+                  }
+                }}
               />
-            </div>
-          </div>
+              <style>{`
+                input[type="file"]::file-selector-button {
+                  display: none;
+                }
+              `}</style>
+            </Box>
+          </Stack>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Description</label>
-            <textarea
+          <Box>
+            <Typography variant="body2" sx={{ mb: 0.5, fontWeight: 500 }}>
+              Description
+            </Typography>
+            <TextField
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
+              multiline
               rows={2}
-              placeholder="Describe the algorithm..."
+              fullWidth
               disabled={isEdit}
+              inputProps={{ placeholder: 'Describe the algorithm...' }}
+              variant="outlined"
+              size="small"
             />
-          </div>
-
-          
+          </Box>
 
           {/* Parameters */}
-          <div className="border rounded p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold">Algorithm Params</h3>
+          <Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                Algorithm Params
+              </Typography>
               {!isEdit && (
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={addParam}
-                    title="Add parameter"
-                    className="p-1 bg-green-500 hover:bg-green-600 text-white rounded"
-                  >
-                    <Plus size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => deleteSelectedParam()}
-                    title="Delete selected"
-                    className="p-1 bg-red-500 hover:bg-red-600 text-white rounded"
-                  >
-                    <Minus size={16} />
-                  </button>
-                </div>
+                <Stack direction="row" spacing={1}>
+                  <Tooltip title="Add parameter">
+                    <Button
+                      size="small"
+                      onClick={addParam}
+                      variant="contained"
+                      sx={{ minWidth: 0, px: 1, bgcolor: '#10B981', '&:hover': { bgcolor: '#059669' } }}
+                    >
+                      <Plus size={14} />
+                    </Button>
+                  </Tooltip>
+                  <Tooltip title="Delete selected">
+                    <Button
+                      size="small"
+                      onClick={() => deleteSelectedParam()}
+                      variant="contained"
+                      disabled={selectedParamIndex === null}
+                      sx={{ minWidth: 0, px: 1, bgcolor: '#EF4444', '&:hover': { bgcolor: '#DC2626' } }}
+                    >
+                      <Minus size={14} />
+                    </Button>
+                  </Tooltip>
+                </Stack>
               )}
-            </div>
+            </Box>
 
-            <div className="overflow-x-auto overflow-y-scroll h-36 relative pr-2" style={{ scrollbarGutter: 'stable' }}>
-                <table className="w-full text-sm table-fixed border-collapse">
-                  <colgroup>
-                    <col style={{ width: '45%' }} />
-                    <col style={{ width: '25%' }} />
-                    <col style={{ width: '30%' }} />
-                  </colgroup>
-                  <thead className="bg-gray-100 sticky top-0 z-10">
-                    <tr>
-                      <th className="text-left px-3 py-2">Name</th>
-                      <th className="text-left px-3 py-2">Type</th>
-                      <th className="text-left px-3 py-2">{isEdit ? 'Value' : 'Default'}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {params.length === 0 ? (
-                      <tr>
-                        <td colSpan={3} className="px-3 py-6 text-center text-sm text-gray-500">No parameters yet.</td>
-                      </tr>
-                    ) : (
-                      params.map((p, idx) => {
-                        const isSelected = selectedParamIndex === idx;
-                        const isDirtyRow = isRowDirty(p, idx);
-                        const invalidName = !p.name || !String(p.name).trim();
-                        const invalidField = isEdit ? (p.value === '' || p.value === null || p.value === undefined) : (p.default === '' || p.default === null || p.default === undefined);
-                        return (
-                        <tr
+            <Paper variant="outlined">
+              <Table size="small">
+                <TableHead sx={{ bgcolor: '#F3F4F6', position: 'sticky', top: 0 }}>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 600 }}>Name</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Type</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>{isEdit ? 'Value' : 'Default'}</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {params.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={3} sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>
+                        No parameters yet.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    params.map((p, idx) => {
+                      const isSelected = selectedParamIndex === idx;
+                      const isDirtyRow = isRowDirty(p, idx);
+                      const invalidName = !p.name || !String(p.name).trim();
+                      const invalidField = isEdit ? (p.value === '' || p.value === null || p.value === undefined) : (p.default === '' || p.default === null || p.default === undefined);
+                      const isEmpty = invalidName || invalidField;
+                      const isFilled = !isEmpty;
+
+                      // Determine background color
+                      let bgColor = '#fff';
+                      if (isSelected) {
+                        bgColor = '#DBEAFE'; // light blue for selected
+                      } else if (isEmpty) {
+                        bgColor = '#FEE2E2'; // light red for empty
+                      } else if (isFilled) {
+                        bgColor = '#fff'; // white for filled
+                      }
+
+                      return (
+                        <TableRow
                           key={idx}
+                          onClick={() => setSelectedParamIndex(idx)}
                           role="button"
-                          onClick={() => setSelectedParamIndex(isSelected ? null : idx)}
-                          aria-pressed={isSelected}
-                          className={`border-b transition-colors ${isSelected ? 'bg-blue-50 ring-1 ring-blue-300' : isDirtyRow ? 'bg-yellow-50' : 'bg-white'}`}
+                          sx={{
+                            cursor: 'pointer',
+                            bgcolor: bgColor,
+                            borderLeft: isSelected ? '3px solid' : 'none',
+                            borderLeftColor: isSelected ? 'primary.main' : 'transparent',
+                            '&:hover': { 
+                              bgcolor: isSelected ? '#DBEAFE' : '#F3F4F6'
+                            },
+                          }}
                         >
-                          <td className="px-3 py-2">
-                            <input
-                              type="text"
+                          <TableCell>
+                            <TextField
+                              size="small"
                               value={p.name}
                               onChange={(e) => updateParam(idx, 'name', e.target.value)}
-                              className={`w-full border rounded px-2 py-1 ${invalidName ? 'border-red-400' : ''}`}
                               disabled={isEdit}
+                              error={invalidName}
+                              fullWidth
+                              variant="standard"
+                              InputProps={{ disableUnderline: true }}
                             />
-                          </td>
-                          <td className="px-3 py-2">
-                            <select
+                          </TableCell>
+                          <TableCell>
+                            <Select
+                              size="small"
                               value={p.type}
                               onChange={(e) => {
                                 const t = e.target.value;
-                                // reset default to sensible empty for new type
-                                let def: any = '';
-                                if (t === 'boolean') { def = ''; }
-                                if (t === 'number') { def = ''; }
                                 updateParam(idx, 'type', t);
-                                updateParam(idx, 'default', def);
+                                updateParam(idx, 'default', '');
                               }}
-                              className={`w-full border rounded px-2 py-1 ${invalidField && !isEdit ? 'border-red-400' : ''}`}
                               disabled={isEdit}
+                              variant="standard"
+                              sx={{ width: '100%' }}
                             >
-                              <option value="string">String</option>
-                              <option value="number">Number</option>
-                              <option value="boolean">Boolean</option>
-                            </select>
-                          </td>
-                          <td className="px-3 py-2">
+                              <MenuItem value="string">String</MenuItem>
+                              <MenuItem value="number">Number</MenuItem>
+                              <MenuItem value="boolean">Boolean</MenuItem>
+                            </Select>
+                          </TableCell>
+                          <TableCell>
                             {isEdit ? (
                               p.type === 'boolean' ? (
-                                <select
+                                <Select
+                                  size="small"
                                   value={String(p.value ?? '')}
                                   onChange={(e) => updateParam(idx, 'value', e.target.value === 'true' ? true : e.target.value === 'false' ? false : '')}
-                                  className={`w-full border rounded px-2 py-1 ${invalidField ? 'border-red-400' : ''}`}
+                                  error={invalidField}
+                                  variant="standard"
+                                  sx={{ width: '100%' }}
                                 >
-                                  <option value="">{`-- Default: ${String(p.default ?? '')} --`}</option>
-                                  <option value="true">True</option>
-                                  <option value="false">False</option>
-                                </select>
+                                  <MenuItem value="">{`-- Default: ${String(p.default ?? '')} --`}</MenuItem>
+                                  <MenuItem value="true">True</MenuItem>
+                                  <MenuItem value="false">False</MenuItem>
+                                </Select>
                               ) : (
-                                <input
+                                <TextField
+                                  size="small"
                                   type={p.type === 'number' ? 'number' : 'text'}
                                   value={String(p.value ?? '')}
                                   onChange={(e) => updateParam(idx, 'value', p.type === 'number' ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value)}
                                   placeholder={String(p.default ?? '')}
-                                  className={`w-full border rounded px-2 py-1 ${invalidField ? 'border-red-400' : ''}`}
+                                  error={invalidField}
+                                  fullWidth
+                                  variant="standard"
+                                  InputProps={{ disableUnderline: true }}
                                 />
                               )
                             ) : (
                               p.type === 'boolean' ? (
-                                <select
+                                <Select
+                                  size="small"
                                   value={String(p.default ?? '')}
                                   onChange={(e) => updateParam(idx, 'default', e.target.value === 'true' ? true : e.target.value === 'false' ? false : '')}
-                                  className={`w-full border rounded px-2 py-1 ${invalidField ? 'border-red-400' : ''}`}
+                                  error={invalidField}
+                                  variant="standard"
+                                  sx={{ width: '100%' }}
                                 >
-                                  <option value="">-- None --</option>
-                                  <option value="true">True</option>
-                                  <option value="false">False</option>
-                                </select>
+                                  <MenuItem value="">-- None --</MenuItem>
+                                  <MenuItem value="true">True</MenuItem>
+                                  <MenuItem value="false">False</MenuItem>
+                                </Select>
                               ) : (
-                                <input
+                                <TextField
+                                  size="small"
                                   type={p.type === 'number' ? 'number' : 'text'}
                                   value={String(p.default ?? '')}
                                   onChange={(e) => updateParam(idx, 'default', p.type === 'number' ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value)}
-                                  className={`w-full border rounded px-2 py-1 ${invalidField ? 'border-red-400' : ''}`}
+                                  fullWidth
+                                  variant="standard"
+                                  InputProps={{ disableUnderline: true }}
                                 />
                               )
                             )}
-                          </td>
-                        </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-          </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </Paper>
+          </Box>
+        </Box>
+      </DialogContent>
 
-
-
-          {hasEmptyParam && (
-            <p className="text-sm text-red-600">Please fill all parameter {isEdit ? 'values' : 'defaults'} before submitting.</p>
-          )}
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={handleCloseAll}
-              className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
-              disabled={loading}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-60"
-              disabled={loading || !canSubmit || hasEmptyParam}
-            >
-              {loading ? 'Saving...' : isEdit ? 'Save' : 'OK'}
-            </button>
-          </div>
-        </form>
-      </div>
-
-      {/* Param dialog removed - params are edited inline */}
-    </div>
+      <DialogActions sx={{ p: 2, gap: 1 }}>
+        <Button onClick={handleCloseAll} disabled={loading}>
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          onClick={handleSubmit}
+          variant="contained"
+          disabled={loading || !canSubmit || hasEmptyParam}
+        >
+          {loading ? 'Saving...' : isEdit ? 'Save' : 'OK'}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }

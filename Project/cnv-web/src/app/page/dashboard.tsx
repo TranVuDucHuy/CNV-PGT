@@ -123,6 +123,7 @@ const DashboardView: React.FC = () => {
                   minWidth: MIN_LEFT_WIDTH,
                   maxWidth: MAX_LEFT_WIDTH,
                   height: "100%",
+                  scrollbarGutter: "stable",
                 }}
               >
                 {/* <ContentPane /> */}

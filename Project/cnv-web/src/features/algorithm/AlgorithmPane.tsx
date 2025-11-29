@@ -6,7 +6,16 @@
 "use client";
 
 import React, { useMemo, useState } from 'react';
-import { Plus, Minus, StepForward, Edit } from 'lucide-react';
+import { Plus, Minus, StepForward, Edit3 } from 'lucide-react';
+import {
+  Box,
+  Button,
+  Stack,
+  Typography,
+  CircularProgress,
+  Tooltip,
+} from '@mui/material';
+import MUIAccordionPane from '@/components/MUIAccordionPane';
 import { useAlgorithms } from './useAlgorithms';
 import AlgorithmDetail from '@/features/algorithm/AlgorithmDetail';
 import { useSelectionStore, setSelectedAlgorithm } from '@/features/selection/selectionStore';
@@ -141,88 +150,138 @@ export default function AlgorithmPane() {
     return paramSet?.value || {};
   }, [selectedAlgoFromStore]);
 
+  const headerRight = (
+    <Stack direction="row" spacing={1} alignItems="center">
+      <Tooltip title="Add Algorithm">
+        <Button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleAdd();
+          }}
+          variant="contained"
+          size="small"
+          sx={{ minWidth: 0, px: 1, bgcolor: '#10B981', '&:hover': { bgcolor: '#059669' } }}
+        >
+          <Plus size={14} />
+        </Button>
+      </Tooltip>
+
+      <Tooltip title="Delete Selected">
+        <Button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (selectedIds.size > 0) {
+              handleDelete();
+            }
+          }}
+          variant="contained"
+          size="small"
+          sx={{ minWidth: 0, px: 1, bgcolor: '#EF4444', '&:hover': { bgcolor: '#DC2626' } }}
+        >
+          <Minus size={14} />
+        </Button>
+      </Tooltip>
+
+      <Tooltip title={canRun ? 'Run Algorithm' : 'Select exactly 1 sample and 1 algorithm to run'}>
+        <span>
+          <Button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleRun();
+            }}
+            variant="contained"
+            size="small"
+            disabled={!canRun}
+            sx={{
+              minWidth: 0,
+              px: 1,
+              bgcolor: canRun ? '#3B82F6' : '#9CA3AF',
+              '&:hover': { bgcolor: canRun ? '#2563EB' : '#9CA3AF' },
+              '&:disabled': { bgcolor: '#9CA3AF', cursor: 'not-allowed' },
+            }}
+          >
+            <StepForward size={14} />
+          </Button>
+        </span>
+      </Tooltip>
+    </Stack>
+  );
+
   return (
     <>
-      <details open className="border rounded-md">
-        <summary className="bg-gray-300 px-3 py-2 font-semibold cursor-pointer flex items-center justify-between">
-          <span>Algorithm</span>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleAdd}
-              title="Add Algorithm"
-              className="p-1 bg-green-500 hover:bg-green-600 text-white rounded"
-            >
-              <Plus size={16} />
-            </button>
-            <button
-              onClick={handleDelete}
-              title="Delete Selected"
-              className="p-1 bg-red-500 hover:bg-red-600 text-white rounded"
-            >
-              <Minus size={16} />
-            </button>
-            {/* Run Algorithm button */}
-            <button
-              onClick={handleRun}
-              title={canRun ? "Run Algorithm" : "Select exactly 1 sample and 1 algorithm to run"}
-              disabled={!canRun}
-              className={`p-1 text-white rounded ${
-                canRun 
-                  ? 'bg-blue-500 hover:bg-blue-600' 
-                  : 'bg-gray-400 cursor-not-allowed'
-              }`}
-            >
-              <StepForward size={16} />
-            </button>
-          </div>
-        </summary>
-
-  <div className="p-3 space-y-2 max-h-52 overflow-y-scroll pr-2" style={{ scrollbarGutter: 'stable' }}>
+      <MUIAccordionPane title="Algorithm" defaultExpanded headerRight={headerRight}>
+        <Box sx={{ maxHeight: '24vh', overflowY: 'auto', pr: 1, scrollbarGutter: 'stable' }}>
           {loading ? (
-            <div className="text-gray-500 text-sm text-center py-4">
-              Loading algorithms...
-            </div>
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress size={32} />
+            </Box>
           ) : algorithms.length === 0 ? (
-            <div className="text-gray-500 text-sm text-center py-4">
-              No algorithms yet. Click + to add one.
-            </div>
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <Typography variant="body2" color="text.secondary">
+                No algorithms yet. Click + to add one.
+              </Typography>
+            </Box>
           ) : (
-            algorithms.map((algo) => {
-              const isSelected = algo.id !== undefined && selectedIds.has(algo.id);
-              return (
-              <div
-                key={algo.id}
-                role="button"
-                onClick={() => toggleSelect(algo.id)}
-                aria-pressed={isSelected}
-                className={`group border p-2 rounded cursor-pointer transition-all duration-200 ${
-                  isSelected 
-                    ? 'bg-blue-300 border-blue-600 shadow-md' 
-                    : 'bg-white hover:bg-blue-100 hover:shadow-md hover:border-blue-400'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">
-                    {algo.name} <span className="text-xs text-gray-500">v{algo.version}</span>
-                    {isSelected && <span className="ml-2 text-xs text-blue-700"></span>}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); handleEditClick(algo.id); }}
-                      title="Edit"
-                      className="p-1 text-gray-600 hover:bg-gray-100 rounded transition-transform transform hover:scale-110"
-                    >
-                      <Edit size={16} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );})
-          )}
-        </div>
-      </details>
+            <Stack spacing={1}>
+              {algorithms.map((algo) => {
+                const isSelected = algo.id !== undefined && selectedIds.has(algo.id);
+                return (
+                  <Box
+                    key={algo.id}
+                    role="button"
+                    onClick={() => toggleSelect(algo.id)}
+                    aria-pressed={isSelected}
+                    sx={{
+                      p: 1.5,
+                      borderRadius: 1,
+                      border: '1px solid',
+                      borderColor: isSelected ? 'primary.main' : 'rgba(0,0,0,0.12)',
+                      bgcolor: isSelected ? '#DBEAFE' : '#fff',
+                      cursor: 'pointer',
+                      transition: 'all 0.12s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      userSelect: 'none',
+                      '&:hover': {
+                        bgcolor: isSelected ? '#DBEAFE' : '#F9FAFB',
+                        borderColor: isSelected ? 'primary.main' : '#D1D5DB',
+                      },
+                    }}
+                  >
+                    <Box>
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        {algo.name}{' '}
+                        <Typography component="span" variant="caption" color="text.secondary">
+                          v{algo.version}
+                        </Typography>
+                      </Typography>
+                    </Box>
 
+                    <Tooltip title="Edit Algorithm">
+                      <Button
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditClick(algo.id);
+                        }}
+                        sx={{
+                          minWidth: 0,
+                          p: 0.5,
+                          color: 'text.secondary',
+                          '&:hover': { bgcolor: '#F3F4F6' },
+                        }}
+                      >
+                        <Edit3 size={16} />
+                      </Button>
+                    </Tooltip>
+                  </Box>
+                );
+              })}
+            </Stack>
+          )}
+        </Box>
+      </MUIAccordionPane>
       {/* Algorithm Detail Dialog */}
       <AlgorithmDetail
         open={dialogOpen}
