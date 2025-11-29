@@ -69,6 +69,7 @@ export default function ResultPane() {
   // UI expand/collapse state
   const [openFlowcells, setOpenFlowcells] = useState<Set<string>>(new Set());
   const [openCycles, setOpenCycles] = useState<Set<string>>(new Set());
+  const [lastClickedId, setLastClickedId] = useState<string | null>(null);
 
   const router = useRouter();
 
@@ -140,22 +141,48 @@ export default function ResultPane() {
     return sortedMap;
   }, [results]);
 
-  // 4. Các hàm xử lý chọn bằng Redux Actions
-  const toggleSelect = (id?: string) => {
-    if (!id) return;
-    dispatch(toggleResultSelection(id));
-  };
-
-  const toggleSelectAll = (e: ChangeEvent<HTMLInputElement>) => {
-    const checked = e.target.checked;
-    if (checked) {
-      const allIds = results
-        .map((r) => r.id)
-        .filter((id): id is string => !!id); // Lọc bỏ undefined/null
-      dispatch(setSelectedResults(allIds));
-    } else {
-      dispatch(clearSelection());
+  // Mảng flat để support Shift+Click range select
+  const flattenedResults = useMemo(() => {
+    const result: ResultSummary[] = [];
+    for (const [, cycleMap] of grouped.entries()) {
+      for (const [, arr] of cycleMap.entries()) {
+        for (const { result: r } of arr) {
+          result.push(r);
+        }
+      }
     }
+    return result;
+  }, [grouped]);
+
+  // 4. Các hàm xử lý chọn bằng Redux Actions
+  const toggleSelect = (id?: string, event?: React.MouseEvent) => {
+    if (!id) return;
+
+    // Xử lý Shift+Click: toggle range từ lastClickedId đến id hiện tại
+    if (event?.shiftKey && lastClickedId !== null) {
+      const startIdx = flattenedResults.findIndex((r) => r.id === lastClickedId);
+      const endIdx = flattenedResults.findIndex((r) => r.id === id);
+      if (startIdx !== -1 && endIdx !== -1) {
+        const [min, max] = startIdx < endIdx ? [startIdx, endIdx] : [endIdx, startIdx];
+        const idsToToggle: string[] = [];
+        for (let i = min; i <= max; i++) {
+          if (flattenedResults[i]?.id) idsToToggle.push(flattenedResults[i].id);
+        }
+        // Kiểm tra nếu tất cả đã được chọn thì deselect, ngược lại select
+        const allSelected = idsToToggle.every((rid) => selectedIdsSet.has(rid));
+        if (allSelected) {
+          const newIds = selectedResultIds.filter((rid) => !idsToToggle.includes(rid));
+          dispatch(setSelectedResults(newIds));
+        } else {
+          const newIds = Array.from(new Set([...selectedResultIds, ...idsToToggle]));
+          dispatch(setSelectedResults(newIds));
+        }
+      }
+      return;
+    }
+
+    dispatch(toggleResultSelection(id));
+    setLastClickedId(id);
   };
 
   const toggleOpenFlowcell = (flowcell: string) => {
@@ -254,25 +281,6 @@ export default function ResultPane() {
   return (
     <MUIAccordionPane title="Result" defaultExpanded headerRight={headerRight}>
       <Box>
-        <Box sx={{ display: "flex", gap: 2, alignItems: "center", mb: 1 }}>
-          <Typography variant="body2">{selectedResultIds.length} selected</Typography>
-
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={
-                  results.length > 0 && selectedResultIds.length === results.length
-                }
-                indeterminate={
-                  selectedResultIds.length > 0 && selectedResultIds.length < results.length
-                }
-                onChange={toggleSelectAll}
-                size="small"
-              />
-            }
-            label={<Typography variant="body2">Select All</Typography>}
-          />
-        </Box>
 
         {loading ? (
           <Box sx={{ textAlign: "center", py: 3 }}>
@@ -288,7 +296,7 @@ export default function ResultPane() {
             </Typography>
           </Box>
         ) : (
-          <Box sx={{ maxHeight: "40vh", overflowY: "auto", pr: 1 }}>
+          <Box sx={{ maxHeight: "40vh", overflowY: "auto", pr: 1, scrollbarGutter: "stable" }}>
             <Stack spacing={1}>
               {Array.from(grouped.entries()).map(([flowcell, cycleMap]) => {
                 const isOpenFlow = openFlowcells.has(flowcell);
@@ -331,7 +339,7 @@ export default function ResultPane() {
                               color: "text.secondary",
                             }}
                           >
-                            ({totalCount})
+                            [{totalCount}]
                           </Typography>
                         </Button>
                       </Box>
@@ -393,7 +401,7 @@ export default function ResultPane() {
                                             color: "text.secondary",
                                           }}
                                         >
-                                          ({arr.length})
+                                          [{arr.length}]
                                         </Typography>
                                       </Button>
                                     </Box>
@@ -410,8 +418,8 @@ export default function ResultPane() {
                                             <Box
                                               key={result.id}
                                               role="button"
-                                              onClick={() =>
-                                                toggleSelect(result.id)
+                                              onClick={(e) =>
+                                                toggleSelect(result.id, e)
                                               }
                                               aria-pressed={isSelected}
                                               sx={{
@@ -432,6 +440,7 @@ export default function ResultPane() {
                                                 display: "flex",
                                                 alignItems: "center",
                                                 justifyContent: "space-between",
+                                                userSelect: "none",
                                               }}
                                             >
                                               <Typography
@@ -493,9 +502,15 @@ export default function ResultPane() {
               type="file"
               accept=".tsv"
               onChange={(e) => setBinFile(e.target.files?.[0] ?? null)}
-              style={{ display: "block", width: "100%" }}
+              style={{ display: "block", width: "100%", padding: 8, borderRadius: 6, border: "1px solid rgba(0,0,0,0.23)" }}
               required
+              title=""
             />
+            <style>{`
+              input[type="file"]::file-selector-button {
+                display: none;
+              }
+            `}</style>
           </Box>
 
           <Box>
@@ -506,9 +521,15 @@ export default function ResultPane() {
               type="file"
               accept=".tsv"
               onChange={(e) => setSegmentFile(e.target.files?.[0] ?? null)}
-              style={{ display: "block", width: "100%" }}
+              style={{ display: "block", width: "100%", padding: 8, borderRadius: 6, border: "1px solid rgba(0,0,0,0.23)" }}
               required
+              title=""
             />
+            <style>{`
+              input[type="file"]::file-selector-button {
+                display: none;
+              }
+            `}</style>
           </Box>
 
           <Box>
@@ -596,7 +617,7 @@ export default function ResultPane() {
                 display: "block",
                 width: "100%",
                 padding: 8,
-                borderRadius: 4,
+                borderRadius: 6,
                 border: "1px solid rgba(0,0,0,0.23)",
               }}
             />

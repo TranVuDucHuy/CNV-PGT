@@ -1,7 +1,7 @@
 // SamplePane.tsx
 "use client";
 
-import React, { ChangeEvent, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Plus, Minus, Edit3 } from "lucide-react";
 import useSampleHandle from "./sampleHandle";
 import CenterDialog from "@/components/CenterDialog";
@@ -43,11 +43,11 @@ export default function SamplePane() {
   const [removeDialogOpen, setRemoveDialogOpen] = useState<boolean>(false);
   const [operating, setOperating] = useState(false);
   const [promise, setPromise] = useState<Promise<any> | undefined>();
-  const [isSelectAll, setIsSelectAll] = useState<boolean>(false);
   const [referenceGenome, setReferenceGenome] = useState<ReferenceGenome>(ReferenceGenome.HG19);
   const [cellType, setCellType] = useState<string>("Other");
   const [uploadDate, setUploadDate] = useState<string>(new Date().toISOString().split("T")[0]);
   const [hasLoadedOnce, setHasLoadedOnce] = useState<boolean>(false);
+  const [lastClickedId, setLastClickedId] = useState<string | null>(null);
 
   // UI expand/collapse state
   const [openFlowcells, setOpenFlowcells] = useState<Set<string>>(new Set());
@@ -74,7 +74,6 @@ export default function SamplePane() {
     }
     if (!samples || samples.length === 0) {
       setSelectedIds(new Set());
-      setIsSelectAll(false);
       syncWithSamples(new Set());
       setSelectedSample(null); // Clear selection store
       return;
@@ -105,12 +104,6 @@ export default function SamplePane() {
     } else {
       setSelectedSample(null);
     }
-  }, [selectedIds, samples]);
-
-  useEffect(() => {
-    const total = samples.length;
-    const selectedCount = selectedIds.size;
-    setIsSelectAll(total > 0 && selectedCount === total);
   }, [selectedIds, samples]);
 
   const openOperatingDialog = (prom: Promise<any>) => {
@@ -165,6 +158,19 @@ export default function SamplePane() {
     return sortedMap;
   }, [samples]);
 
+  // Mảng flat để support Shift+Click range select
+  const flattenedSamples = useMemo(() => {
+    const result: SampleItem[] = [];
+    for (const [, cycleMap] of grouped.entries()) {
+      for (const [, arr] of cycleMap.entries()) {
+        for (const { sample } of arr) {
+          result.push(sample);
+        }
+      }
+    }
+    return result;
+  }, [grouped]);
+
   const allSampleIdsUnderFlowcell = (flowcell: string) => {
     const cycleMap = grouped.get(flowcell);
     if (!cycleMap) return [];
@@ -182,29 +188,45 @@ export default function SamplePane() {
     return arr.map((it: any) => it.sample.id);
   };
 
-  const toggleSelect = (id: string | undefined) => {
+  const toggleSelect = (id: string | undefined, event?: React.MouseEvent) => {
     if (id === undefined || id === null) return;
+
+    // Xử lý Shift+Click: toggle range từ lastClickedId đến id hiện tại
+    if (event?.shiftKey && lastClickedId !== null) {
+      const startIdx = flattenedSamples.findIndex((s) => s.id === lastClickedId);
+      const endIdx = flattenedSamples.findIndex((s) => s.id === id);
+      if (startIdx !== -1 && endIdx !== -1) {
+        const [min, max] = startIdx < endIdx ? [startIdx, endIdx] : [endIdx, startIdx];
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          const allSelected = Array.from({ length: max - min + 1 }, (_, i) => min + i).every(
+            (i) => flattenedSamples[i] && next.has(flattenedSamples[i].id)
+          );
+          for (let i = min; i <= max; i++) {
+            if (flattenedSamples[i]?.id) {
+              if (allSelected) {
+                next.delete(flattenedSamples[i].id);
+              } else {
+                next.add(flattenedSamples[i].id);
+              }
+            }
+          }
+          return next;
+        });
+      }
+      return;
+    }
+
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
-  };
-
-  const toggleSelectAll = (event: ChangeEvent<HTMLInputElement>) => {
-    const checked = event.target.checked;
-    if (checked) {
-      const next = new Set<string>();
-      for (const s of samples as SampleItem[]) {
-        if (s.id) next.add(s.id);
-      }
-      setSelectedIds(next);
-      setIsSelectAll((samples as SampleItem[]).length > 0 && next.size === (samples as SampleItem[]).length);
-    } else {
-      setSelectedIds(new Set());
-      setIsSelectAll(false);
-    }
+    setLastClickedId(id);
   };
 
   const toggleFlowcell = (flowcell: string) => {
@@ -319,14 +341,7 @@ export default function SamplePane() {
   return (
     <MUIAccordionPane title="Sample" defaultExpanded headerRight={headerRight}>
       <Box>
-        <Box sx={{ display: "flex", gap: 2, alignItems: "center", mb: 1 }}>
-          <Typography variant="body2">{selectedIds.size} selected</Typography>
 
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Checkbox checked={isSelectAll} onChange={toggleSelectAll} size="small" />
-            <Typography variant="body2">Select All</Typography>
-          </Box>
-        </Box>
 
         {loading ? (
           <Box sx={{ textAlign: "center", py: 3 }}>
@@ -342,7 +357,7 @@ export default function SamplePane() {
             </Typography>
           </Box>
         ) : (
-          <Box sx={{ maxHeight: "40vh", overflowY: "auto", pr: 1 }}>
+          <Box sx={{ maxHeight: "40vh", overflowY: "auto", pr: 1, scrollbarGutter: "stable" }}>
             <Stack spacing={1}>
               {Array.from(grouped.entries()).map(([flowcell, cycleMap]) => {
                 const isOpenFlow = openFlowcells.has(flowcell);
@@ -353,7 +368,7 @@ export default function SamplePane() {
                       <Box>
                         <Button onClick={() => toggleOpenFlowcell(flowcell)} sx={{ textTransform: "none", p: 0, minWidth: 0 }}>
                           <Typography sx={{ fontWeight: 600 }}>{flowcell}</Typography>
-                          <Typography sx={{ ml: 1, fontSize: "0.75rem", color: "text.secondary" }}>({totalCount})</Typography>
+                          <Typography sx={{ ml: 1, fontSize: "0.75rem", color: "text.secondary" }}>[{totalCount}]</Typography>
                         </Button>
                       </Box>
                     </Box>
@@ -370,7 +385,7 @@ export default function SamplePane() {
                                   <Box>
                                     <Button onClick={() => toggleOpenCycle(flowcell, cycle)} sx={{ textTransform: "none", p: 0, minWidth: 0 }}>
                                       <Typography sx={{ fontWeight: 500 }}>{cycle}</Typography>
-                                      <Typography sx={{ ml: 1, fontSize: "0.75rem", color: "text.secondary" }}>({arr.length})</Typography>
+                                      <Typography sx={{ ml: 1, fontSize: "0.75rem", color: "text.secondary" }}>[{arr.length}]</Typography>
                                     </Button>
                                   </Box>
                                 </Box>
@@ -384,7 +399,7 @@ export default function SamplePane() {
                                           <Box
                                             key={sample.id}
                                             role="button"
-                                            onClick={() => toggleSelect(sample.id)}
+                                            onClick={(e) => toggleSelect(sample.id, e)}
                                             aria-pressed={isSelected}
                                             sx={{
                                               p: 1,
@@ -397,6 +412,7 @@ export default function SamplePane() {
                                               display: "flex",
                                               alignItems: "center",
                                               justifyContent: "space-between",
+                                              userSelect: "none",
                                             }}
                                           >
                                             <Typography variant="caption" color="text.secondary">
@@ -441,10 +457,16 @@ export default function SamplePane() {
               type="file"
               accept=".bam"
               onChange={(e) => setFile(Array.from(e.target.files ?? []))}
-              style={{ display: "block", width: "100%" }}
+              style={{ display: "block", width: "100%", padding: 8, borderRadius: 6, border: "1px solid rgba(0,0,0,0.23)" }}
               required
               multiple
+              title=""
             />
+            <style>{`
+              input[type="file"]::file-selector-button {
+                display: none;
+              }
+            `}</style>
           </Box>
 
           <Box>
