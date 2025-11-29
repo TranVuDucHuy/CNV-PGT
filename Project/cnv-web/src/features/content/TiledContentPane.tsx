@@ -154,9 +154,7 @@ export default function TiledContentPane() {
     <DynamicStack
       sx={{
         width: "100%",
-        overflow: "auto",
         padding: 2,
-        gap: 2,
       }}
       items={items}
     />

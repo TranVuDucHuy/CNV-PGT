@@ -8,7 +8,6 @@ export interface DynamicStackItem<T = unknown> {
   id: string;
   title: string;
   content: React.ReactNode;
-  data?: T;
   initialHeight?: string | number;
   minHeight?: string | number;
   maxHeight?: string | number;
@@ -116,7 +115,16 @@ export const DynamicStack = <T,>({
       enableDrag: boolean = false
     ) => {
       return (
-        <>
+        <Box
+          sx={{
+            height: "100%",
+            width: "100%",
+            display: "flex",
+            flexDirection: "column",
+            transform: scale !== 1 ? `scale(${scale})` : undefined,
+            transformOrigin: "top left",
+          }}
+        >
           <Box
             onMouseDown={
               enableDrag ? (e) => handleMouseDown(e, item.id) : undefined
@@ -128,14 +136,12 @@ export const DynamicStack = <T,>({
               justifyContent: "space-between",
               px: 1,
               py: 0.5,
-              borderTopLeftRadius: 10,
-              borderTopRightRadius: 10,
+              borderTopLeftRadius: 6,
+              borderTopRightRadius: 6,
               borderBottomLeftRadius: 0,
               borderBottomRightRadius: 0,
-              bgcolor: "grey.300",
+              bgcolor: "#ccc",
               userSelect: "none",
-              transform: scale !== 1 ? `scale(${scale})` : undefined,
-              transformOrigin: "top left",
             }}
           >
             <Typography
@@ -151,17 +157,15 @@ export const DynamicStack = <T,>({
             sx={{
               borderTopLeftRadius: 0,
               borderTopRightRadius: 0,
-              borderBottomLeftRadius: 10,
-              borderBottomRightRadius: 10,
+              borderBottomLeftRadius: 6,
+              borderBottomRightRadius: 6,
               overflow: "auto",
-              transform: scale !== 1 ? `scale(${scale})` : undefined,
-              transformOrigin: "top left",
               flexGrow: 1,
             }}
           >
             {item.content}
           </Box>
-        </>
+        </Box>
       );
     },
     [handleMouseDown]
@@ -363,8 +367,9 @@ export const DynamicStack = <T,>({
   const containerSx: SxProps<Theme> = useMemo(
     () => ({
       position: "relative",
-      display: "flex",
-      flexDirection: isRow ? "row" : "column",
+      // display: "flex",
+      // flexDirection: isRow ? "row" : "column",
+      // flex: "0 0 auto",
       overflow: "auto",
       ...sx,
     }),
@@ -418,7 +423,8 @@ export const DynamicStack = <T,>({
                 }
                 sx={{
                   flexShrink: 0,
-                  opacity: 0.3,
+                  flexGrow: 1,
+                  opacity: 0.5,
                   ...(isRow
                     ? {
                         width: itemDimensions[item.id]?.width || 260,
@@ -464,6 +470,8 @@ export const DynamicStack = <T,>({
                 style={{
                   position: "relative",
                   flexShrink: 0,
+                  flex: "0 0 auto",
+                  marginBottom: 12,
                 }}
               >
                 <Box
@@ -497,6 +505,8 @@ export const DynamicStack = <T,>({
         );
       })}
 
+      {items.length > 0 && <Box sx={{ height: 200 }} />}
+
       {draggingItem && cursorPos && dragOffset && (
         <Box
           sx={{
@@ -507,10 +517,10 @@ export const DynamicStack = <T,>({
             left: cursorPos.x - dragOffset.x * 0.5,
             boxShadow: 6,
             width: itemDimensions[draggingItem.id]?.width || 260,
-            height: itemDimensions[draggingItem.id]?.height,
+            height: itemDimensions[draggingItem.id]?.height || 200,
           }}
         >
-          {renderItemContent(draggingItem, 1)}
+          {renderItemContent(draggingItem)}
         </Box>
       )}
     </Box>

@@ -106,7 +106,7 @@ const DashboardView: React.FC = () => {
   return (
     <div className="flex flex-col h-screen font-sans">
       {/* Menu Bar */}
-      <nav className="bg-gray-200  border-gray-400 px-4 py-2 flex items-center">
+      <nav className="bg-gray-200 border border-gray-400 px-4 py-2 flex items-center">
         <h1 className="text-lg font-bold">CNV Analysis Dashboard</h1>
       </nav>
 
@@ -126,7 +126,6 @@ const DashboardView: React.FC = () => {
                 }}
               >
                 {/* <ContentPane /> */}
-                <TiledContentPane />
                 <SamplePane />
                 <ReferencePane samples={samples} onRefresh={refresh} />
                 <AlgorithmPane />
