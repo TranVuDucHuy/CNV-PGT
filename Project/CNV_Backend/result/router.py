@@ -7,6 +7,7 @@ from fastapi import (
     status,
     Request,
     Form,
+    BackgroundTasks
 )
 import time
 
@@ -108,3 +109,22 @@ def delete_result(result_id: str, db: Session = Depends(get_db)):
         return BasicResponse(message="Result deleted successfully")
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    
+
+@router.post("/{result_id}/annotation", status_code=202)
+def start_result_annotation(result_id: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    try:
+        def _bg(rid: str):
+            db_session = SessionLocal()
+            try:
+                AberrationService.annotate_result(rid, db_session)
+            finally:
+                db_session.close()
+
+        # schedule background annotation
+        background_tasks.add_task(_bg, result_id)
+
+        return JSONResponse(status_code=202, content={"message": "Annotation scheduled", "result_id": result_id})
+    except Exception as e:
+        logger.exception(e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal error")
