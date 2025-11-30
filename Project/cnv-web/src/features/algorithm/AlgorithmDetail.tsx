@@ -393,18 +393,45 @@ export default function AlgorithmDetail({ open, onClose, onSuccess, mode = "crea
           <Box>
             <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1.5 }}>
               <Typography variant="h2" sx={{ fontWeight: 600 }}>
-                Algorithm Params
+                Algorithm Parameters
               </Typography>
               {!isEdit && (
                 <Stack direction="row" spacing={1}>
                   <Tooltip title="Add parameter">
-                    <Button size="small" onClick={addParam} variant="contained" sx={{ minWidth: 0, px: 1, bgcolor: "#10B981", "&:hover": { bgcolor: "#059669" } }}>
-                      <Plus size={14} />
+                    <Button
+                      size="small"
+                      onClick={addParam}
+                      sx={{
+                        minWidth: 0,
+                        p: 0.5,
+                        border: 2,
+                        borderColor: "#10B981",
+                        bgcolor: "transparent",
+                        color: "#10B981",
+                        "& svg": { color: "#10B981" },
+                        "&:hover": { bgcolor: "#10B981", "& svg": { color: "#fff" } },
+                      }}
+                    >
+                      <Plus size={16} />
                     </Button>
                   </Tooltip>
                   <Tooltip title="Delete selected">
-                    <Button size="small" onClick={() => deleteSelectedParam()} variant="contained" disabled={selectedParamIndex === null} sx={{ minWidth: 0, px: 1, bgcolor: "#EF4444", "&:hover": { bgcolor: "#DC2626" } }}>
-                      <Minus size={14} />
+                    <Button
+                      size="small"
+                      onClick={() => deleteSelectedParam()}
+                      disabled={selectedParamIndex === null}
+                      sx={{
+                        minWidth: 0,
+                        p: 0.5,
+                        border: 2,
+                        borderColor: "#EF4444",
+                        bgcolor: "transparent",
+                        color: "#EF4444",
+                        "& svg": { color: "#EF4444" },
+                        "&:hover": { bgcolor: "#EF4444", "& svg": { color: "#fff" } },
+                      }}
+                    >
+                      <Minus size={16} />
                     </Button>
                   </Tooltip>
                 </Stack>

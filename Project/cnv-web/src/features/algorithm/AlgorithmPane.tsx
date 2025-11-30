@@ -285,7 +285,7 @@ export default function AlgorithmPane() {
                         sx={{
                           minWidth: 0,
                           p: 0.5,
-                          color: 'text.secondary',
+                          color: "#3B82F6",
                           '&:hover': { bgcolor: '#F3F4F6' },
                         }}
                       >
