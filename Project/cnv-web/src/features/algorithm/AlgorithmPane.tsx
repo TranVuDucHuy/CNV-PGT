@@ -210,15 +210,15 @@ export default function AlgorithmPane() {
   return (
     <>
       <MUIAccordionPane title="Algorithm" defaultExpanded headerRight={headerRight}>
-        <Box sx={{ maxHeight: '24vh', overflowY: 'auto', pr: 1, scrollbarGutter: 'stable' }}>
+        <Box sx={{ maxHeight: '20vh', overflowY: 'auto', pr: 1, scrollbarGutter: 'stable' }}>
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
               <CircularProgress size={32} />
             </Box>
           ) : algorithms.length === 0 ? (
             <Box sx={{ textAlign: 'center', py: 4 }}>
-              <Typography variant="body2" color="text.secondary">
-                No algorithms yet. Click + to add one.
+              <Typography variant="body1">
+                No algorithms yet. Click Add to add one.
               </Typography>
             </Box>
           ) : (
@@ -232,7 +232,7 @@ export default function AlgorithmPane() {
                     onClick={() => toggleSelect(algo.id)}
                     aria-pressed={isSelected}
                     sx={{
-                      p: 1.5,
+                      p: 1,
                       borderRadius: 1,
                       border: '1px solid',
                       borderColor: isSelected ? 'primary.main' : 'rgba(0,0,0,0.12)',
@@ -250,9 +250,9 @@ export default function AlgorithmPane() {
                     }}
                   >
                     <Box>
-                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      <Typography variant="body2">
                         {algo.name}{' '}
-                        <Typography component="span" variant="caption" color="text.secondary">
+                        <Typography component="span" variant="caption">
                           v{algo.version}
                         </Typography>
                       </Typography>

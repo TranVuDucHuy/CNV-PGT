@@ -17,9 +17,9 @@ import { Provider } from "react-redux";
 import { store } from "@/utils/store"; // Import store của bạn
 import colors from "@/theme/colors";
 
-const MIN_LEFT_WIDTH = 275; // px - min width of left pane
-const MAX_LEFT_WIDTH = 350; // px - max width of left pane
-const DEFAULT_LEFT_WIDTH = 240; // px - initial (matches w-60 ~ 240px)
+const MIN_LEFT_WIDTH = 0; // px - min width of left pane
+const MAX_LEFT_WIDTH = 360; // px - max width of left pane
+const DEFAULT_LEFT_WIDTH = 320; // px - initial (matches w-60 ~ 240px)
 
 const DashboardView: React.FC = () => {
   const { samples, refresh } = useSampleHandle();

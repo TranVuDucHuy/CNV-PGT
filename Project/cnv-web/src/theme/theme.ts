@@ -27,7 +27,7 @@ const theme = createTheme({
       letterSpacing: '-0.5px',
       color: colors.neutralBlack, 
     },
-    // Style 2: Pane Titles & Dialog Bar Titles (Heading 2)
+    // Style 2: Pane Titles (Heading 2)
     h2: {
       fontSize: '18px',
       fontWeight: 600,
@@ -35,16 +35,34 @@ const theme = createTheme({
       letterSpacing: '-0.25px',
       color: colors.neutralBlack,
     },
-    // Defaults for Pane content headings
+    // Style 3: Dialog Bar Titles (Heading 3)
+    h3: {
+      fontSize: '22px',
+      fontWeight: 600,
+      lineHeight: 1.4,
+      color: colors.neutralBlack,
+    },
+    // Style 4: View Bar Titles (Heading 4)
+    h4: {
+      fontSize: '15px',
+    },
+    // Defaults for Labels, placeholders 
     body1: {
+      fontSize: '14px',
+      fontWeight: 400,
+      lineHeight: 1.5,
+      color: colors.neutralBlack,
+    },
+    // Defaults for Pane content 
+    body2: {
       fontSize: '15px',
       fontWeight: 600,
       lineHeight: 1.5,
       color: colors.primary1Dark,
     },
-    // Defaults for Labels, placeholders
-    body2: {
-      fontSize: '14px',
+    // Caption style
+    caption: {
+      fontSize: '12px',
       fontWeight: 400,
       lineHeight: 1.5,
       color: colors.neutralBlack,

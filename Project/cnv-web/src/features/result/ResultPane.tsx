@@ -217,6 +217,10 @@ export default function ResultPane() {
           e.stopPropagation();
           setUploadDialogOpen(true);
           loadAlgorithms();
+          // If no date is set yet, default to today (YYYY-MM-DD)
+          if (!createdAt) {
+            setCreatedAt(new Date().toISOString().split("T")[0]);
+          }
         }}
         title="Add"
         variant="contained"
@@ -270,13 +274,13 @@ export default function ResultPane() {
         {loading ? (
           <Box sx={{ textAlign: "center", py: 3 }}>
             <CircularProgress size={20} />
-            <Typography variant="body2" sx={{ mt: 1 }}>
+            <Typography variant="body1" sx={{ mt: 1 }}>
               Loading results...
             </Typography>
           </Box>
         ) : results.length === 0 ? (
           <Box sx={{ textAlign: "center", py: 3 }}>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body1">
               No results yet. Click Add to add one.
             </Typography>
           </Box>
@@ -298,13 +302,8 @@ export default function ResultPane() {
                     >
                       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                         <Button onClick={() => toggleOpenFlowcell(flowcell)} sx={{ textTransform: "none", p: 0, minWidth: 0 }}>
-                          <Typography variant="body1">{flowcell}</Typography>
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              ml: 1,
-                            }}
-                          >
+                          <Typography variant="body2">{flowcell}</Typography>
+                          <Typography variant="body1" sx={{ ml: 1 }}>
                             [{totalCount}]
                           </Typography>
                         </Button>
@@ -319,7 +318,7 @@ export default function ResultPane() {
                             const isOpenCycle = openCycles.has(cycleKey);
 
                             return (
-                              <Box key={cycle} sx={{ borderRadius: 1, p: 1 }}>
+                              <Box key={cycle} sx={{ borderRadius: 1, p: 1, pr: 0 }}>
                                 <Box
                                   sx={{
                                     display: "flex",
@@ -335,8 +334,8 @@ export default function ResultPane() {
                                     }}
                                   >
                                     <Button onClick={() => toggleOpenCycle(flowcell, cycle)} sx={{ textTransform: "none", p: 0, minWidth: 0 }}>
-                                      <Typography variant="body1">{cycle}</Typography>
-                                      <Typography variant="body2" sx={{ ml: 1}}>[{arr.length}]</Typography>
+                                      <Typography variant="body2">{cycle}</Typography>
+                                      {/* <Typography variant="body2" sx={{ ml: 1}}>[{arr.length}]</Typography> */}
                                     </Button>
                                   </Box>
                                 </Box>
@@ -354,6 +353,7 @@ export default function ResultPane() {
                                             aria-pressed={isSelected}
                                             sx={{
                                               p: 1,
+                                              pr: 3,
                                               borderRadius: 1,
                                               cursor: "pointer",
                                               border: isSelected ? "1px solid" : "1px solid transparent",
@@ -366,12 +366,8 @@ export default function ResultPane() {
                                               userSelect: "none",
                                             }}
                                           >
-                                            <Typography variant="body2">
-                                              {parsed.embryo ?? result.id}
-                                            </Typography>
-                                            <Typography variant="body2">
-                                              {result.algorithm_name ?? "-"}
-                                            </Typography>
+                                            <Typography variant="body1">{parsed.embryo ?? result.id}</Typography>
+                                            <Typography variant="caption">{result.algorithm_name ?? "-"}</Typography>
                                           </Box>
                                         );
                                       })}
@@ -395,7 +391,18 @@ export default function ResultPane() {
       {operating && promise ? <OperatingDialog promise={promise} onDelayDone={() => setOperating(false)} autoCloseDelay={1000} /> : null}
 
       {/* Upload dialog */}
-      <CenterDialog open={uploadDialogOpen} title="Upload Result" onClose={() => setUploadDialogOpen(false)} onConfirm={handleUploadConfirm} confirmLabel="Upload" cancelLabel="Cancel">
+      <CenterDialog
+        open={uploadDialogOpen}
+        title={
+          <Typography variant="h3" component="h3">
+            Upload Result
+          </Typography>
+        }
+        onClose={() => setUploadDialogOpen(false)}
+        onConfirm={handleUploadConfirm}
+        confirmLabel="Upload"
+        cancelLabel="Cancel"
+      >
         <Stack spacing={2}>
           <Box>
             <Typography variant="body2" sx={{ mb: 0.5 }}>
@@ -452,12 +459,12 @@ export default function ResultPane() {
               Select Algorithm
             </Typography>
 
-            <Box sx={{ mb: 1 }}>{algo ? <Typography variant="body2">Selected Algorithm {algo.name}</Typography> : <></>}</Box>
+            {/* <Box sx={{ mb: 1 }}>{algo ? <Typography variant="body2">Selected Algorithm {algo.name}</Typography> : <></>}</Box> */}
 
             {algorithms.length === 0 ? (
               <Box sx={{ textAlign: "center", py: 2 }}>
-                <Typography variant="body2" color="text.secondary">
-                  No algorithms yet. Click Add to add one.
+                <Typography variant="body1">
+                  No algorithms yet. You need to add an algorithm first.
                 </Typography>
               </Box>
             ) : (
@@ -522,8 +529,20 @@ export default function ResultPane() {
       </CenterDialog>
 
       {/* Remove confirm dialog */}
-      <CenterDialog open={removeDialogOpen} title={`You sure want to remove these results (${selectedResultIds.length})`} onClose={() => setRemoveDialogOpen(false)} onConfirm={handleRemoveConfirm} confirmLabel="Yes" cancelLabel="Cancel">
-        <Box sx={{ maxHeight: 240, overflowY: "scroll" }}>
+      <CenterDialog
+        open={removeDialogOpen}
+        title={
+          <>
+            <Typography variant="h3" component="h3">{`Remove results`}</Typography>
+            <Typography variant="body2" sx={{ pt: 1 }}>{`Are you sure you want to remove ${selectedResultIds.length} result(s)?`}</Typography>
+          </>
+        }
+        onClose={() => setRemoveDialogOpen(false)}
+        onConfirm={handleRemoveConfirm}
+        confirmLabel="Yes"
+        cancelLabel="Cancel"
+      >
+        <Box sx={{ maxHeight: 240, overflowY: "auto" }}>
           <Stack spacing={1}>
             {results.map((r: any) => {
               const isSelected = r.id !== undefined && selectedIdsSet.has(r.id);
@@ -539,11 +558,8 @@ export default function ResultPane() {
                     bgcolor: "#fff",
                   }}
                 >
-                  <Typography variant="body1">{r.id}</Typography>
-                  <Typography variant="caption" color="text.secondary" display="block">
-                    {r.reference_genome}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary" display="block">
+                  <Typography variant="body1">{r.sample_name}</Typography>
+                  <Typography variant="caption" display="block" sx={{ pt: 0.5 }}>
                     {r.algorithm_name}
                   </Typography>
                 </Box>

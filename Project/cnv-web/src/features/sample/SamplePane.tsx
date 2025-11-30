@@ -25,19 +25,7 @@ type SampleItem = {
 };
 
 export default function SamplePane() {
-  const {
-    files,
-    samples = [],
-    isOpen,
-    open,
-    loading,
-    error,
-    close,
-    setFile,
-    save,
-    saveManyFiles,
-    removeSamples,
-  } = useSampleHandle();
+  const { files, samples = [], isOpen, open, loading, error, close, setFile, save, saveManyFiles, removeSamples } = useSampleHandle();
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [removeDialogOpen, setRemoveDialogOpen] = useState<boolean>(false);
@@ -120,8 +108,7 @@ export default function SamplePane() {
 
       const fallbackParsed = parseSampleNameToParts(s.name);
 
-      const flowcell =
-        s.flowcell_id && s.flowcell_id !== "rand" ? s.flowcell_id : fallbackParsed.flowcell;
+      const flowcell = s.flowcell_id && s.flowcell_id !== "rand" ? s.flowcell_id : fallbackParsed.flowcell;
       const cycle = s.cycle_id && s.cycle_id !== "rand" ? s.cycle_id : fallbackParsed.cycle;
       const embryo = s.embryo_id && s.embryo_id !== "rand" ? s.embryo_id : fallbackParsed.embryo;
       const display = embryo;
@@ -199,9 +186,7 @@ export default function SamplePane() {
         const [min, max] = startIdx < endIdx ? [startIdx, endIdx] : [endIdx, startIdx];
         setSelectedIds((prev) => {
           const next = new Set(prev);
-          const allSelected = Array.from({ length: max - min + 1 }, (_, i) => min + i).every(
-            (i) => flattenedSamples[i] && next.has(flattenedSamples[i].id)
-          );
+          const allSelected = Array.from({ length: max - min + 1 }, (_, i) => min + i).every((i) => flattenedSamples[i] && next.has(flattenedSamples[i].id));
           for (let i = min; i <= max; i++) {
             if (flattenedSamples[i]?.id) {
               if (allSelected) {
@@ -307,7 +292,7 @@ export default function SamplePane() {
         title="Add"
         variant="contained"
         size="small"
-        sx={{ minWidth: 0, px: 1, bgcolor: "#10B981", "&:hover": { bgcolor: "#059669" } }}
+        sx={{ minWidth: 0, p: 0.75, bgcolor: "#10B981", "&:hover": { bgcolor: "#059669" } }}
       >
         <Plus size={14} />
       </Button>
@@ -327,12 +312,7 @@ export default function SamplePane() {
         <Minus size={14} />
       </Button>
 
-      <IconButton
-        onClick={(e) => e.stopPropagation()}
-        title="Edit"
-        size="small"
-        sx={{ bgcolor: "#3B82F6", color: "#fff", "&:hover": { bgcolor: "#2563EB" } }}
-      >
+      <IconButton onClick={(e) => e.stopPropagation()} title="Edit" size="small" sx={{ bgcolor: "#3B82F6", color: "#fff", "&:hover": { bgcolor: "#2563EB" } }}>
         <Edit3 size={16} />
       </IconButton>
     </Stack>
@@ -341,19 +321,17 @@ export default function SamplePane() {
   return (
     <MUIAccordionPane title="Sample" defaultExpanded headerRight={headerRight}>
       <Box>
-
-
         {loading ? (
           <Box sx={{ textAlign: "center", py: 3 }}>
             <CircularProgress size={20} />
-            <Typography variant="body2" sx={{ mt: 1 }}>
+            <Typography variant="body1" sx={{ mt: 1 }}>
               Loading samples...
             </Typography>
           </Box>
         ) : samples.length === 0 ? (
           <Box sx={{ textAlign: "center", py: 3 }}>
-            <Typography variant="body2" color="text.secondary">
-              No samples yet. Click + to add one.
+            <Typography variant="body1">
+              No samples yet. Click Add to add one.
             </Typography>
           </Box>
         ) : (
@@ -363,29 +341,31 @@ export default function SamplePane() {
                 const isOpenFlow = openFlowcells.has(flowcell);
                 const totalCount = Array.from(cycleMap.values()).flat().length;
                 return (
-                  <Box key={flowcell} sx={{bgcolor: "#fff", p: 1, borderRadius: 1, border: 1, borderColor: "grey.200" }}>
+                  <Box key={flowcell} sx={{ bgcolor: "#fff", p: 1, borderRadius: 1, border: 1, borderColor: "grey.200" }}>
                     <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                       <Box>
                         <Button onClick={() => toggleOpenFlowcell(flowcell)} sx={{ textTransform: "none", p: 0, minWidth: 0 }}>
-                          <Typography variant="body1">{flowcell}</Typography>
-                          <Typography variant="body2" sx={{ ml: 1}}>[{totalCount}]</Typography>
+                          <Typography variant="body2">{flowcell}</Typography>
+                          <Typography variant="body1" sx={{ ml: 1 }}>
+                            [{totalCount}]
+                          </Typography>
                         </Button>
                       </Box>
                     </Box>
 
                     <Collapse in={isOpenFlow} unmountOnExit>
-                      <Box sx={{pl: 1, pt: 1 }}>
+                      <Box sx={{ pl: 1, pt: 1 }}>
                         <Stack spacing={1}>
                           {Array.from(cycleMap.entries()).map(([cycle, arr]) => {
                             const cycleKey = `${flowcell}|${cycle}`;
                             const isOpenCycle = openCycles.has(cycleKey);
                             return (
-                              <Box key={cycle} sx={{ borderRadius: 1, p: 1 }}>
+                              <Box key={cycle} sx={{ borderRadius: 1, p: 1, pr: 0 }}>
                                 <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                                   <Box>
                                     <Button onClick={() => toggleOpenCycle(flowcell, cycle)} sx={{ textTransform: "none", p: 0, minWidth: 0 }}>
-                                      <Typography variant="body1">{cycle}</Typography>
-                                      <Typography variant="body2" sx={{ ml: 1}}>[{arr.length}]</Typography>
+                                      <Typography variant="body2">{cycle}</Typography>
+                                      {/* <Typography variant="body2" sx={{ ml: 1}}>[{arr.length}]</Typography> */}
                                     </Button>
                                   </Box>
                                 </Box>
@@ -415,9 +395,7 @@ export default function SamplePane() {
                                               userSelect: "none",
                                             }}
                                           >
-                                            <Typography variant="body2">
-                                              {parsed.displayName}
-                                            </Typography>
+                                            <Typography variant="body1">{parsed.displayName}</Typography>
                                           </Box>
                                         );
                                       })}
@@ -442,7 +420,11 @@ export default function SamplePane() {
 
       <CenterDialog
         open={isOpen}
-        title="Upload Sample"
+        title={
+          <Typography variant="h3" component="h3">
+            Upload Sample
+          </Typography>
+        }
         onClose={() => close()}
         onConfirm={handleUploadConfirm}
         confirmLabel="Upload"
@@ -453,15 +435,7 @@ export default function SamplePane() {
             <Typography variant="body2" sx={{ mb: 0.5 }}>
               Select File
             </Typography>
-            <input
-              type="file"
-              accept=".bam"
-              onChange={(e) => setFile(Array.from(e.target.files ?? []))}
-              style={{ display: "block", width: "100%", padding: 8, borderRadius: 6, border: "1px solid rgba(0,0,0,0.23)" }}
-              required
-              multiple
-              title=""
-            />
+            <input type="file" accept=".bam" onChange={(e) => setFile(Array.from(e.target.files ?? []))} style={{ display: "block", width: "100%", padding: 8, borderRadius: 6, border: "1px solid rgba(0,0,0,0.23)" }} required multiple title="" />
             <style>{`
               input[type="file"]::file-selector-button {
                 display: none;
@@ -473,12 +447,7 @@ export default function SamplePane() {
             <Typography variant="body2" sx={{ mb: 0.5 }}>
               Reference Genome
             </Typography>
-            <select
-              value={referenceGenome}
-              onChange={(e) => setReferenceGenome(e.target.value as ReferenceGenome)}
-              style={{ display: "block", width: "100%", padding: 8, borderRadius: 6, border: "1px solid rgba(0,0,0,0.23)" }}
-              required
-            >
+            <select value={referenceGenome} onChange={(e) => setReferenceGenome(e.target.value as ReferenceGenome)} style={{ display: "block", width: "100%", padding: 8, borderRadius: 6, border: "1px solid rgba(0,0,0,0.23)" }} required>
               <option value={ReferenceGenome.HG19}>HG19</option>
               <option value={ReferenceGenome.HG38}>HG38</option>
             </select>
@@ -488,12 +457,7 @@ export default function SamplePane() {
             <Typography variant="body2" sx={{ mb: 0.5 }}>
               Cell Type
             </Typography>
-            <select
-              value={cellType}
-              onChange={(e) => setCellType(e.target.value)}
-              style={{ display: "block", width: "100%", padding: 8, borderRadius: 6, border: "1px solid rgba(0,0,0,0.23)" }}
-              required
-            >
+            <select value={cellType} onChange={(e) => setCellType(e.target.value)} style={{ display: "block", width: "100%", padding: 8, borderRadius: 6, border: "1px solid rgba(0,0,0,0.23)" }} required>
               <option value={CellType.POLAR_BODY_1}>Polar body 1</option>
               <option value={CellType.POLAR_BODY_2}>Polar body 2</option>
               <option value={CellType.BLASTOMERE}>Blastomere</option>
@@ -507,20 +471,19 @@ export default function SamplePane() {
             <Typography variant="body2" sx={{ mb: 0.5 }}>
               Date
             </Typography>
-            <input
-              type="date"
-              value={uploadDate}
-              onChange={(e) => setUploadDate(e.target.value)}
-              style={{ display: "block", width: "100%", padding: 8, borderRadius: 6, border: "1px solid rgba(0,0,0,0.23)" }}
-              required
-            />
+            <input type="date" value={uploadDate} onChange={(e) => setUploadDate(e.target.value)} style={{ display: "block", width: "100%", padding: 8, borderRadius: 6, border: "1px solid rgba(0,0,0,0.23)" }} required />
           </Box>
         </Stack>
       </CenterDialog>
 
       <CenterDialog
         open={removeDialogOpen}
-        title={`You sure want to remove these samples (${selectedIds.size})`}
+        title={
+          <>
+            <Typography variant="h3" component="h3">{`Remove sample`}</Typography>
+            <Typography variant="body2" sx={{ pt: 1 }}>{`Are you sure you want to remove ${selectedIds.size} sample(s)?`}</Typography>
+          </>
+        }
         onClose={() => setRemoveDialogOpen(false)}
         onConfirm={handleRemoveConfirm}
         confirmLabel="Yes"
@@ -531,10 +494,9 @@ export default function SamplePane() {
             {samples.map((s: SampleItem) => {
               const isSelected = s.id !== undefined && selectedIds.has(s.id);
               if (!isSelected) return null;
-              const parsed = parseSampleNameToParts(s.name);
               return (
                 <Box key={s.id} sx={{ border: 1, borderColor: "grey.200", p: 1, borderRadius: 1, bgcolor: "#fff" }}>
-                  <Typography variant="body1">{parsed.displayName}</Typography>
+                  <Typography variant="body1">{s.name}</Typography>
                 </Box>
               );
             })}

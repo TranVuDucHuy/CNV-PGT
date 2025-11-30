@@ -44,7 +44,7 @@ const colors = {
   // neutrals
   neutral: '#F3F4F6',
   neutralWhite: '#FFFFFF',
-  neutralBlack: '#363636',
+  neutralBlack: '#383838',
 };
 
 export default colors;

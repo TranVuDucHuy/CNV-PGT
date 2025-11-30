@@ -324,8 +324,8 @@ export default function ReferencePane({ samples, onRefresh }: ReferencePaneProps
       <Box>
         {referenceSamples.length === 0 ? (
           <Box sx={{ textAlign: "center", py: 3 }}>
-            <Typography variant="body2" color="text.secondary">
-              No references yet. Click + to add one.
+            <Typography variant="body1">
+              No references yet. Click Add to add one.
             </Typography>
           </Box>
         ) : (
@@ -352,15 +352,8 @@ export default function ReferencePane({ samples, onRefresh }: ReferencePaneProps
                     >
                       <Box>
                         <Button onClick={() => toggleOpenFlowcell(flowcell)} sx={{ textTransform: "none", p: 0, minWidth: 0 }}>
-                          <Typography variant="body1">{flowcell}</Typography>
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              ml: 1,
-                              fontSize: "0.75rem",
-                              color: "text.secondary",
-                            }}
-                          >
+                          <Typography variant="body2">{flowcell}</Typography>
+                          <Typography variant="body1" sx={{ ml: 1 }}>
                             [{totalCount}]
                           </Typography>
                         </Button>
@@ -374,7 +367,7 @@ export default function ReferencePane({ samples, onRefresh }: ReferencePaneProps
                             const cycleKey = `${flowcell}|${cycle}`;
                             const isOpenCycle = openCycles.has(cycleKey);
                             return (
-                              <Box key={cycle} sx={{ borderRadius: 1, p: 1 }}>
+                              <Box key={cycle} sx={{ borderRadius: 1, p: 1, pr: 0 }}>
                                 <Box
                                   sx={{
                                     display: "flex",
@@ -391,17 +384,10 @@ export default function ReferencePane({ samples, onRefresh }: ReferencePaneProps
                                         minWidth: 0,
                                       }}
                                     >
-                                      <Typography variant="body1">{cycle}</Typography>
-                                      <Typography
-                                        variant="body2"
-                                        sx={{
-                                          ml: 1,
-                                          fontSize: "0.75rem",
-                                          color: "text.secondary",
-                                        }}
-                                      >
+                                      <Typography variant="body2">{cycle}</Typography>
+                                      {/* <Typography variant="body2" sx={{ ml: 1 }}>
                                         [{arr.length}]
-                                      </Typography>
+                                      </Typography> */}
                                     </Button>
                                   </Box>
                                 </Box>
@@ -431,7 +417,7 @@ export default function ReferencePane({ samples, onRefresh }: ReferencePaneProps
                                               userSelect: "none",
                                             }}
                                           >
-                                            <Typography variant="body2">{parsed.displayName}</Typography>
+                                            <Typography variant="body1">{parsed.displayName}</Typography>
                                           </Box>
                                         );
                                       })}
@@ -456,7 +442,7 @@ export default function ReferencePane({ samples, onRefresh }: ReferencePaneProps
       <CenterDialog
         open={addDialogOpen}
         title={
-          <Typography component="h2" variant="h2">
+          <Typography variant="h3" component="h3">
             Add Samples to Reference
           </Typography>
         }
@@ -468,7 +454,7 @@ export default function ReferencePane({ samples, onRefresh }: ReferencePaneProps
         <Box>
           {availableSamples.length === 0 ? (
             <Box sx={{ textAlign: "center", py: 3 }}>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body1">
                 All samples are already references
               </Typography>
             </Box>
@@ -476,10 +462,10 @@ export default function ReferencePane({ samples, onRefresh }: ReferencePaneProps
             <Box
               sx={{
                 maxHeight: "40vh",
-                overflowY: "scroll",
+                overflowY: "auto",
                 pr: 1,
                 scrollbarGutter: "stable",
-                border: 1,
+                // border: 1,
                 borderColor: "grey.200",
                 p: 1,
                 borderRadius: 1,
@@ -499,8 +485,8 @@ export default function ReferencePane({ samples, onRefresh }: ReferencePaneProps
                       >
                         <Box>
                           <Button onClick={() => toggleOpenFlowcell(flowcell)} sx={{ textTransform: "none", p: 0, minWidth: 0 }}>
-                            <Typography variant="body1">{flowcell}</Typography>
-                            <Typography variant="body2" sx={{ ml: 1 }}>
+                            <Typography variant="body2">{flowcell}</Typography>
+                            <Typography variant="body1" sx={{ ml: 1 }}>
                               [{Array.from(cycleMap.values()).flat().length}]
                             </Typography>
                           </Button>
@@ -514,7 +500,7 @@ export default function ReferencePane({ samples, onRefresh }: ReferencePaneProps
                               const cycleKey = `${flowcell}|${cycle}`;
                               const isOpenCycle = openCycles.has(cycleKey);
                               return (
-                                <Box key={cycle} sx={{ borderRadius: 1, p: 1 }}>
+                                <Box key={cycle} sx={{ borderRadius: 1, p: 1, pr: 0 }}>
                                   <Box
                                     sx={{
                                       display: "flex",
@@ -531,10 +517,10 @@ export default function ReferencePane({ samples, onRefresh }: ReferencePaneProps
                                           minWidth: 0,
                                         }}
                                       >
-                                        <Typography variant="body1">{cycle}</Typography>
-                                        <Typography variant="body2" sx={{ ml: 1 }}>
+                                        <Typography variant="body2">{cycle}</Typography>
+                                        {/* <Typography variant="body2" sx={{ ml: 1 }}>
                                           [{arr.length}]
-                                        </Typography>
+                                        </Typography> */}
                                       </Button>
                                     </Box>
                                   </Box>
@@ -561,7 +547,7 @@ export default function ReferencePane({ samples, onRefresh }: ReferencePaneProps
                                                 userSelect: "none",
                                               }}
                                             >
-                                              <Typography variant="body2" color="text.secondary">
+                                              <Typography variant="body1" color="text.secondary">
                                                 {parsed.displayName}
                                               </Typography>
                                             </Box>

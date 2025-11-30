@@ -6,10 +6,8 @@ import React, { createContext, useContext, useState } from "react";
 export type ViewChecked = {
   bin: boolean;
   segment: boolean;
-  aberration: boolean;
-  trash: boolean;
-  report: boolean;
   table: boolean;
+  report: boolean;
 };
 
 export interface ViewContextValue {
@@ -21,10 +19,8 @@ export interface ViewContextValue {
 const defaultChecked: ViewChecked = {
   bin: false,
   segment: false,
-  aberration: false,
-  trash: false,
+  table: false,
   report: false,
-  table: false
 };
 
 // export explicitly in case other files reference ViewContext directly
