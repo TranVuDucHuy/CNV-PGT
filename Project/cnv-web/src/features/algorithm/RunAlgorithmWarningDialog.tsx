@@ -4,7 +4,22 @@
  */
 
 import React from 'react';
-import { X, AlertCircle } from 'lucide-react';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Box,
+  Typography,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Alert,
+  AlertTitle,
+} from '@mui/material';
+import { AlertTriangle, AlertCircle } from 'lucide-react';
 
 interface Props {
   open: boolean;
@@ -14,54 +29,58 @@ interface Props {
 }
 
 export default function RunAlgorithmWarningDialog({ open, onClose, referencesRequired, onUploadModule }: Props) {
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md m-4">
-        <div className="flex items-center justify-between p-4 border-b">
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <AlertCircle className="text-orange-500" size={24} />
-            Cannot Run Algorithm
-          </h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            <X size={20} />
-          </button>
-        </div>
+    <Dialog open={open} maxWidth="sm" fullWidth onClose={onClose}>
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, fontWeight: 600, fontSize: '1.1rem' }}>
+        <AlertTriangle color="#EA580C" size={24} />
+        Cannot Run Algorithm
+      </DialogTitle>
 
-        <div className="p-6">
-          <p className="text-gray-700 mb-4">
-            Algorithm requires uploaded module and {referencesRequired} reference{referencesRequired !== 1 ? 's' : ''} sample to run.
-          </p>
-          <p className="text-sm text-gray-600">
-            Please ensure:
-          </p>
-          <ul className="list-disc list-inside text-sm text-gray-600 mt-2 space-y-1">
-            <li>Algorithm module (ZIP file) has been uploaded</li>
-            <li>At least {referencesRequired} reference sample{referencesRequired !== 1 ? 's are' : ' is'} selected in the Reference pane</li>
-          </ul>
-        </div>
+      <DialogContent sx={{ pt: 3 }}>
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          <AlertTitle>Missing Requirements</AlertTitle>
+          Algorithm requires uploaded module and {referencesRequired} reference{referencesRequired !== 1 ? 's' : ''} sample to run.
+        </Alert>
 
-        <div className="flex justify-end gap-2 p-4 border-t">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
+        <Typography variant="body2" sx={{ fontWeight: 500, mb: 1 }}>
+          Please ensure:
+        </Typography>
+        <List dense sx={{ ml: 1 }}>
+          <ListItem>
+            <ListItemIcon>
+              <AlertCircle size={16} />
+            </ListItemIcon>
+            <ListItemText
+              primary="Algorithm module (ZIP file) has been uploaded"
+              primaryTypographyProps={{ variant: 'body2' }}
+            />
+          </ListItem>
+          <ListItem>
+            <ListItemIcon>
+              <AlertCircle size={16} />
+            </ListItemIcon>
+            <ListItemText
+              primary={`At least ${referencesRequired} reference sample${referencesRequired !== 1 ? 's are' : ' is'} selected in the Reference pane`}
+              primaryTypographyProps={{ variant: 'body2' }}
+            />
+          </ListItem>
+        </List>
+      </DialogContent>
+
+      <DialogActions sx={{ gap: 1, p: 2 }}>
+        <Button onClick={onClose}>Close</Button>
+        {onUploadModule && (
+          <Button
+            onClick={() => {
+              onUploadModule();
+              onClose();
+            }}
+            variant="contained"
           >
-            Close
-          </button>
-          {onUploadModule && (
-            <button
-              onClick={() => {
-                onUploadModule();
-                onClose();
-              }}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              Upload Module
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
+            Upload Module
+          </Button>
+        )}
+      </DialogActions>
+    </Dialog>
   );
 }

@@ -34,6 +34,8 @@ export default function MUIAccordionPane({
         borderColor: "grey.300",
         borderRadius: 1,
         overflow: "hidden", // giữ border-radius
+        bgcolor: "background2",
+        boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
       }}
     >
       <AccordionSummary
@@ -47,15 +49,20 @@ export default function MUIAccordionPane({
           "&.Mui-expanded .MuiAccordionSummary-expandIconWrapper": {
             transform: "rotate(90deg)", // xoay khi mở
           },
-          bgcolor: "grey.300",
-          py: 1.25,
-          px: 2,
+          "& .MuiAccordionSummary-content": {
+            my: 0.5,
+          },
+          bgcolor: "primary1.light",
+          py: 1,
+          px: 1.5,
           cursor: "pointer",
           alignItems: "center",
         }}
       >
         <Stack direction="row" alignItems="center" spacing={1} sx={{ flex: 1 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700, fontSize: "1rem" }}>
+          <Typography
+            variant="h2"
+          >
             {title}
           </Typography>
         </Stack>
@@ -73,9 +80,7 @@ export default function MUIAccordionPane({
         )}
       </AccordionSummary>
 
-      <AccordionDetails sx={{ p: 2 }}>
-        {children}
-      </AccordionDetails>
+      <AccordionDetails sx={{ p: 1.5, pr: 0.5 }}>{children}</AccordionDetails>
     </Accordion>
   );
 }

@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useRef, useState, useCallback, useEffect } from "react";
+import { Typography } from "@mui/material";
 import SamplePane from "@/features/sample/SamplePane";
 import AlgorithmPane from "@/features/algorithm/AlgorithmPane";
 import ResultPane from "@/features/result/ResultPane";
@@ -14,10 +15,11 @@ import useSampleHandle from "@/features/sample/sampleHandle";
 import TiledContentPane from "@/features/content/TiledContentPane";
 import { Provider } from "react-redux";
 import { store } from "@/utils/store"; // Import store của bạn
+import colors from "@/theme/colors";
 
-const MIN_LEFT_WIDTH = 275; // px - min width of left pane
-const MAX_LEFT_WIDTH = 350; // px - max width of left pane
-const DEFAULT_LEFT_WIDTH = 240; // px - initial (matches w-60 ~ 240px)
+const MIN_LEFT_WIDTH = 0; // px - min width of left pane
+const MAX_LEFT_WIDTH = 360; // px - max width of left pane
+const DEFAULT_LEFT_WIDTH = 320; // px - initial (matches w-60 ~ 240px)
 
 const DashboardView: React.FC = () => {
   const { samples, refresh } = useSampleHandle();
@@ -106,8 +108,17 @@ const DashboardView: React.FC = () => {
   return (
     <div className="flex flex-col h-screen font-sans">
       {/* Menu Bar */}
-      <nav className="bg-gray-200 border border-gray-400 px-4 py-2 flex items-center">
-        <h1 className="text-lg font-bold">CNV Analysis Dashboard</h1>
+      <nav
+        className="px-4 py-3 flex items-center"
+        style={{ backgroundColor: colors.primary1 }}
+      >
+        <Typography
+          variant="h1"
+          component="h1"
+          sx={{ color: "primary1.contrastText" }}
+        >
+          CNV Analysis Dashboard
+        </Typography>
       </nav>
 
       {/* Split Pane */}
@@ -117,12 +128,14 @@ const DashboardView: React.FC = () => {
             <ResultProvider>
               {/* Left Pane - resizable */}
               <div
-                className="border-r border-gray-300 bg-gray-50 p-3 max-h-[100vh] overflow-y-auto space-y-3"
+                className=" border-gray-300 p-2.5 max-h-[100vh] overflow-y-scroll space-y-3"
                 style={{
                   width: leftWidth,
                   minWidth: MIN_LEFT_WIDTH,
                   maxWidth: MAX_LEFT_WIDTH,
                   height: "100%",
+                  scrollbarGutter: "stable",
+                  backgroundColor: colors.background1,
                 }}
               >
                 {/* <ContentPane /> */}
@@ -168,7 +181,7 @@ const DashboardView: React.FC = () => {
               <div className="flex-1 bg-gray-100 flex min-w-0">
                 <div
                   id="contentArea"
-                  className="w-full h-full bg-gray-200  rounded-lg flex flex-col min-w-0"
+                  className="w-full h-full bg-white flex flex-col min-w-0"
                 >
                   <TiledContentPane />
                 </div>

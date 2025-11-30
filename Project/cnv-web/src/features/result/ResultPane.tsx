@@ -8,17 +8,7 @@ import useResultHandle from "./resultHandle";
 import { useAlgorithms } from "../algorithm/useAlgorithms";
 import CenterDialog from "@/components/CenterDialog";
 import OperatingDialog from "@/components/OperatingDialog";
-import {
-  Box,
-  Button,
-  Checkbox,
-  Collapse,
-  IconButton,
-  Stack,
-  Typography,
-  CircularProgress,
-  FormControlLabel,
-} from "@mui/material";
+import { Box, Button, Checkbox, Collapse, IconButton, Stack, Typography, CircularProgress, FormControlLabel } from "@mui/material";
 import { parseSampleNameToParts } from "@/features/sample/sampleUtils";
 import MUIAccordionPane from "@/components/MUIAccordionPane";
 import { useRouter } from "next/navigation";
@@ -26,15 +16,11 @@ import { useRouter } from "next/navigation";
 // --- Imports mới cho Type và Redux ---
 import { ResultSummary } from "@/types/result"; // Import type chính xác để sửa lỗi 'any'
 import { RootState } from "@/utils/store"; // Đường dẫn tới store của bạn
-import { 
-  toggleResultSelection, 
-  setSelectedResults, 
-  clearSelection 
-} from "@/utils/appSlice"; // Đường dẫn tới slice của bạn
+import { toggleResultSelection, setSelectedResults, clearSelection } from "@/utils/appSlice"; // Đường dẫn tới slice của bạn
 
 export default function ResultPane() {
   const dispatch = useDispatch();
-  
+
   // 1. Lấy danh sách ID đang chọn từ Redux
   const selectedResultIds = useSelector((state: RootState) => state.app.selectedResults);
 
@@ -69,6 +55,7 @@ export default function ResultPane() {
   // UI expand/collapse state
   const [openFlowcells, setOpenFlowcells] = useState<Set<string>>(new Set());
   const [openCycles, setOpenCycles] = useState<Set<string>>(new Set());
+  const [lastClickedId, setLastClickedId] = useState<string | null>(null);
 
   const router = useRouter();
 
@@ -140,22 +127,48 @@ export default function ResultPane() {
     return sortedMap;
   }, [results]);
 
-  // 4. Các hàm xử lý chọn bằng Redux Actions
-  const toggleSelect = (id?: string) => {
-    if (!id) return;
-    dispatch(toggleResultSelection(id));
-  };
-
-  const toggleSelectAll = (e: ChangeEvent<HTMLInputElement>) => {
-    const checked = e.target.checked;
-    if (checked) {
-      const allIds = results
-        .map((r) => r.id)
-        .filter((id): id is string => !!id); // Lọc bỏ undefined/null
-      dispatch(setSelectedResults(allIds));
-    } else {
-      dispatch(clearSelection());
+  // Mảng flat để support Shift+Click range select
+  const flattenedResults = useMemo(() => {
+    const result: ResultSummary[] = [];
+    for (const [, cycleMap] of grouped.entries()) {
+      for (const [, arr] of cycleMap.entries()) {
+        for (const { result: r } of arr) {
+          result.push(r);
+        }
+      }
     }
+    return result;
+  }, [grouped]);
+
+  // 4. Các hàm xử lý chọn bằng Redux Actions
+  const toggleSelect = (id?: string, event?: React.MouseEvent) => {
+    if (!id) return;
+
+    // Xử lý Shift+Click: toggle range từ lastClickedId đến id hiện tại
+    if (event?.shiftKey && lastClickedId !== null) {
+      const startIdx = flattenedResults.findIndex((r) => r.id === lastClickedId);
+      const endIdx = flattenedResults.findIndex((r) => r.id === id);
+      if (startIdx !== -1 && endIdx !== -1) {
+        const [min, max] = startIdx < endIdx ? [startIdx, endIdx] : [endIdx, startIdx];
+        const idsToToggle: string[] = [];
+        for (let i = min; i <= max; i++) {
+          if (flattenedResults[i]?.id) idsToToggle.push(flattenedResults[i].id);
+        }
+        // Kiểm tra nếu tất cả đã được chọn thì deselect, ngược lại select
+        const allSelected = idsToToggle.every((rid) => selectedIdsSet.has(rid));
+        if (allSelected) {
+          const newIds = selectedResultIds.filter((rid) => !idsToToggle.includes(rid));
+          dispatch(setSelectedResults(newIds));
+        } else {
+          const newIds = Array.from(new Set([...selectedResultIds, ...idsToToggle]));
+          dispatch(setSelectedResults(newIds));
+        }
+      }
+      return;
+    }
+
+    dispatch(toggleResultSelection(id));
+    setLastClickedId(id);
   };
 
   const toggleOpenFlowcell = (flowcell: string) => {
@@ -204,18 +217,25 @@ export default function ResultPane() {
           e.stopPropagation();
           setUploadDialogOpen(true);
           loadAlgorithms();
+          // If no date is set yet, default to today (YYYY-MM-DD)
+          if (!createdAt) {
+            setCreatedAt(new Date().toISOString().split("T")[0]);
+          }
         }}
         title="Add"
-        variant="contained"
         size="small"
         sx={{
           minWidth: 0,
-          px: 1,
-          bgcolor: "#10B981",
-          "&:hover": { bgcolor: "#059669" },
+          p: 0.5,
+          border: 2,
+          borderColor: "#10B981",
+          bgcolor: "transparent",
+          color: "#10B981",
+          "& svg": { color: "#10B981" },
+          "&:hover": { bgcolor: "#10B981", "& svg": { color: "#fff" } },
         }}
       >
-        <Plus size={14} />
+        <Plus size={16} />
       </Button>
 
       <Button
@@ -224,87 +244,66 @@ export default function ResultPane() {
           if (selectedResultIds.length > 0) setRemoveDialogOpen(true);
         }}
         title="Remove"
-        variant="contained"
         size="small"
         sx={{
           minWidth: 0,
-          px: 1,
-          bgcolor: "#EF4444",
-          "&:hover": { bgcolor: "#DC2626" },
+          p: 0.5,
+          border: 2,
+          borderColor: "#DC2626",
+          bgcolor: "transparent",
+          color: "#DC2626",
+          "& svg": { color: "#DC2626" },
+          "&:hover": { bgcolor: "#DC2626", "& svg": { color: "#fff" },},
         }}
       >
-        <Minus size={14} />
+        <Minus size={16} />
       </Button>
 
-      <IconButton
+      <Button
         onClick={(e) => e.stopPropagation()}
-        title="Edit"
-        size="small"
-        sx={{
-          bgcolor: "#3B82F6",
-          color: "#fff",
-          "&:hover": { bgcolor: "#2563EB" },
+        title="Edit" 
+        size="small" 
+        sx={{ 
+                    minWidth: 0,
+          p: 0.5,
+          border: 2,
+          borderColor: "#3B82F6",
+          bgcolor: "transparent",
+          color: "#3B82F6",
+          "& svg": { color: "#3B82F6" },
+          "&:hover": { bgcolor: "#3B82F6", "& svg": { color: "#fff" },},
         }}
       >
         <Edit3 size={16} />
-      </IconButton>
+      </Button>
     </Stack>
   );
 
   return (
     <MUIAccordionPane title="Result" defaultExpanded headerRight={headerRight}>
       <Box>
-        <Box sx={{ display: "flex", gap: 2, alignItems: "center", mb: 1 }}>
-          <Typography variant="body2">{selectedResultIds.length} selected</Typography>
-
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={
-                  results.length > 0 && selectedResultIds.length === results.length
-                }
-                indeterminate={
-                  selectedResultIds.length > 0 && selectedResultIds.length < results.length
-                }
-                onChange={toggleSelectAll}
-                size="small"
-              />
-            }
-            label={<Typography variant="body2">Select All</Typography>}
-          />
-        </Box>
-
         {loading ? (
           <Box sx={{ textAlign: "center", py: 3 }}>
             <CircularProgress size={20} />
-            <Typography variant="body2" sx={{ mt: 1 }}>
+            <Typography variant="body1" sx={{ mt: 1 }}>
               Loading results...
             </Typography>
           </Box>
         ) : results.length === 0 ? (
           <Box sx={{ textAlign: "center", py: 3 }}>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body1">
               No results yet. Click Add to add one.
             </Typography>
           </Box>
         ) : (
-          <Box sx={{ maxHeight: "40vh", overflowY: "auto", pr: 1 }}>
+          <Box sx={{ maxHeight: "40vh", overflowY: "scroll", pr: 1, scrollbarGutter: "stable" }}>
             <Stack spacing={1}>
               {Array.from(grouped.entries()).map(([flowcell, cycleMap]) => {
                 const isOpenFlow = openFlowcells.has(flowcell);
                 const totalCount = Array.from(cycleMap.values()).flat().length;
 
                 return (
-                  <Box
-                    key={flowcell}
-                    sx={{
-                      borderRadius: 1,
-                      border: 1,
-                      borderColor: "grey.200",
-                      bgcolor: "#fff",
-                      p: 1,
-                    }}
-                  >
+                  <Box key={flowcell} sx={{ bgcolor: "#fff", p: 1, borderRadius: 1, border: 1, borderColor: "grey.200" }}>
                     <Box
                       sx={{
                         display: "flex",
@@ -312,150 +311,83 @@ export default function ResultPane() {
                         justifyContent: "space-between",
                       }}
                     >
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                      >
-                        <Button
-                          onClick={() => toggleOpenFlowcell(flowcell)}
-                          sx={{ textTransform: "none", p: 0, minWidth: 0 }}
-                        >
-                          <Typography
-                            sx={{ fontWeight: 600, textAlign: "left" }}
-                          >
-                            {flowcell}
-                          </Typography>
-                          <Typography
-                            sx={{
-                              ml: 1,
-                              fontSize: "0.75rem",
-                              color: "text.secondary",
-                            }}
-                          >
-                            ({totalCount})
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        <Button onClick={() => toggleOpenFlowcell(flowcell)} sx={{ textTransform: "none", p: 0, minWidth: 0 }}>
+                          <Typography variant="body2">{flowcell}</Typography>
+                          <Typography variant="body1" sx={{ ml: 1 }}>
+                            [{totalCount}]
                           </Typography>
                         </Button>
                       </Box>
                     </Box>
 
                     <Collapse in={isOpenFlow} unmountOnExit>
-                      <Box sx={{ pl: 4, pt: 1, pb: 0 }}>
+                      <Box sx={{ pl: 1, pt: 1 }}>
                         <Stack spacing={1}>
-                          {Array.from(cycleMap.entries()).map(
-                            ([cycle, arr]) => {
-                              const cycleKey = `${flowcell}|${cycle}`;
-                              const isOpenCycle = openCycles.has(cycleKey);
+                          {Array.from(cycleMap.entries()).map(([cycle, arr]) => {
+                            const cycleKey = `${flowcell}|${cycle}`;
+                            const isOpenCycle = openCycles.has(cycleKey);
 
-                              return (
+                            return (
+                              <Box key={cycle} sx={{ borderRadius: 1, p: 1, pr: 0 }}>
                                 <Box
-                                  key={cycle}
                                   sx={{
-                                    borderRadius: 1,
-                                    p: 1,
-                                    bgcolor: "#F9FAFB",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
                                   }}
                                 >
                                   <Box
                                     sx={{
                                       display: "flex",
                                       alignItems: "center",
-                                      justifyContent: "space-between",
+                                      gap: 1,
                                     }}
                                   >
-                                    <Box
-                                      sx={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: 1,
-                                      }}
-                                    >
-                                      <Button
-                                        onClick={() =>
-                                          toggleOpenCycle(flowcell, cycle)
-                                        }
-                                        sx={{
-                                          textTransform: "none",
-                                          p: 0,
-                                          minWidth: 0,
-                                        }}
-                                      >
-                                        <Typography
-                                          sx={{
-                                            fontWeight: 500,
-                                            textAlign: "left",
-                                          }}
-                                        >
-                                          {cycle}
-                                        </Typography>
-                                        <Typography
-                                          sx={{
-                                            ml: 1,
-                                            fontSize: "0.75rem",
-                                            color: "text.secondary",
-                                          }}
-                                        >
-                                          ({arr.length})
-                                        </Typography>
-                                      </Button>
-                                    </Box>
+                                    <Button onClick={() => toggleOpenCycle(flowcell, cycle)} sx={{ textTransform: "none", p: 0, minWidth: 0 }}>
+                                      <Typography variant="body2">{cycle}</Typography>
+                                      {/* <Typography variant="body2" sx={{ ml: 1}}>[{arr.length}]</Typography> */}
+                                    </Button>
                                   </Box>
-
-                                  <Collapse in={isOpenCycle} unmountOnExit>
-                                    <Box sx={{ pl: 4, pt: 1 }}>
-                                      <Stack spacing={1}>
-                                        {arr.map(({ result, parsed }) => {
-                                          const isSelected =
-                                            result.id !== undefined &&
-                                            selectedIdsSet.has(result.id);
-                                          return (
-                                            <Box
-                                              key={result.id}
-                                              role="button"
-                                              onClick={() =>
-                                                toggleSelect(result.id)
-                                              }
-                                              aria-pressed={isSelected}
-                                              sx={{
-                                                p: 1,
-                                                borderRadius: 1,
-                                                cursor: "pointer",
-                                                border: isSelected
-                                                  ? "1px solid"
-                                                  : "1px solid transparent",
-                                                borderColor: isSelected
-                                                  ? "primary.main"
-                                                  : "transparent",
-                                                bgcolor: isSelected
-                                                  ? "#DBEAFE"
-                                                  : "#fff",
-                                                transition:
-                                                  "background-color 0.12s",
-                                                display: "flex",
-                                                alignItems: "center",
-                                                justifyContent: "space-between",
-                                              }}
-                                            >
-                                              <Typography
-                                                variant="caption"
-                                                color="text.secondary"
-                                              >
-                                                {parsed.embryo ?? result.id}
-                                              </Typography>
-                                              <Typography
-                                                variant="caption"
-                                                color="text.secondary"
-                                              >
-                                                {result.algorithm_name ?? "-"}
-                                              </Typography>
-                                            </Box>
-                                          );
-                                        })}
-                                      </Stack>
-                                    </Box>
-                                  </Collapse>
                                 </Box>
-                              );
-                            }
-                          )}
+
+                                <Collapse in={isOpenCycle} unmountOnExit>
+                                  <Box sx={{ pl: 1, pt: 1 }}>
+                                    <Stack spacing={1}>
+                                      {arr.map(({ result, parsed }) => {
+                                        const isSelected = result.id !== undefined && selectedIdsSet.has(result.id);
+                                        return (
+                                          <Box
+                                            key={result.id}
+                                            role="button"
+                                            onClick={(e) => toggleSelect(result.id, e)}
+                                            aria-pressed={isSelected}
+                                            sx={{
+                                              p: 1,
+                                              pr: 3,
+                                              borderRadius: 1,
+                                              cursor: "pointer",
+                                              border: isSelected ? "1px solid" : "1px solid transparent",
+                                              borderColor: isSelected ? "primary.main" : "transparent",
+                                              bgcolor: isSelected ? "#DBEAFE" : "#fff",
+                                              transition: "background-color 0.12s",
+                                              display: "flex",
+                                              alignItems: "center",
+                                              justifyContent: "space-between",
+                                              userSelect: "none",
+                                            }}
+                                          >
+                                            <Typography variant="body1">{parsed.embryo ?? result.id}</Typography>
+                                            <Typography variant="caption">{result.algorithm_name ?? "-"}</Typography>
+                                          </Box>
+                                        );
+                                      })}
+                                    </Stack>
+                                  </Box>
+                                </Collapse>
+                              </Box>
+                            );
+                          })}
                         </Stack>
                       </Box>
                     </Collapse>
@@ -467,18 +399,16 @@ export default function ResultPane() {
         )}
       </Box>
 
-      {operating && promise ? (
-        <OperatingDialog
-          promise={promise}
-          onDelayDone={() => setOperating(false)}
-          autoCloseDelay={1000}
-        />
-      ) : null}
+      {operating && promise ? <OperatingDialog promise={promise} onDelayDone={() => setOperating(false)} autoCloseDelay={1000} /> : null}
 
       {/* Upload dialog */}
       <CenterDialog
         open={uploadDialogOpen}
-        title="Upload Result"
+        title={
+          <Typography variant="h3" component="h3">
+            Upload Result
+          </Typography>
+        }
         onClose={() => setUploadDialogOpen(false)}
         onConfirm={handleUploadConfirm}
         confirmLabel="Upload"
@@ -493,9 +423,21 @@ export default function ResultPane() {
               type="file"
               accept=".tsv"
               onChange={(e) => setBinFile(e.target.files?.[0] ?? null)}
-              style={{ display: "block", width: "100%" }}
+              style={{
+                display: "block",
+                width: "100%",
+                padding: 8,
+                borderRadius: 6,
+                border: "1px solid rgba(0,0,0,0.23)",
+              }}
               required
+              title=""
             />
+            <style>{`
+              input[type="file"]::file-selector-button {
+                display: none;
+              }
+            `}</style>
           </Box>
 
           <Box>
@@ -506,9 +448,21 @@ export default function ResultPane() {
               type="file"
               accept=".tsv"
               onChange={(e) => setSegmentFile(e.target.files?.[0] ?? null)}
-              style={{ display: "block", width: "100%" }}
+              style={{
+                display: "block",
+                width: "100%",
+                padding: 8,
+                borderRadius: 6,
+                border: "1px solid rgba(0,0,0,0.23)",
+              }}
               required
+              title=""
             />
+            <style>{`
+              input[type="file"]::file-selector-button {
+                display: none;
+              }
+            `}</style>
           </Box>
 
           <Box>
@@ -516,24 +470,16 @@ export default function ResultPane() {
               Select Algorithm
             </Typography>
 
-            <Box sx={{ mb: 1 }}>
-              {algo ? (
-                <Typography variant="body2">
-                  Selected Algorithm {algo.name}
-                </Typography>
-              ) : (
-                <></>
-              )}
-            </Box>
+            {/* <Box sx={{ mb: 1 }}>{algo ? <Typography variant="body2">Selected Algorithm {algo.name}</Typography> : <></>}</Box> */}
 
             {algorithms.length === 0 ? (
               <Box sx={{ textAlign: "center", py: 2 }}>
-                <Typography variant="body2" color="text.secondary">
-                  No algorithms yet. Click Add to add one.
+                <Typography variant="body1">
+                  No algorithms yet. You need to add an algorithm first.
                 </Typography>
               </Box>
             ) : (
-              <Box sx={{ maxHeight: 160, overflowY: "auto" }}>
+              <Box sx={{ maxHeight: 160, overflowY: "scroll" }}>
                 <Stack spacing={1}>
                   {algorithms.map((al) => {
                     const isSelected = al.id !== undefined && al === algo;
@@ -550,22 +496,11 @@ export default function ResultPane() {
                           cursor: "pointer",
                         }}
                       >
-                        <Stack
-                          direction="row"
-                          alignItems="center"
-                          justifyContent="space-between"
-                        >
+                        <Stack direction="row" alignItems="center" justifyContent="space-between">
                           <Box>
-                            <Typography
-                              variant="body2"
-                              sx={{ fontWeight: 500 }}
-                            >
+                            <Typography variant="body1">
                               {al.name}{" "}
-                              <Typography
-                                component="span"
-                                variant="caption"
-                                color="text.secondary"
-                              >
+                              <Typography component="span" variant="caption" color="text.secondary">
                                 v{al.version}
                               </Typography>
                             </Typography>
@@ -596,7 +531,7 @@ export default function ResultPane() {
                 display: "block",
                 width: "100%",
                 padding: 8,
-                borderRadius: 4,
+                borderRadius: 6,
                 border: "1px solid rgba(0,0,0,0.23)",
               }}
             />
@@ -607,7 +542,12 @@ export default function ResultPane() {
       {/* Remove confirm dialog */}
       <CenterDialog
         open={removeDialogOpen}
-        title={`You sure want to remove these results (${selectedResultIds.length})`}
+        title={
+          <>
+            <Typography variant="h3" component="h3">{`Remove results`}</Typography>
+            <Typography variant="body2" sx={{ pt: 1 }}>{`Are you sure you want to remove ${selectedResultIds.length} result(s)?`}</Typography>
+          </>
+        }
         onClose={() => setRemoveDialogOpen(false)}
         onConfirm={handleRemoveConfirm}
         confirmLabel="Yes"
@@ -616,8 +556,7 @@ export default function ResultPane() {
         <Box sx={{ maxHeight: 240, overflowY: "auto" }}>
           <Stack spacing={1}>
             {results.map((r: any) => {
-              const isSelected =
-                r.id !== undefined && selectedIdsSet.has(r.id);
+              const isSelected = r.id !== undefined && selectedIdsSet.has(r.id);
               if (!isSelected) return null;
               return (
                 <Box
@@ -630,19 +569,8 @@ export default function ResultPane() {
                     bgcolor: "#fff",
                   }}
                 >
-                  <Typography sx={{ fontWeight: 500 }}>{r.id}</Typography>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    display="block"
-                  >
-                    {r.reference_genome}
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    display="block"
-                  >
+                  <Typography variant="body1">{r.sample_name}</Typography>
+                  <Typography variant="caption" display="block" sx={{ pt: 0.5 }}>
                     {r.algorithm_name}
                   </Typography>
                 </Box>

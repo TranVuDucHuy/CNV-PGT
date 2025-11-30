@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 
 export type CenterDialogProps = {
   open: boolean;
-  title?: string;
+  title?: ReactNode;
   children?: ReactNode;
   onClose?: () => void;
   onConfirm?: () => void;
