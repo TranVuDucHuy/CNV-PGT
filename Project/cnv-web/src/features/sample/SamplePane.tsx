@@ -357,41 +357,41 @@ export default function SamplePane() {
             </Typography>
           </Box>
         ) : (
-          <Box sx={{ maxHeight: "40vh", overflowY: "auto", pr: 1, scrollbarGutter: "stable" }}>
+          <Box sx={{ maxHeight: "40vh", overflowY: "scroll", pr: 1, scrollbarGutter: "stable" }}>
             <Stack spacing={1}>
               {Array.from(grouped.entries()).map(([flowcell, cycleMap]) => {
                 const isOpenFlow = openFlowcells.has(flowcell);
                 const totalCount = Array.from(cycleMap.values()).flat().length;
                 return (
-                  <Box key={flowcell} sx={{ borderRadius: 1, border: 1, borderColor: "grey.200", bgcolor: "#fff", p: 1 }}>
+                  <Box key={flowcell} sx={{bgcolor: "#fff", p: 1, borderRadius: 1, border: 1, borderColor: "grey.200" }}>
                     <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                       <Box>
                         <Button onClick={() => toggleOpenFlowcell(flowcell)} sx={{ textTransform: "none", p: 0, minWidth: 0 }}>
-                          <Typography sx={{ fontWeight: 600 }}>{flowcell}</Typography>
-                          <Typography sx={{ ml: 1, fontSize: "0.75rem", color: "text.secondary" }}>[{totalCount}]</Typography>
+                          <Typography variant="body1">{flowcell}</Typography>
+                          <Typography variant="body2" sx={{ ml: 1}}>[{totalCount}]</Typography>
                         </Button>
                       </Box>
                     </Box>
 
                     <Collapse in={isOpenFlow} unmountOnExit>
-                      <Box sx={{ pl: 4, pt: 1 }}>
+                      <Box sx={{pl: 1, pt: 1 }}>
                         <Stack spacing={1}>
                           {Array.from(cycleMap.entries()).map(([cycle, arr]) => {
                             const cycleKey = `${flowcell}|${cycle}`;
                             const isOpenCycle = openCycles.has(cycleKey);
                             return (
-                              <Box key={cycle} sx={{ borderRadius: 1, p: 1, bgcolor: "#F9FAFB" }}>
+                              <Box key={cycle} sx={{ borderRadius: 1, p: 1 }}>
                                 <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                                   <Box>
                                     <Button onClick={() => toggleOpenCycle(flowcell, cycle)} sx={{ textTransform: "none", p: 0, minWidth: 0 }}>
-                                      <Typography sx={{ fontWeight: 500 }}>{cycle}</Typography>
-                                      <Typography sx={{ ml: 1, fontSize: "0.75rem", color: "text.secondary" }}>[{arr.length}]</Typography>
+                                      <Typography variant="body1">{cycle}</Typography>
+                                      <Typography variant="body2" sx={{ ml: 1}}>[{arr.length}]</Typography>
                                     </Button>
                                   </Box>
                                 </Box>
 
                                 <Collapse in={isOpenCycle} unmountOnExit>
-                                  <Box sx={{ pl: 4, pt: 1 }}>
+                                  <Box sx={{ pl: 1, pt: 1 }}>
                                     <Stack spacing={1}>
                                       {arr.map(({ sample, parsed }: any) => {
                                         const isSelected = sample.id !== undefined && selectedIds.has(sample.id);
@@ -415,7 +415,7 @@ export default function SamplePane() {
                                               userSelect: "none",
                                             }}
                                           >
-                                            <Typography variant="caption" color="text.secondary">
+                                            <Typography variant="body2">
                                               {parsed.displayName}
                                             </Typography>
                                           </Box>
@@ -534,13 +534,7 @@ export default function SamplePane() {
               const parsed = parseSampleNameToParts(s.name);
               return (
                 <Box key={s.id} sx={{ border: 1, borderColor: "grey.200", p: 1, borderRadius: 1, bgcolor: "#fff" }}>
-                  <Typography sx={{ fontWeight: 500 }}>{parsed.displayName}</Typography>
-                  <Typography variant="caption" color="text.secondary" display="block">
-                    {s.cell_type ?? "-"}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary" display="block">
-                    {s.date ?? "-"}
-                  </Typography>
+                  <Typography variant="body1">{parsed.displayName}</Typography>
                 </Box>
               );
             })}

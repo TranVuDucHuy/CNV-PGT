@@ -9,12 +9,6 @@ const theme = createTheme({
       light: colors.primary1Light,
       contrastText: colors.neutralWhite,
     },
-    primary2: {
-      main: colors.primary2,
-      dark: colors.primary2Dark,
-      light: colors.primary2Light,
-      contrastText: colors.neutralWhite,
-    },
     error: {
       main: colors.error,
     },
@@ -27,40 +21,33 @@ const theme = createTheme({
     fontFamily: "'IBM Plex Sans', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', Arial, sans-serif",
     // Style 1: CNV Analysis Dashboard (Heading 1)
     h1: {
-      fontSize: '20px',
+      fontSize: '22px',
       fontWeight: 700,
       lineHeight: 1.25,
       letterSpacing: '-0.5px',
-      color: '#111827', // Tailwind gray-900
+      color: colors.neutralBlack, 
     },
     // Style 2: Pane Titles & Dialog Bar Titles (Heading 2)
     h2: {
-      fontSize: '20px',
+      fontSize: '18px',
       fontWeight: 600,
       lineHeight: 1.3,
       letterSpacing: '-0.25px',
-      color: '#111827', // Tailwind gray-900
+      color: colors.neutralBlack,
     },
-    // Style 3: Pane content headings (Heading 3)
-    h3: {
-      fontSize: '16px',
-      fontWeight: 600,
-      lineHeight: 1.4,
-    },
-    // Style 4: Labels, placeholders (Heading 4 / subtitle)
-    h4: {
-      fontSize: '14px',
-      fontWeight: 600,
-      lineHeight: 1.4,
-    },
-    // Defaults for body text
+    // Defaults for Pane content headings
     body1: {
-      fontSize: '14px',
+      fontSize: '15px',
+      fontWeight: 600,
       lineHeight: 1.5,
+      color: colors.primary1Dark,
     },
+    // Defaults for Labels, placeholders
     body2: {
-      fontSize: '13px',
-      lineHeight: 1.4,
+      fontSize: '14px',
+      fontWeight: 400,
+      lineHeight: 1.5,
+      color: colors.neutralBlack,
     },
   },
 });

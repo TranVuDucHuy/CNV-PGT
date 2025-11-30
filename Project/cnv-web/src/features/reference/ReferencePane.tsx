@@ -7,22 +7,10 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { Plus, Minus } from "lucide-react";
-import {
-  useReferencesStore,
-  addReferences,
-  removeReferences,
-} from "./useReferences";
+import { useReferencesStore, addReferences, removeReferences } from "./useReferences";
 import { parseSampleNameToParts } from "@/features/sample/sampleUtils";
 import { SampleSummary } from "@/types/sample";
-import {
-  Box,
-  Button,
-  Checkbox,
-  Collapse,
-  IconButton,
-  Stack,
-  Typography,
-} from "@mui/material";
+import { Box, Button, Checkbox, Collapse, IconButton, Stack, Typography } from "@mui/material";
 import MUIAccordionPane from "@/components/MUIAccordionPane";
 import CenterDialog from "@/components/CenterDialog";
 
@@ -42,16 +30,11 @@ interface ReferencePaneProps {
   onRefresh?: () => Promise<void>;
 }
 
-export default function ReferencePane({
-  samples,
-  onRefresh,
-}: ReferencePaneProps) {
+export default function ReferencePane({ samples, onRefresh }: ReferencePaneProps) {
   const { referenceIds } = useReferencesStore();
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [selectedForAdd, setSelectedForAdd] = useState<Set<string>>(new Set());
-  const [selectedForRemove, setSelectedForRemove] = useState<Set<string>>(
-    new Set()
-  );
+  const [selectedForRemove, setSelectedForRemove] = useState<Set<string>>(new Set());
   const [openFlowcells, setOpenFlowcells] = useState<Set<string>>(new Set());
   const [openCycles, setOpenCycles] = useState<Set<string>>(new Set());
   const [lastClickedId, setLastClickedId] = useState<string | null>(null);
@@ -77,16 +60,9 @@ export default function ReferencePane({
     for (const sRaw of referenceSamples as SampleItem[]) {
       const s = sRaw as SampleItem;
       const fallbackParsed = parseSampleNameToParts(s.name);
-      const flowcell =
-        s.flowcell_id && s.flowcell_id !== "rand"
-          ? s.flowcell_id
-          : fallbackParsed.flowcell;
-      const cycle =
-        s.cycle_id && s.cycle_id !== "rand" ? s.cycle_id : fallbackParsed.cycle;
-      const embryo =
-        s.embryo_id && s.embryo_id !== "rand"
-          ? s.embryo_id
-          : fallbackParsed.embryo;
+      const flowcell = s.flowcell_id && s.flowcell_id !== "rand" ? s.flowcell_id : fallbackParsed.flowcell;
+      const cycle = s.cycle_id && s.cycle_id !== "rand" ? s.cycle_id : fallbackParsed.cycle;
+      const embryo = s.embryo_id && s.embryo_id !== "rand" ? s.embryo_id : fallbackParsed.embryo;
       const display = embryo;
 
       const parsed = { flowcell, cycle, embryo, displayName: display };
@@ -122,9 +98,7 @@ export default function ReferencePane({
           .sort()
           .forEach((c) => {
             const arr = cycles.get(c)!;
-            arr.sort((a, b) =>
-              a.parsed.displayName > b.parsed.displayName ? 1 : -1
-            );
+            arr.sort((a, b) => (a.parsed.displayName > b.parsed.displayName ? 1 : -1));
             sortedCycles.set(c, arr);
           });
         sortedMap.set(flow, sortedCycles);
@@ -154,16 +128,9 @@ export default function ReferencePane({
     for (const sRaw of availableSamples as SampleItem[]) {
       const s = sRaw as SampleItem;
       const fallbackParsed = parseSampleNameToParts(s.name);
-      const flowcell =
-        s.flowcell_id && s.flowcell_id !== "rand"
-          ? s.flowcell_id
-          : fallbackParsed.flowcell;
-      const cycle =
-        s.cycle_id && s.cycle_id !== "rand" ? s.cycle_id : fallbackParsed.cycle;
-      const embryo =
-        s.embryo_id && s.embryo_id !== "rand"
-          ? s.embryo_id
-          : fallbackParsed.embryo;
+      const flowcell = s.flowcell_id && s.flowcell_id !== "rand" ? s.flowcell_id : fallbackParsed.flowcell;
+      const cycle = s.cycle_id && s.cycle_id !== "rand" ? s.cycle_id : fallbackParsed.cycle;
+      const embryo = s.embryo_id && s.embryo_id !== "rand" ? s.embryo_id : fallbackParsed.embryo;
       const display = embryo;
 
       const parsed = { flowcell, cycle, embryo, displayName: display };
@@ -199,9 +166,7 @@ export default function ReferencePane({
           .sort()
           .forEach((c) => {
             const arr = cycles.get(c)!;
-            arr.sort((a, b) =>
-              a.parsed.displayName > b.parsed.displayName ? 1 : -1
-            );
+            arr.sort((a, b) => (a.parsed.displayName > b.parsed.displayName ? 1 : -1));
             sortedCycles.set(c, arr);
           });
         sortedMap.set(flow, sortedCycles);
@@ -224,16 +189,10 @@ export default function ReferencePane({
   };
 
   // Mảng flat để support Shift+Click range select - references
-  const flattenedReferences = useMemo(
-    () => flattenGroupedSamples(groupedReferences),
-    [groupedReferences]
-  );
+  const flattenedReferences = useMemo(() => flattenGroupedSamples(groupedReferences), [groupedReferences]);
 
   // Mảng flat để support Shift+Click range select - available samples
-  const flattenedAvailable = useMemo(
-    () => flattenGroupedSamples(groupedAvailable),
-    [groupedAvailable]
-  );
+  const flattenedAvailable = useMemo(() => flattenGroupedSamples(groupedAvailable), [groupedAvailable]);
 
   const handleAddClick = () => {
     setSelectedForAdd(new Set());
@@ -256,11 +215,7 @@ export default function ReferencePane({
     }
   };
 
-  const toggleSelect = (
-    id: string,
-    event?: React.MouseEvent,
-    mode: "remove" | "add" = "remove"
-  ) => {
+  const toggleSelect = (id: string, event?: React.MouseEvent, mode: "remove" | "add" = "remove") => {
     if (!id) return;
 
     const flattened = mode === "remove" ? flattenedReferences : flattenedAvailable;
@@ -275,9 +230,7 @@ export default function ReferencePane({
         const [min, max] = startIdx < endIdx ? [startIdx, endIdx] : [endIdx, startIdx];
         setSelected((prev) => {
           const next = new Set(prev);
-          const allSelected = Array.from({ length: max - min + 1 }, (_, i) => min + i).every(
-            (i) => flattened[i] && next.has(flattened[i].id)
-          );
+          const allSelected = Array.from({ length: max - min + 1 }, (_, i) => min + i).every((i) => flattened[i] && next.has(flattened[i].id));
           for (let i = min; i <= max; i++) {
             if (flattened[i]?.id) {
               if (allSelected) {
@@ -334,7 +287,12 @@ export default function ReferencePane({
         title="Add"
         variant="contained"
         size="small"
-        sx={{ minWidth: 0, px: 1, bgcolor: "#10B981", "&:hover": { bgcolor: "#059669" } }}
+        sx={{
+          minWidth: 0,
+          px: 1,
+          bgcolor: "#10B981",
+          "&:hover": { bgcolor: "#059669" },
+        }}
       >
         <Plus size={14} />
       </Button>
@@ -349,7 +307,12 @@ export default function ReferencePane({
         title="Remove"
         variant="contained"
         size="small"
-        sx={{ minWidth: 0, px: 1, bgcolor: "#EF4444", "&:hover": { bgcolor: "#DC2626" } }}
+        sx={{
+          minWidth: 0,
+          px: 1,
+          bgcolor: "#EF4444",
+          "&:hover": { bgcolor: "#DC2626" },
+        }}
       >
         <Minus size={14} />
       </Button>
@@ -366,41 +329,85 @@ export default function ReferencePane({
             </Typography>
           </Box>
         ) : (
-          <Box sx={{ maxHeight: "40vh", overflowY: "auto", pr: 1, scrollbarGutter: "stable" }}>
+          <Box
+            sx={{
+              maxHeight: "40vh",
+              overflowY: "scroll",
+              pr: 1,
+              scrollbarGutter: "stable",
+            }}
+          >
             <Stack spacing={1}>
               {Array.from(groupedReferences.entries()).map(([flowcell, cycleMap]) => {
                 const isOpenFlow = openFlowcells.has(flowcell);
                 const totalCount = Array.from(cycleMap.values()).flat().length;
                 return (
-                  <Box key={flowcell} sx={{ borderRadius: 1, border: 1, borderColor: "grey.200", bgcolor: "#fff", p: 1 }}>
-                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <Box key={flowcell} sx={{ bgcolor: "#fff", p: 1, borderRadius: 1, border: 1, borderColor: "grey.200" }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
+                    >
                       <Box>
                         <Button onClick={() => toggleOpenFlowcell(flowcell)} sx={{ textTransform: "none", p: 0, minWidth: 0 }}>
-                          <Typography sx={{ fontWeight: 600 }}>{flowcell}</Typography>
-                          <Typography sx={{ ml: 1, fontSize: "0.75rem", color: "text.secondary" }}>[{totalCount}]</Typography>
+                          <Typography variant="body1">{flowcell}</Typography>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              ml: 1,
+                              fontSize: "0.75rem",
+                              color: "text.secondary",
+                            }}
+                          >
+                            [{totalCount}]
+                          </Typography>
                         </Button>
                       </Box>
                     </Box>
 
                     <Collapse in={isOpenFlow} unmountOnExit>
-                      <Box sx={{ pl: 4, pt: 1 }}>
+                      <Box sx={{ pl: 1, pt: 1 }}>
                         <Stack spacing={1}>
                           {Array.from(cycleMap.entries()).map(([cycle, arr]) => {
                             const cycleKey = `${flowcell}|${cycle}`;
                             const isOpenCycle = openCycles.has(cycleKey);
                             return (
-                              <Box key={cycle} sx={{ borderRadius: 1, p: 1, bgcolor: "#F9FAFB" }}>
-                                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                              <Box key={cycle} sx={{ borderRadius: 1, p: 1 }}>
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                  }}
+                                >
                                   <Box>
-                                    <Button onClick={() => toggleOpenCycle(flowcell, cycle)} sx={{ textTransform: "none", p: 0, minWidth: 0 }}>
-                                      <Typography sx={{ fontWeight: 500 }}>{cycle}</Typography>
-                                      <Typography sx={{ ml: 1, fontSize: "0.75rem", color: "text.secondary" }}>[{arr.length}]</Typography>
+                                    <Button
+                                      onClick={() => toggleOpenCycle(flowcell, cycle)}
+                                      sx={{
+                                        textTransform: "none",
+                                        p: 0,
+                                        minWidth: 0,
+                                      }}
+                                    >
+                                      <Typography variant="body1">{cycle}</Typography>
+                                      <Typography
+                                        variant="body2"
+                                        sx={{
+                                          ml: 1,
+                                          fontSize: "0.75rem",
+                                          color: "text.secondary",
+                                        }}
+                                      >
+                                        [{arr.length}]
+                                      </Typography>
                                     </Button>
                                   </Box>
                                 </Box>
 
                                 <Collapse in={isOpenCycle} unmountOnExit>
-                                  <Box sx={{ pl: 4, pt: 1 }}>
+                                  <Box sx={{ pl: 1, pt: 1 }}>
                                     <Stack spacing={1}>
                                       {arr.map(({ sample, parsed }: any) => {
                                         const isSelected = sample.id !== undefined && selectedForRemove.has(sample.id);
@@ -424,9 +431,7 @@ export default function ReferencePane({
                                               userSelect: "none",
                                             }}
                                           >
-                                            <Typography variant="caption" color="text.secondary">
-                                              {parsed.displayName}
-                                            </Typography>
+                                            <Typography variant="body2">{parsed.displayName}</Typography>
                                           </Box>
                                         );
                                       })}
@@ -450,7 +455,11 @@ export default function ReferencePane({
       {/* Add Dialog */}
       <CenterDialog
         open={addDialogOpen}
-        title="Add Samples to Reference"
+        title={
+          <Typography component="h2" variant="h2">
+            Add Samples to Reference
+          </Typography>
+        }
         onClose={() => setAddDialogOpen(false)}
         onConfirm={handleAddConfirm}
         confirmLabel="Add"
@@ -464,40 +473,74 @@ export default function ReferencePane({
               </Typography>
             </Box>
           ) : (
-            <Box sx={{ maxHeight: "60vh", overflowY: "auto" }}>
-              <Stack spacing={2}>
+            <Box
+              sx={{
+                maxHeight: "40vh",
+                overflowY: "scroll",
+                pr: 1,
+                scrollbarGutter: "stable",
+                border: 1,
+                borderColor: "grey.200",
+                p: 1,
+                borderRadius: 1,
+              }}
+            >
+              <Stack spacing={1}>
                 {Array.from(groupedAvailable.entries()).map(([flowcell, cycleMap]) => {
                   const isOpenFlow = openFlowcells.has(flowcell);
                   return (
-                    <Box key={flowcell} sx={{ borderRadius: 1, border: 1, borderColor: "grey.200", bgcolor: "#fff", p: 1 }}>
-                      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <Box key={flowcell} sx={{ bgcolor: "#fff", p: 1, borderRadius: 1, border: 1, borderColor: "grey.200" }}>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                        }}
+                      >
                         <Box>
                           <Button onClick={() => toggleOpenFlowcell(flowcell)} sx={{ textTransform: "none", p: 0, minWidth: 0 }}>
-                            <Typography sx={{ fontWeight: 600 }}>{flowcell}</Typography>
-                            <Typography sx={{ ml: 1, fontSize: "0.75rem", color: "text.secondary" }}>[{Array.from(cycleMap.values()).flat().length}]</Typography>
+                            <Typography variant="body1">{flowcell}</Typography>
+                            <Typography variant="body2" sx={{ ml: 1 }}>
+                              [{Array.from(cycleMap.values()).flat().length}]
+                            </Typography>
                           </Button>
                         </Box>
                       </Box>
 
                       <Collapse in={isOpenFlow} unmountOnExit>
-                        <Box sx={{ pl: 4, pt: 1 }}>
+                        <Box sx={{ pl: 1, pt: 1 }}>
                           <Stack spacing={1}>
                             {Array.from(cycleMap.entries()).map(([cycle, arr]) => {
                               const cycleKey = `${flowcell}|${cycle}`;
                               const isOpenCycle = openCycles.has(cycleKey);
                               return (
-                                <Box key={cycle} sx={{ borderRadius: 1, p: 1, bgcolor: "#F9FAFB" }}>
-                                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                <Box key={cycle} sx={{ borderRadius: 1, p: 1 }}>
+                                  <Box
+                                    sx={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "space-between",
+                                    }}
+                                  >
                                     <Box>
-                                      <Button onClick={() => toggleOpenCycle(flowcell, cycle)} sx={{ textTransform: "none", p: 0, minWidth: 0 }}>
-                                        <Typography sx={{ fontWeight: 500 }}>{cycle}</Typography>
-                                        <Typography sx={{ ml: 1, fontSize: "0.75rem", color: "text.secondary" }}>[{arr.length}]</Typography>
+                                      <Button
+                                        onClick={() => toggleOpenCycle(flowcell, cycle)}
+                                        sx={{
+                                          textTransform: "none",
+                                          p: 0,
+                                          minWidth: 0,
+                                        }}
+                                      >
+                                        <Typography variant="body1">{cycle}</Typography>
+                                        <Typography variant="body2" sx={{ ml: 1 }}>
+                                          [{arr.length}]
+                                        </Typography>
                                       </Button>
                                     </Box>
                                   </Box>
 
                                   <Collapse in={isOpenCycle} unmountOnExit>
-                                    <Box sx={{ pl: 4, pt: 1 }}>
+                                    <Box sx={{ pl: 1, pt: 1 }}>
                                       <Stack spacing={1}>
                                         {arr.map(({ sample, parsed }: any) => {
                                           const isSelected = sample.id !== undefined && selectedForAdd.has(sample.id);
@@ -518,7 +561,7 @@ export default function ReferencePane({
                                                 userSelect: "none",
                                               }}
                                             >
-                                              <Typography variant="caption" color="text.secondary">
+                                              <Typography variant="body2" color="text.secondary">
                                                 {parsed.displayName}
                                               </Typography>
                                             </Box>

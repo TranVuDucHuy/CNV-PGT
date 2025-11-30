@@ -2,12 +2,12 @@
 const colors = {
   // primary blue (used as theme primary)
   // Màu chủ đạo 1 - Xanh Khoa Học
-  primary1Light: '#CADDFF', // Xanh Khoa Học (Light)
-  primary1: '#3A75C4',      // Xanh Khoa Học (Base / Dark)
+  primary1Light: '#e1eafa', // Xanh Khoa Học (Light)
+  primary1: '#1565C0',      // Xanh Khoa Học (Base / Dark)
   primary1Dark: '#2F5EA3',
 
   // Màu chủ đạo 2 - Hồng Hy Vọng
-  primary2Light: '#FEC5D5',
+  primary2Light: '#E9ECEF',
   primary2: '#E86A8D',
   primary2Dark: '#D24B6F',
 
@@ -27,7 +27,8 @@ const colors = {
   cnvNoChange: '#6B7280',      // Xám Trung Tính (No Change) - Dark
 
   // Nền & Khung
-  background: '#F9FAFB',
+  background1: '#F8F9FA',
+  background2: '#FFFFFF',
   border: '#D1D5DB',
 
   // Existing semantic aliases (kept for compatibility)
@@ -43,7 +44,7 @@ const colors = {
   // neutrals
   neutral: '#F3F4F6',
   neutralWhite: '#FFFFFF',
-  neutralBlack: '#171717',
+  neutralBlack: '#363636',
 };
 
 export default colors;
