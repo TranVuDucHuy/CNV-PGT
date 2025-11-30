@@ -285,16 +285,19 @@ export default function ReferencePane({ samples, onRefresh }: ReferencePaneProps
           handleAddClick();
         }}
         title="Add"
-        variant="contained"
         size="small"
         sx={{
           minWidth: 0,
-          px: 1,
-          bgcolor: "#10B981",
-          "&:hover": { bgcolor: "#059669" },
+          p: 0.5,
+          border: 2,
+          borderColor: "#10B981",
+          bgcolor: "transparent",
+          color: "#10B981",
+          "& svg": { color: "#10B981" },
+          "&:hover": { bgcolor: "#10B981", "& svg": { color: "#fff" } },
         }}
       >
-        <Plus size={14} />
+        <Plus size={16} />
       </Button>
 
       <Button
@@ -305,16 +308,19 @@ export default function ReferencePane({ samples, onRefresh }: ReferencePaneProps
           }
         }}
         title="Remove"
-        variant="contained"
         size="small"
         sx={{
           minWidth: 0,
-          px: 1,
-          bgcolor: "#EF4444",
-          "&:hover": { bgcolor: "#DC2626" },
+          p: 0.5,
+          border: 2,
+          borderColor: "#DC2626",
+          bgcolor: "transparent",
+          color: "#DC2626",
+          "& svg": { color: "#DC2626" },
+          "&:hover": { bgcolor: "#DC2626", "& svg": { color: "#fff" },},
         }}
       >
-        <Minus size={14} />
+        <Minus size={16} />
       </Button>
     </Stack>
   );

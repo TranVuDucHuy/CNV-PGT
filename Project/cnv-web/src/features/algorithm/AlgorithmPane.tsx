@@ -158,11 +158,19 @@ export default function AlgorithmPane() {
             e.stopPropagation();
             handleAdd();
           }}
-          variant="contained"
           size="small"
-          sx={{ minWidth: 0, px: 1, bgcolor: '#10B981', '&:hover': { bgcolor: '#059669' } }}
+          sx={{
+            minWidth: 0,
+            p: 0.5,
+            border: 2,
+            borderColor: "#10B981",
+            bgcolor: "transparent",
+            color: "#10B981",
+            "& svg": { color: "#10B981" },
+            "&:hover": { bgcolor: "#10B981", "& svg": { color: "#fff" } },
+          }}
         >
-          <Plus size={14} />
+          <Plus size={16} />
         </Button>
       </Tooltip>
 
@@ -174,11 +182,19 @@ export default function AlgorithmPane() {
               handleDelete();
             }
           }}
-          variant="contained"
           size="small"
-          sx={{ minWidth: 0, px: 1, bgcolor: '#EF4444', '&:hover': { bgcolor: '#DC2626' } }}
+          sx={{
+            minWidth: 0,
+            p: 0.5,
+            border: 2,
+            borderColor: "#DC2626",
+            bgcolor: "transparent",
+            color: "#DC2626",
+            "& svg": { color: "#DC2626" },
+            "&:hover": { bgcolor: "#DC2626", "& svg": { color: "#fff" },},
+          }}
         >
-          <Minus size={14} />
+          <Minus size={16} />
         </Button>
       </Tooltip>
 
@@ -189,18 +205,19 @@ export default function AlgorithmPane() {
               e.stopPropagation();
               handleRun();
             }}
-            variant="contained"
             size="small"
             disabled={!canRun}
             sx={{
               minWidth: 0,
-              px: 1,
-              bgcolor: canRun ? '#3B82F6' : '#9CA3AF',
-              '&:hover': { bgcolor: canRun ? '#2563EB' : '#9CA3AF' },
+              p: 0.5,
+              border: 2,
+              borderColor: canRun ? '#3B82F6' : '#9CA3AF',
+              bgcolor: "transparent",
+              '&:hover': { bgcolor: canRun ? '#3B82F6' : '#9CA3AF', "& svg": { color: "#fff" }},
               '&:disabled': { bgcolor: '#9CA3AF', cursor: 'not-allowed' },
             }}
           >
-            <StepForward size={14} />
+            <StepForward size={16} />
           </Button>
         </span>
       </Tooltip>

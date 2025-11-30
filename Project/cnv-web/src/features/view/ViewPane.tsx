@@ -2,7 +2,7 @@
 "use client";
 
 import React from "react";
-import { Box, Checkbox, Stack, Typography, IconButton } from "@mui/material";
+import { Box, Checkbox, Stack, Typography, IconButton, Button } from "@mui/material";
 import { Edit3 } from "lucide-react";
 import { useViewHandle } from "./viewHandle";
 import MUIAccordionPane from "@/components/MUIAccordionPane";
@@ -11,9 +11,23 @@ export default function ViewPane() {
   const { checked, toggle } = useViewHandle();
 
   const headerRight = (
-    <IconButton onClick={(e) => e.stopPropagation()} title="Edit" size="small" sx={{ bgcolor: "#3B82F6", color: "#fff", "&:hover": { bgcolor: "#2563EB" } }}>
-      <Edit3 size={16} />
-    </IconButton>
+      <Button
+        onClick={(e) => e.stopPropagation()}
+        title="Edit" 
+        size="small" 
+        sx={{ 
+                    minWidth: 0,
+          p: 0.5,
+          border: 2,
+          borderColor: "#3B82F6",
+          bgcolor: "transparent",
+          color: "#3B82F6",
+          "& svg": { color: "#3B82F6" },
+          "&:hover": { bgcolor: "#3B82F6", "& svg": { color: "#fff" },},
+        }}
+      >
+        <Edit3 size={16} />
+      </Button>
   );
 
   return (
