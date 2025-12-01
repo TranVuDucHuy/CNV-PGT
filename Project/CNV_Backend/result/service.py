@@ -390,6 +390,15 @@ class ResultService:
             )
 
             for segment in segments:
+                annotations = segment.annotation_for_segment
+                diseases = (
+                    [
+                        f"{ann['OMIM_phenotype']} ({ann['OMIM_ID']})"
+                        for ann in annotations[:10]
+                    ]
+                    if annotations and len(annotations) > 0
+                    else None
+                )          
                 aberration_segments.append(
                     AberrationSegmentInfo(
                         chromosome=segment.chromosome.value,
@@ -402,7 +411,7 @@ class ResultService:
                         mosaicism=segment.mosaicism,
                         aberration_code=segment.aberration_code,
                         assessment=segment.assessment.value,
-                        annotation_for_segment=segment.annotation_for_segment,
+                        annotation_for_segment= diseases,
                         man_change=segment.man_change,
                     )
                 )
@@ -524,7 +533,7 @@ class ResultService:
                             diseases=(
                                 [
                                     f"{ann['OMIM_phenotype']} ({ann['OMIM_ID']})"
-                                    for ann in annotations
+                                    for ann in annotations[:10]
                                 ]
                                 if annotations and len(annotations) > 0
                                 else None

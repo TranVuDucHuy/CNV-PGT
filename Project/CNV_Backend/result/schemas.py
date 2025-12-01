@@ -50,7 +50,7 @@ class AberrationSegmentInfo(BaseModel):
     mosaicism: float
     aberration_code: str
     assessment: str
-    annotation_for_segment: Optional[str] = None
+    annotation_for_segment: Optional[List[str]] = None
     man_change: Optional[bool] = None
 
 
