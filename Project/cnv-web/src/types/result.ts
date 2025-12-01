@@ -169,3 +169,34 @@ export function parseResultCreatedAt(
   const d = new Date(r.created_at);
   return isNaN(d.getTime()) ? null : d;
 }
+
+/* -------------------- CYCLE REPORT -------------------- */
+
+/** Tương ứng với lớp `CycleReportRequest` trong backend */
+export interface CycleReportRequest {
+  report_ids: string[];
+}
+
+/** Tương ứng với lớp `AberrationSummary` trong backend */
+export interface AberrationSummary {
+  code: string;
+  mosaic: number;
+  size?: number | null; // in Mbp
+  diseases?: string[] | null;
+  assessment?: string | null;
+}
+
+/** Tương ứng với lớp `EmbryoInfo` trong backend */
+export interface EmbryoInfo {
+  embryo_id: string;
+  cell_type: string;
+  call: string;
+  abberations: AberrationSummary[];
+}
+
+/** Tương ứng với lớp `CycleReportResponse` trong backend */
+export interface CycleReportResponse {
+  cycle_id: string;
+  flowcell_id: string;
+  embryos: EmbryoInfo[];
+}

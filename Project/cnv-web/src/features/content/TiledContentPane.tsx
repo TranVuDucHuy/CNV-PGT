@@ -1,4 +1,3 @@
-// ContentPane.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -6,7 +5,12 @@ import { useViewHandle } from "../view/viewHandle";
 import useResultHandle from "../result/resultHandle";
 import SampleBinTable from "./viewpanes/SampleBinTable";
 import SampleSegmentTable from "./viewpanes/SampleSegmentTable";
-import { ResultReportResponse, SampleBin, SampleSegment } from "@/types/result";
+import {
+  CycleReportResponse,
+  ResultReportResponse,
+  SampleBin,
+  SampleSegment,
+} from "@/types/result";
 import CNVChart from "./viewpanes/CNVChart";
 import DynamicStack from "@/components/DynamicStack";
 import { ResultReport } from "../result/ResultReport";
@@ -15,7 +19,11 @@ import {
   exportToXlsx,
   exportToDocx,
   exportToPdf,
+  exportCycleReportToDocx,
+  exportCycleReportToXlsx,
+  exportCycleReportToPdf,
 } from "@/utils/documentExporter";
+import { CycleReport } from "../result/CycleReport";
 
 const defaultHeights = {
   bin: 400,
@@ -38,6 +46,12 @@ export default function TiledContentPane() {
   const [reportLoading, setReportLoading] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
 
+  const [cycleReport, setCycleReport] = useState<CycleReportResponse | null>(
+    null
+  );
+  const [cycleReportLoading, setCycleReportLoading] = useState(false);
+  const [cycleReportError, setCycleReportError] = useState<string | null>(null);
+
   useEffect(() => {
     const srcBins = selectedResultDto?.bins ?? [];
     const srcSegments = selectedResultDto?.segments ?? [];
@@ -55,11 +69,25 @@ export default function TiledContentPane() {
       setResultReport(null);
       setReportError(null);
       setReportLoading(false);
-    } else {
-      console.log("Loading report as report view is checked");
-      loadReport();
+
+      setCycleReport(null);
+      setCycleReportError(null);
+      setCycleReportLoading(false);
+      return;
     }
+
+    Promise.all([loadReport(), loadCycleReport()]);
   }, [selectedResultDto]);
+
+  // helper for structured clone fallback
+  function structuredCloneSafe<T>(v: T): T {
+    try {
+      // @ts-ignore
+      return structuredClone(v);
+    } catch {
+      return JSON.parse(JSON.stringify(v));
+    }
+  }
 
   const loadReport = () => {
     if (!selectedResultDto) return;
@@ -80,15 +108,26 @@ export default function TiledContentPane() {
       });
   };
 
-  // helper for structured clone fallback
-  function structuredCloneSafe<T>(v: T): T {
-    try {
-      // @ts-ignore
-      return structuredClone(v);
-    } catch {
-      return JSON.parse(JSON.stringify(v));
-    }
-  }
+  const loadCycleReport = () => {
+    if (!selectedResultDto) return;
+
+    setCycleReportLoading(true);
+    setCycleReportError(null);
+
+    resultAPI
+      .getCycleReport([selectedResultDto.id])
+      .then((report) => {
+        console.log("Fetched cycle report successfully: ", report);
+        setCycleReport(report);
+      })
+      .catch((err: any) => {
+        console.error("Error fetching cycle report: ", err);
+        setCycleReportError(err.message || "Failed to fetch cycle report");
+      })
+      .finally(() => {
+        setCycleReportLoading(false);
+      });
+  };
 
   const items = useMemo(() => {
     const res = [];
@@ -137,6 +176,26 @@ export default function TiledContentPane() {
         ),
       });
     }
+
+    if (checked.cycleReport) {
+      res.push({
+        id: "cycleReport",
+        title: `Cycle Report ${selectedResultDto?.sample_name} - ${selectedResultDto?.algorithm_name}`,
+        initialHeight: defaultHeights.report,
+        content: (
+          <CycleReport
+            loading={cycleReportLoading}
+            error={cycleReportError}
+            report={cycleReport}
+            exportToDocx={exportCycleReportToDocx}
+            exportToXlsx={exportCycleReportToXlsx}
+            exportToPdf={exportCycleReportToPdf}
+            sx={{ height: "100%" }}
+          />
+        ),
+      });
+    }
+
     return res;
   }, [
     checked,
@@ -146,6 +205,9 @@ export default function TiledContentPane() {
     reportLoading,
     reportError,
     resultReport,
+    cycleReportLoading,
+    cycleReportError,
+    cycleReport,
   ]);
 
   // useEffect(() => {}, [bins, segments]);

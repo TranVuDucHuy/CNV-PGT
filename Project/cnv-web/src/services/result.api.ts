@@ -9,6 +9,8 @@ import {
   ResultSummary,
   ResultDto,
   ResultReportResponse,
+  CycleReportRequest,
+  CycleReportResponse,
 } from "@/types/result";
 
 export const resultAPI = {
@@ -77,5 +79,18 @@ export const resultAPI = {
    */
   async getReport(id: string): Promise<ResultReportResponse> {
     return fetchAPI<ResultReportResponse>(`/results/${id}/report`);
+  },
+
+  /**
+   * Lấy cycle report cho nhiều results
+   */
+  async getCycleReport(reportIds: string[]): Promise<CycleReportResponse> {
+    const request: CycleReportRequest = { report_ids: reportIds };
+    const res = await fetchAPI<CycleReportResponse>(`/results/cycle-report`, {
+      method: "POST",
+      body: JSON.stringify(request),
+    });
+    console.log("Cycle report response: ", res);
+    return res;
   },
 };
