@@ -520,7 +520,10 @@ class ResultService:
                             code=segment.aberration_code,
                             mosaic=segment.mosaicism,
                             size=segment.size / 1_000_000,  # Convert to Mbp
-                            diseases=segment.annotation_for_segment,
+                            diseases=[
+                                f"{ann['OMIM_phenotype']} ({ann['OMIM_ID']})"
+                                for ann in segment.annotation_for_segment
+                            ],
                             assessment=segment.assessment.value,
                         )
                     )
