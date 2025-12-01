@@ -8,6 +8,7 @@ export type ViewChecked = {
   segment: boolean;
   table: boolean;
   report: boolean;
+  cycleReport: boolean;
 };
 
 export interface ViewContextValue {
@@ -21,10 +22,13 @@ const defaultChecked: ViewChecked = {
   segment: false,
   table: false,
   report: false,
+  cycleReport: false,
 };
 
 // export explicitly in case other files reference ViewContext directly
-export const ViewContext = createContext<ViewContextValue | undefined>(undefined);
+export const ViewContext = createContext<ViewContextValue | undefined>(
+  undefined
+);
 
 export function ViewProvider(props: { children?: React.ReactNode }) {
   const [checked, setChecked] = useState<ViewChecked>(defaultChecked);

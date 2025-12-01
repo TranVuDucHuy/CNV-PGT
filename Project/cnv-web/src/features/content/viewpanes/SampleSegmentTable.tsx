@@ -11,6 +11,8 @@ import {
   TableSortLabel,
   SxProps,
   Theme,
+  Button, // Import Button
+  Box,    // Import Box
 } from "@mui/material";
 
 import { SampleSegment } from "@/types/result";
@@ -136,18 +138,7 @@ export default function SampleSegmentTable({
     }, {} as Record<ColId, number>)
   );
 
-  React.useEffect(() => {
-    console.log("[SST] mount - component mounted");
-    return () => {
-      console.log("[SST] unmount - component unmounted");
-    };
-  }, []);
-
-  React.useEffect(() => {
-    console.log("[SST] widths updated:", widths);
-  }, [widths]);
-
-  // ---- refs & pending (we keep refs but will update immediately)
+  // ---- refs & pending
   const resizingRef = React.useRef<ColId | null>(null);
   const resizeStartRef = React.useRef<{
     startX: number;
@@ -164,20 +155,11 @@ export default function SampleSegmentTable({
     null
   );
 
-  const getContainerRect = React.useCallback(() => {
-    const c = tableContainerRef.current;
-    if (!c) return null;
-    return c.getBoundingClientRect();
-  }, []);
-
   // immediate width update (no RAF) - simpler and reliable
   const scheduleWidthUpdateImmediate = React.useCallback(
     (col: ColId, width: number) => {
-      console.log("[SST] scheduleWidthUpdateImmediate", { col, width });
       setWidths((prev) => {
         const next = { ...prev, [col]: width };
-        // debug
-        // console.log("[SST] applied widths:", next);
         return next;
       });
     },
@@ -204,13 +186,6 @@ export default function SampleSegmentTable({
       const dx = clientX - rs.startX;
       const newW = Math.max(rs.minWidth, Math.round(rs.startWidth + dx));
 
-      console.log("[SST] internalPointerMove:", {
-        col,
-        clientX,
-        dx,
-        newW,
-        startWidth: rs.startWidth,
-      });
       scheduleWidthUpdateImmediate(col, newW);
       document.body.style.userSelect = "none";
     },
@@ -218,7 +193,6 @@ export default function SampleSegmentTable({
   );
 
   const internalPointerUp = React.useCallback(() => {
-    console.log("[SST] internalPointerUp - ending resize");
     resizingRef.current = null;
     resizeStartRef.current = null;
     guideRef.current = null;
@@ -237,7 +211,6 @@ export default function SampleSegmentTable({
   // fallback doc handlers
   const docMouseMove = React.useCallback(
     (ev: MouseEvent) => {
-      // console.log("[SST] doc mousemove", { clientX: ev.clientX });
       internalPointerMove(ev.clientX);
     },
     [internalPointerMove]
@@ -245,7 +218,6 @@ export default function SampleSegmentTable({
 
   const docMouseUp = React.useCallback(
     (ev: MouseEvent) => {
-      // console.log("[SST] doc mouseup");
       internalPointerUp();
     },
     [internalPointerUp]
@@ -266,20 +238,16 @@ export default function SampleSegmentTable({
     window.addEventListener("pointerup", onPointerUp);
     window.addEventListener("pointercancel", onPointerUp);
 
-    console.log("[SST] attached window pointer listeners");
-
     return () => {
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener("pointercancel", onPointerUp);
-      console.log("[SST] removed window pointer listeners");
     };
   }, [internalPointerMove, internalPointerUp]);
 
   // start resize
   const startResize = React.useCallback(
     (colId: ColId, clientX: number, minWidth = 60) => {
-      console.log("[SST] startResize", { colId, clientX, minWidth });
       resizingRef.current = colId;
       resizeStartRef.current = {
         startX: clientX,
@@ -299,9 +267,8 @@ export default function SampleSegmentTable({
       try {
         document.addEventListener("mousemove", docMouseMove);
         document.addEventListener("mouseup", docMouseUp);
-        console.log("[SST] attached document mouse listeners (fallback)");
       } catch (err) {
-        console.log("[SST] failed attach document listeners", err);
+        // ignore
       }
 
       document.body.style.userSelect = "none";
@@ -312,18 +279,11 @@ export default function SampleSegmentTable({
   const onResizerPointerDown =
     (colId: ColId, minWidth = 60) =>
     (e: React.PointerEvent) => {
-      console.log("[SST] resizer onPointerDown event", {
-        colId,
-        pointerType: e.pointerType,
-        button: (e as any).button,
-        clientX: e.clientX,
-      });
       if (e.pointerType === "mouse" && e.button !== 0) return;
       try {
         (e.currentTarget as Element).setPointerCapture(e.pointerId);
-        console.log("[SST] setPointerCapture ok");
       } catch (err) {
-        console.log("[SST] setPointerCapture failed", err);
+        // ignore
       }
       startResize(colId, e.clientX, minWidth);
       e.stopPropagation();
@@ -333,11 +293,6 @@ export default function SampleSegmentTable({
   const onResizerMouseDown =
     (colId: ColId, minWidth = 60) =>
     (e: React.MouseEvent<HTMLDivElement>) => {
-      console.log("[SST] resizer onMouseDown (fallback)", {
-        colId,
-        button: e.button,
-        clientX: e.clientX,
-      });
       if (e.button !== 0) return;
       e.currentTarget.focus?.();
       startResize(colId, e.clientX, minWidth);
@@ -358,20 +313,87 @@ export default function SampleSegmentTable({
 
   const RESIZER_HIT = 16;
 
+  // --- CSV Export Logic ---
+  const handleExportCSV = () => {
+    const headers = [
+      "Chromosome",
+      "Start",
+      "End",
+      "Copy #",
+      "Confidence",
+      "Manual Change",
+    ];
+    const csvContent = sortedRows.map((row) => {
+      return [
+        row.chromosome,
+        row.start,
+        row.end,
+        row.copy_number,
+        row.confidence != null ? Number(row.confidence).toFixed(4) : "",
+        row.man_change ? "Yes" : "No",
+      ].join(",");
+    });
+    const csvString = [headers.join(","), ...csvContent].join("\n");
+    const blob = new Blob(["\uFEFF" + csvString], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute(
+      "download",
+      `sample_segment_export_${new Date().toISOString().slice(0, 10)}.csv`
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <Paper
       className={`space-y-3 ${fullHeight ? "w-full h-full" : "max-h-[120vh]"}`}
       style={
         fullHeight ? { display: "flex", flexDirection: "column" } : undefined
       }
-      sx={{ overflow: "auto", ...sx }}
+      sx={{ overflow: "hidden", ...sx }} // Đổi thành hidden để toolbar cố định
     >
+      {/* --- TOOLBAR --- */}
+      <Box
+        sx={{
+          p: 1,
+          pr: 2,
+          display: "flex",
+          justifyContent: "flex-end",
+          borderBottom: "1px solid #e0e0e0",
+          flexShrink: 0, // Không bị co lại
+        }}
+      >
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={handleExportCSV}
+          sx={{
+            fontSize: "0.75rem",
+            padding: "2px 8px",
+            minWidth: "auto",
+            height: "28px",
+            textTransform: "none",
+          }}
+        >
+          Export CSV
+        </Button>
+      </Box>
+
       <TableContainer
         ref={tableContainerRef}
         style={{
-          ...(fullHeight ? { height: "100%" } : {}),
+          // Điều chỉnh chiều cao cho phần còn lại
+          height: fullHeight ? "100%" : undefined,
+          maxHeight: fullHeight ? undefined : "120vh",
           overflowX: "auto",
+          overflowY: "auto",
           position: "relative",
+          flexGrow: 1, // Chiếm phần còn lại của Paper
         }}
       >
         {/* Guide */}
@@ -393,7 +415,7 @@ export default function SampleSegmentTable({
 
         <Table
           size={dense ? "small" : "medium"}
-          stickyHeader={!!fullHeight}
+          stickyHeader
           style={{ tableLayout: "fixed", width: "100%" }}
         >
           <colgroup>
@@ -521,7 +543,9 @@ export default function SampleSegmentTable({
                   {r.copy_number}
                 </TableCell>
                 <TableCell align="right" style={cellStyle("confidence")}>
-                  {r.confidence != null ? Number(r.confidence).toFixed(4) : "-"}
+                  {r.confidence != null
+                    ? Number(r.confidence).toFixed(4)
+                    : "-"}
                 </TableCell>
                 <TableCell style={cellStyle("man_change")}>
                   {r.man_change ? "Yes" : "No"}

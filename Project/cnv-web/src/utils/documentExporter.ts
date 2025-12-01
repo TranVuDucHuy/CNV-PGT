@@ -1,4 +1,4 @@
-import { ResultReportResponse } from "@/types/result";
+import { ResultReportResponse, CycleReportResponse } from "@/types/result";
 import * as XLSX from "xlsx";
 import {
   Document,
@@ -528,6 +528,407 @@ export const exportToPdf = (data: ResultReportResponse) => {
 
   // Save PDF
   const fileName = `CNV_Report_${data.sample.embryo_id}_${
+    new Date().toISOString().split("T")[0]
+  }.pdf`;
+  doc.save(fileName);
+};
+
+/**
+ * Export CycleReportResponse to Excel (XLSX) format
+ */
+export const exportCycleReportToXlsx = (data: CycleReportResponse) => {
+  const workbook = XLSX.utils.book_new();
+  const allData: any[][] = [];
+
+  // Title
+  allData.push(["CNV Cycle Report"]);
+  allData.push([]);
+
+  // Cycle Information
+  allData.push(["Flowcell ID", data.flowcell_id]);
+  allData.push(["Cycle ID", data.cycle_id]);
+  allData.push([]);
+
+  // Embryos Overview Table
+  allData.push(["Embryo Overview"]);
+  allData.push(["Embryo ID", "Cell Type", "Call", "Aberration Codes"]);
+  data.embryos.forEach((embryo) => {
+    const aberrationCodes = embryo.abberations.map((a) => a.code).join(", ");
+    allData.push([
+      embryo.embryo_id,
+      embryo.cell_type,
+      embryo.call,
+      aberrationCodes || "None",
+    ]);
+  });
+  allData.push([]);
+
+  // Aberration Details Table
+  allData.push(["Aberration Details"]);
+  allData.push([
+    "Embryo ID",
+    "Aberration",
+    "Mosaic",
+    "Size (Mbp)",
+    "Diseases",
+    "Assessment",
+  ]);
+  data.embryos.forEach((embryo) => {
+    embryo.abberations.forEach((aberration) => {
+      allData.push([
+        embryo.embryo_id,
+        aberration.code,
+        aberration.mosaic,
+        aberration.size ?? "N/A",
+        aberration.diseases?.join(", ") ?? "N/A",
+        aberration.assessment ?? "N/A",
+      ]);
+    });
+  });
+
+  const sheet = XLSX.utils.aoa_to_sheet(allData);
+  XLSX.utils.book_append_sheet(workbook, sheet, "Cycle Report");
+
+  // Generate file and trigger download
+  const fileName = `Cycle_Report_${data.cycle_id}_${
+    new Date().toISOString().split("T")[0]
+  }.xlsx`;
+  XLSX.writeFile(workbook, fileName);
+};
+
+/**
+ * Export CycleReportResponse to Word (DOCX) format
+ */
+export const exportCycleReportToDocx = (data: CycleReportResponse) => {
+  const doc = new Document({
+    sections: [
+      {
+        children: [
+          // Title
+          new Paragraph({
+            text: "CNV Cycle Report",
+            heading: "Heading1",
+            alignment: AlignmentType.CENTER,
+          }),
+          new Paragraph({ text: "" }),
+
+          // Cycle Information
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: [
+              createTableRow("Flowcell ID", data.flowcell_id),
+              createTableRow("Cycle ID", data.cycle_id),
+            ],
+          }),
+          new Paragraph({ text: "" }),
+
+          // Embryo Overview Section
+          new Paragraph({
+            text: "Embryo Overview",
+            heading: "Heading2",
+          }),
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: [
+              new TableRow({
+                children: [
+                  new TableCell({
+                    children: [
+                      new Paragraph({
+                        children: [
+                          new TextRun({ text: "Embryo ID", bold: true }),
+                        ],
+                      }),
+                    ],
+                  }),
+                  new TableCell({
+                    children: [
+                      new Paragraph({
+                        children: [
+                          new TextRun({ text: "Cell Type", bold: true }),
+                        ],
+                      }),
+                    ],
+                  }),
+                  new TableCell({
+                    children: [
+                      new Paragraph({
+                        children: [new TextRun({ text: "Call", bold: true })],
+                      }),
+                    ],
+                  }),
+                  new TableCell({
+                    children: [
+                      new Paragraph({
+                        children: [
+                          new TextRun({ text: "Aberration Codes", bold: true }),
+                        ],
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+              ...data.embryos.map((embryo) => {
+                const aberrationCodes = embryo.abberations
+                  .map((a) => a.code)
+                  .join(", ");
+                return new TableRow({
+                  children: [
+                    new TableCell({
+                      children: [new Paragraph(embryo.embryo_id)],
+                    }),
+                    new TableCell({
+                      children: [new Paragraph(embryo.cell_type)],
+                    }),
+                    new TableCell({
+                      children: [new Paragraph(embryo.call)],
+                    }),
+                    new TableCell({
+                      children: [new Paragraph(aberrationCodes || "None")],
+                    }),
+                  ],
+                });
+              }),
+            ],
+          }),
+          new Paragraph({ text: "" }),
+
+          // Aberration Details Section
+          new Paragraph({
+            text: "Aberration Details",
+            heading: "Heading2",
+          }),
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: [
+              new TableRow({
+                children: [
+                  new TableCell({
+                    children: [
+                      new Paragraph({
+                        children: [
+                          new TextRun({ text: "Embryo ID", bold: true }),
+                        ],
+                      }),
+                    ],
+                  }),
+                  new TableCell({
+                    children: [
+                      new Paragraph({
+                        children: [
+                          new TextRun({ text: "Aberration", bold: true }),
+                        ],
+                      }),
+                    ],
+                  }),
+                  new TableCell({
+                    children: [
+                      new Paragraph({
+                        children: [new TextRun({ text: "Mosaic", bold: true })],
+                      }),
+                    ],
+                  }),
+                  new TableCell({
+                    children: [
+                      new Paragraph({
+                        children: [
+                          new TextRun({ text: "Size (Mbp)", bold: true }),
+                        ],
+                      }),
+                    ],
+                  }),
+                  new TableCell({
+                    children: [
+                      new Paragraph({
+                        children: [
+                          new TextRun({ text: "Diseases", bold: true }),
+                        ],
+                      }),
+                    ],
+                  }),
+                  new TableCell({
+                    children: [
+                      new Paragraph({
+                        children: [
+                          new TextRun({ text: "Assessment", bold: true }),
+                        ],
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+              ...data.embryos.flatMap((embryo) =>
+                embryo.abberations.map(
+                  (aberration) =>
+                    new TableRow({
+                      children: [
+                        new TableCell({
+                          children: [new Paragraph(embryo.embryo_id)],
+                        }),
+                        new TableCell({
+                          children: [new Paragraph(aberration.code)],
+                        }),
+                        new TableCell({
+                          children: [new Paragraph(String(aberration.mosaic))],
+                        }),
+                        new TableCell({
+                          children: [
+                            new Paragraph(
+                              aberration.size != null
+                                ? String(aberration.size)
+                                : "N/A"
+                            ),
+                          ],
+                        }),
+                        new TableCell({
+                          children: [
+                            new Paragraph(
+                              aberration.diseases?.join(", ") ?? "N/A"
+                            ),
+                          ],
+                        }),
+                        new TableCell({
+                          children: [
+                            new Paragraph(aberration.assessment ?? "N/A"),
+                          ],
+                        }),
+                      ],
+                    })
+                )
+              ),
+            ],
+          }),
+        ],
+      },
+    ],
+  });
+
+  // Generate and download
+  Packer.toBlob(doc).then((blob) => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `Cycle_Report_${data.cycle_id}_${
+      new Date().toISOString().split("T")[0]
+    }.docx`;
+    link.click();
+    URL.revokeObjectURL(url);
+  });
+};
+
+/**
+ * Export CycleReportResponse to PDF format
+ */
+export const exportCycleReportToPdf = (data: CycleReportResponse) => {
+  const doc = new jsPDF();
+  let yPosition = 20;
+
+  // Title
+  doc.setFontSize(18);
+  doc.setFont("helvetica", "bold");
+  doc.text("CNV Cycle Report", 105, yPosition, { align: "center" });
+  yPosition += 15;
+
+  // Cycle Information
+  const cycleInfoData = [
+    ["Flowcell ID", data.flowcell_id],
+    ["Cycle ID", data.cycle_id],
+  ];
+
+  autoTable(doc, {
+    startY: yPosition,
+    head: [],
+    body: cycleInfoData,
+    theme: "grid",
+    styles: { fontSize: 10 },
+    columnStyles: {
+      0: { fontStyle: "bold", cellWidth: 50 },
+      1: { cellWidth: 130 },
+    },
+  });
+
+  yPosition = (doc as any).lastAutoTable.finalY + 10;
+
+  // Embryo Overview
+  doc.setFontSize(14);
+  doc.setFont("helvetica", "bold");
+  doc.text("Embryo Overview", 14, yPosition);
+  yPosition += 5;
+
+  const embryoOverviewData = data.embryos.map((embryo) => {
+    const aberrationCodes = embryo.abberations.map((a) => a.code).join(", ");
+    return [
+      embryo.embryo_id,
+      embryo.cell_type,
+      embryo.call,
+      aberrationCodes || "None",
+    ];
+  });
+
+  autoTable(doc, {
+    startY: yPosition,
+    head: [["Embryo ID", "Cell Type", "Call", "Aberration Codes"]],
+    body: embryoOverviewData,
+    theme: "striped",
+    styles: { fontSize: 9 },
+    headStyles: { fillColor: [66, 139, 202] },
+  });
+
+  yPosition = (doc as any).lastAutoTable.finalY + 10;
+
+  // Aberration Details
+  if (yPosition > 250) {
+    doc.addPage();
+    yPosition = 20;
+  }
+
+  doc.setFontSize(14);
+  doc.setFont("helvetica", "bold");
+  doc.text("Aberration Details", 14, yPosition);
+  yPosition += 5;
+
+  const aberrationDetailsData: any[] = [];
+  data.embryos.forEach((embryo) => {
+    embryo.abberations.forEach((aberration) => {
+      aberrationDetailsData.push([
+        embryo.embryo_id,
+        aberration.code,
+        String(aberration.mosaic),
+        aberration.size != null ? String(aberration.size) : "N/A",
+        aberration.diseases?.join(", ") ?? "N/A",
+        aberration.assessment ?? "N/A",
+      ]);
+    });
+  });
+
+  autoTable(doc, {
+    startY: yPosition,
+    head: [
+      [
+        "Embryo ID",
+        "Aberration",
+        "Mosaic",
+        "Size (Mbp)",
+        "Diseases",
+        "Assessment",
+      ],
+    ],
+    body: aberrationDetailsData,
+    theme: "striped",
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [66, 139, 202] },
+    columnStyles: {
+      0: { cellWidth: 25 },
+      1: { cellWidth: 30 },
+      2: { cellWidth: 20 },
+      3: { cellWidth: 25 },
+      4: { cellWidth: 40 },
+      5: { cellWidth: 40 },
+    },
+  });
+
+  // Save PDF
+  const fileName = `Cycle_Report_${data.cycle_id}_${
     new Date().toISOString().split("T")[0]
   }.pdf`;
   doc.save(fileName);

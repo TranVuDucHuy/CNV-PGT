@@ -2,7 +2,7 @@ from sqlalchemy import Column, String, Date, ForeignKey, JSON, Integer
 from sqlalchemy.orm import relationship
 
 from database import Base
-import datetime
+from datetime import datetime
 
 
 class Algorithm(Base):
@@ -12,12 +12,14 @@ class Algorithm(Base):
     name = Column(String(128), index=True, nullable=False)
     version = Column(String(64), nullable=False)
     description = Column(String(1024), nullable=True)
-    upload_date = Column(Date, nullable=False, default=datetime.datetime.now)
+    upload_date = Column(Date, nullable=False, default=datetime.now)
     input_class = Column(String(256), nullable=True)
     output_class = Column(String(256), nullable=True)
     exe_class = Column(String(256), nullable=True)
     references_required = Column(Integer, nullable=False, default=0)
-    last_parameter_id = Column(String(64), nullable=True)  # Theo dõi parameter set mới nhất
+    last_parameter_id = Column(
+        String(64), nullable=True
+    )  # Theo dõi parameter set mới nhất
 
     parameters = relationship(
         "AlgorithmParameter",

@@ -16,12 +16,8 @@ from typing import List
 from sqlalchemy.orm import Session
 from database import get_db
 from .service import ResultService
-from .schemas import ResultSummary
-from .schemas import ResultDto
-from .schemas import ResultReportResponse
+from .schemas import ResultSummary, ResultDto, ResultReportResponse, CycleReportRequest
 from common.schemas import BasicResponse
-from database import SessionLocal
-from aberration.service import AberrationService
 import logging
 
 logger = logging.getLogger(__name__)
@@ -96,7 +92,7 @@ def get_result(result_id: str, db: Session = Depends(get_db)):
 @router.get("/{result_id}/report", response_model=ResultReportResponse)
 def get_result_report(result_id: str, db: Session = Depends(get_db)):
     try:
-        report = ResultService.get_mock_report(db=db, result_id=result_id)
+        report = ResultService.get_report(db=db, result_id=result_id)
         return report
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
@@ -128,3 +124,12 @@ def start_result_annotation(result_id: str, background_tasks: BackgroundTasks, d
     except Exception as e:
         logger.exception(e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal error")
+
+
+@router.post("/cycle-report")
+def cycle_report(req: CycleReportRequest, db: Session = Depends(get_db)):
+    try:
+        report = ResultService.get_cycle_report(db=db, report_ids=req.report_ids)
+        return report
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))

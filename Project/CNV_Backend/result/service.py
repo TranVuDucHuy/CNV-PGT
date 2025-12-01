@@ -4,7 +4,7 @@ from typing import Iterator, Tuple, Optional
 from datetime import datetime
 from sqlalchemy import select
 from uuid import uuid4
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from .models import Result, SampleSegment, SampleBin
 from algorithm.plugin import (
     BaseOutput,
@@ -12,6 +12,7 @@ from algorithm.plugin import (
     SampleBin as AlgoSampleBin,
 )
 from algorithm.models import Algorithm, AlgorithmParameter
+from aberration.models import Aberration
 from .schemas import (
     ResultDto,
     ResultSummary,
@@ -21,6 +22,9 @@ from .schemas import (
     AlgorithmParameterInfo,
     AberrationInfo,
     AberrationSegmentInfo,
+    AberrationSummary,
+    EmbryoInfo,
+    CycleReportResponse,
 )
 from common.models import Chromosome
 from sample.models import Sample
@@ -399,6 +403,7 @@ class ResultService:
                         aberration_code=segment.aberration_code,
                         assessment=segment.assessment.value,
                         annotation_for_segment=segment.annotation_for_segment,
+                        man_change=segment.man_change,
                     )
                 )
 
@@ -459,6 +464,85 @@ class ResultService:
             sample=sample_info,
             algorithm=algorithm_info,
             aberration=aberration_info,
+        )
+
+    @staticmethod
+    def get_cycle_report(db: Session, report_ids: list[str]) -> CycleReportResponse:
+        results = db.query(Result).filter(Result.id.in_(report_ids)).all()
+        if not results:
+            raise ValueError("No results found for the provided report IDs")
+
+        sample_ids = [r.sample_id for r in results]
+        samples = db.query(Sample).filter(Sample.id.in_(sample_ids)).distinct().all()
+
+        if not samples:
+            raise ValueError("No samples found for the provided report IDs")
+
+        sample = samples[0]
+        cycle_id = sample.cycle_id
+        flowcell_id = sample.flowcell_id
+
+        sample_map = {sample.id: sample}
+        # Validate all samples belong to the same cycle and flowcell
+        for i in range(1, len(samples)):
+            sample = samples[i]
+            if sample.cycle_id != cycle_id:
+                raise ValueError("All samples must belong to the same cycle")
+            if sample.flowcell_id != flowcell_id:
+                raise ValueError("All samples must belong to the same flowcell")
+
+            sample_map[sample.id] = sample
+
+        aberrations = (
+            db.execute(
+                select(Aberration)
+                .where(Aberration.result_id.in_(report_ids))
+                .options(selectinload(Aberration.aberration_segments))
+            )
+            .scalars()
+            .all()
+        )
+
+        aberration_result_map = {}
+        for ab in aberrations:
+            aberration_result_map[ab.result_id] = ab
+
+        embryos = []
+        for result in results:
+            sample = sample_map[result.sample_id]
+            aberration = aberration_result_map.get(result.id, None)
+
+            abberations_summary = []
+            if aberration:
+                for segment in aberration.aberration_segments:
+                    annotations = segment.annotation_for_segment
+                    abberations_summary.append(
+                        AberrationSummary(
+                            code=segment.aberration_code,
+                            mosaic=segment.mosaicism,
+                            size=segment.size / 1_000_000,  # Convert to Mbp
+                            diseases=(
+                                [
+                                    f"{ann['OMIM_phenotype']} ({ann['OMIM_ID']})"
+                                    for ann in annotations
+                                ]
+                                if annotations and len(annotations) > 0
+                                else None
+                            ),
+                            assessment=segment.assessment.value,
+                        )
+                    )
+            embryos.append(
+                EmbryoInfo(
+                    embryo_id=sample.embryo_id,
+                    cell_type=sample.cell_type.value,
+                    call="Abnormal" if aberration else "Normal",
+                    abberations=abberations_summary,
+                )
+            )
+
+        return CycleReportResponse(
+            cycle_id=cycle_id, flowcell_id=flowcell_id, embryos=embryos
         )
 
     @staticmethod

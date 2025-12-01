@@ -43,7 +43,7 @@ class Result(Base):
     )
     created_at = Column(DateTime, default=datetime.now, nullable=False)
 
-    sample = relationship("Sample", back_populates="results")
+    sample = relationship("Sample", back_populates="results", uselist=False)
     algorithm = relationship("Algorithm", back_populates="results")
     algorithm_parameter = relationship("AlgorithmParameter", back_populates="results")
     segments = relationship(

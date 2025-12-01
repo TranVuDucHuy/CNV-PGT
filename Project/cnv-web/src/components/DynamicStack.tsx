@@ -1,6 +1,14 @@
-import { Box, SxProps, Theme, Typography } from "@mui/material";
+import {
+  Box,
+  IconButton,
+  Stack,
+  SxProps,
+  Theme,
+  Typography,
+} from "@mui/material";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { Resizable } from "re-resizable";
+import CloseIcon from "@mui/icons-material/Close";
 
 export type DynamicStackDirection = "row" | "column";
 
@@ -11,6 +19,7 @@ export interface DynamicStackItem<T = unknown> {
   initialHeight?: string | number;
   minHeight?: string | number;
   maxHeight?: string | number;
+  onClose?: () => void;
 }
 
 export interface DynamicStackProps<T = unknown> {
@@ -126,31 +135,44 @@ export const DynamicStack = <T,>({
           }}
         >
           <Box
-            onMouseDown={
-              enableDrag ? (e) => handleMouseDown(e, item.id) : undefined
-            }
             sx={{
-              cursor: enableDrag ? "move" : "default",
               display: "flex",
               alignItems: "center",
-              justifyContent: "space-between",
-              px: 1,
-              py: 0.5,
+              flexDirection: "row",
+              bgcolor: "primary1.light",
               borderTopLeftRadius: 6,
               borderTopRightRadius: 6,
               borderBottomLeftRadius: 0,
               borderBottomRightRadius: 0,
-              bgcolor: "#ccc",
-              userSelect: "none",
             }}
           >
-            <Typography
-              variant="subtitle2"
-              noWrap
-              sx={{ flex: 1, minWidth: 0 }}
+            <Box
+              onMouseDown={
+                enableDrag ? (e) => handleMouseDown(e, item.id) : undefined
+              }
+              sx={{
+                cursor: enableDrag ? "move" : "default",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                px: 1,
+                py: 0.5,
+
+                userSelect: "none",
+                flexGrow: 1,
+              }}
             >
-              {item.title}
-            </Typography>
+              <Typography
+                variant="subtitle2"
+                noWrap
+                sx={{ flex: 1, minWidth: 0 }}
+              >
+                {item.title}
+              </Typography>
+            </Box>
+            <IconButton onClick={item.onClose} size="small">
+              <CloseIcon />
+            </IconButton>
           </Box>
 
           <Box

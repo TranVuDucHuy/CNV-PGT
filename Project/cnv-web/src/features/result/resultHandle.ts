@@ -6,7 +6,7 @@ import { resultAPI } from "@/services";
 import { ResultSummary, ResultDto } from "@/types/result";
 import { Algorithm } from "@/types/algorithm";
 // Import Redux actions và selector
-import { setResults,clearSelection } from "@/utils/appSlice";
+import { setResults, clearSelection } from "@/utils/appSlice";
 import { RootState } from "@/utils/store";
 
 export interface UseSampleHandleReturn {
@@ -29,15 +29,21 @@ export interface UseSampleHandleReturn {
   getAll: () => Promise<ResultSummary[]>;
   setAlgo: (al: Algorithm) => void;
   setSelectedResultId: (id: string | null) => void;
+  selectedResultIds: string[];
 }
 
 // ---------- internal hook ----------
 export function useInternalResultHandle(): UseSampleHandleReturn {
   const dispatch = useDispatch();
-  
+
   // Lấy results từ Redux thay vì useState local
   // Lưu ý: Đảm bảo type Result trong Redux khớp với ResultSummary hoặc ép kiểu
-  const results = useSelector((state: RootState) => state.app.results) as unknown as ResultSummary[];
+  const results = useSelector(
+    (state: RootState) => state.app.results
+  ) as unknown as ResultSummary[];
+  const selectedResultIds = useSelector(
+    (state: RootState) => state.app.selectedResults
+  ) as string[];
 
   // Các state local khác vẫn giữ nguyên (file upload, logic UI tạm thời)
   const [binFile, setBinFile] = useState<File | null>(null);
@@ -49,22 +55,25 @@ export function useInternalResultHandle(): UseSampleHandleReturn {
   const [resultDtos, setResultDtos] = useState<ResultDto[]>([]);
   const [selectedResultId, setSelectedResultId] = useState<string | null>(null);
 
-  const fetchDtosFromSummaries = useCallback(async (summaries: ResultSummary[]) => {
-    const promises = summaries.map(async (s) => {
-      const id = s.id;
-      if (id === undefined || id === null) return null;
-      try {
-        const dto = await resultAPI.getById(String(id));
-        return dto as ResultDto;
-      } catch (err) {
-        console.error("Failed to fetch dto for id", id, err);
-        return null;
-      }
-    });
+  const fetchDtosFromSummaries = useCallback(
+    async (summaries: ResultSummary[]) => {
+      const promises = summaries.map(async (s) => {
+        const id = s.id;
+        if (id === undefined || id === null) return null;
+        try {
+          const dto = await resultAPI.getById(String(id));
+          return dto as ResultDto;
+        } catch (err) {
+          console.error("Failed to fetch dto for id", id, err);
+          return null;
+        }
+      });
 
-    const maybeDtos = await Promise.all(promises);
-    return maybeDtos.filter((d): d is ResultDto => d !== null);
-  }, []);
+      const maybeDtos = await Promise.all(promises);
+      return maybeDtos.filter((d): d is ResultDto => d !== null);
+    },
+    []
+  );
 
   const refresh = useCallback(async () => {
     try {
@@ -72,7 +81,7 @@ export function useInternalResultHandle(): UseSampleHandleReturn {
       setError(null);
 
       const all = (await resultAPI.getAll()) ?? [];
-      
+
       // THAY ĐỔI QUAN TRỌNG: Dispatch lên Redux
       dispatch(setResults(all as any[])); // Ép kiểu nếu type Redux chưa khớp hoàn toàn
 
@@ -93,7 +102,8 @@ export function useInternalResultHandle(): UseSampleHandleReturn {
       try {
         await refresh();
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to load results";
+        const message =
+          err instanceof Error ? err.message : "Failed to load results";
         setError(message);
       } finally {
         setLoading(false);
@@ -105,7 +115,13 @@ export function useInternalResultHandle(): UseSampleHandleReturn {
     if (!binFile || !segmentFile || !algo) return;
 
     try {
-      await resultAPI.create(binFile, segmentFile, algo.id, algo.parameters?.[0].id, createdAt || undefined);
+      await resultAPI.create(
+        binFile,
+        segmentFile,
+        algo.id,
+        algo.parameters?.[0].id,
+        createdAt || undefined
+      );
       await refresh();
     } catch (err) {
       console.error("Failed to upload result file:", err);
@@ -114,7 +130,8 @@ export function useInternalResultHandle(): UseSampleHandleReturn {
   }, [binFile, segmentFile, algo, createdAt, refresh]);
 
   const removeResults = useCallback(
-    async (ids: string[]) => { // Nhận mảng string (từ Redux selectedResults)
+    async (ids: string[]) => {
+      // Nhận mảng string (từ Redux selectedResults)
       try {
         const promises = ids.map(async (id) => {
           if (!id) return;
@@ -126,7 +143,7 @@ export function useInternalResultHandle(): UseSampleHandleReturn {
         });
 
         await Promise.all(promises);
-        
+
         // Sau khi xóa xong, clear selection trong Redux và refresh lại list
         dispatch(clearSelection());
         await refresh();
@@ -150,9 +167,13 @@ export function useInternalResultHandle(): UseSampleHandleReturn {
 
   const selectedResultDto = useMemo(() => {
     if (!selectedResultId) return null;
-    const found = resultDtos.find((d) => String(d.id) === String(selectedResultId));
+    const found = resultDtos.find(
+      (d) => String(d.id) === String(selectedResultId)
+    );
     if (found) return found;
-    const idx = results.findIndex((r) => String(r.id) === String(selectedResultId));
+    const idx = results.findIndex(
+      (r) => String(r.id) === String(selectedResultId)
+    );
     if (idx >= 0 && resultDtos[idx]) return resultDtos[idx];
     return null;
   }, [selectedResultId, resultDtos, results]);
@@ -177,11 +198,14 @@ export function useInternalResultHandle(): UseSampleHandleReturn {
     getAll,
     setAlgo,
     setSelectedResultId,
+    selectedResultIds,
   };
 }
 
 // ---------- Context + Provider ----------
-const ResultContext = React.createContext<UseSampleHandleReturn | undefined>(undefined);
+const ResultContext = React.createContext<UseSampleHandleReturn | undefined>(
+  undefined
+);
 
 type ResultProviderProps = {
   children?: React.ReactNode;
@@ -191,11 +215,16 @@ type ResultProviderProps = {
 export function ResultProvider(props: ResultProviderProps) {
   const internal = useInternalResultHandle();
   const storeToUse = props.store ?? internal;
-  return React.createElement(ResultContext.Provider, { value: storeToUse }, props.children ?? null);
+  return React.createElement(
+    ResultContext.Provider,
+    { value: storeToUse },
+    props.children ?? null
+  );
 }
 
 export default function useResultHandle(): UseSampleHandleReturn {
   const ctx = React.useContext(ResultContext);
-  if (!ctx) throw new Error("useResultHandle must be used within a ResultProvider");
+  if (!ctx)
+    throw new Error("useResultHandle must be used within a ResultProvider");
   return ctx;
 }

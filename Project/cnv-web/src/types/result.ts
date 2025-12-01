@@ -145,6 +145,7 @@ export interface AberrationSegmentInfo {
   aberration_code: string;
   assessment: string;
   annotation_for_segment?: string | null;
+  man_change?: boolean | null;
 }
 
 /** Tương ứng với lớp `AberrationInfo` trong backend */
@@ -168,4 +169,35 @@ export function parseResultCreatedAt(
   if (!r?.created_at) return null;
   const d = new Date(r.created_at);
   return isNaN(d.getTime()) ? null : d;
+}
+
+/* -------------------- CYCLE REPORT -------------------- */
+
+/** Tương ứng với lớp `CycleReportRequest` trong backend */
+export interface CycleReportRequest {
+  report_ids: string[];
+}
+
+/** Tương ứng với lớp `AberrationSummary` trong backend */
+export interface AberrationSummary {
+  code: string;
+  mosaic: number;
+  size?: number | null; // in Mbp
+  diseases?: string[] | null;
+  assessment?: string | null;
+}
+
+/** Tương ứng với lớp `EmbryoInfo` trong backend */
+export interface EmbryoInfo {
+  embryo_id: string;
+  cell_type: string;
+  call: string;
+  abberations: AberrationSummary[];
+}
+
+/** Tương ứng với lớp `CycleReportResponse` trong backend */
+export interface CycleReportResponse {
+  cycle_id: string;
+  flowcell_id: string;
+  embryos: EmbryoInfo[];
 }

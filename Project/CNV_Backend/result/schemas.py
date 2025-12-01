@@ -51,6 +51,7 @@ class AberrationSegmentInfo(BaseModel):
     aberration_code: str
     assessment: str
     annotation_for_segment: Optional[str] = None
+    man_change: Optional[bool] = None
 
 
 class AberrationInfo(BaseModel):
@@ -63,3 +64,28 @@ class ResultReportResponse(BaseModel):
     sample: SampleInfo
     algorithm: AlgorithmInfo
     aberration: AberrationInfo
+
+
+class CycleReportRequest(BaseModel):
+    report_ids: List[str]
+
+
+class AberrationSummary(BaseModel):
+    code: str
+    mosaic: float
+    size: Optional[float] = None  # in Mbp
+    diseases: Optional[List[str]] = None
+    assessment: Optional[str] = None
+
+
+class EmbryoInfo(BaseModel):
+    embryo_id: str
+    cell_type: str
+    call: str
+    abberations: List[AberrationSummary]
+
+
+class CycleReportResponse(BaseModel):
+    cycle_id: str
+    flowcell_id: str
+    embryos: List[EmbryoInfo]
