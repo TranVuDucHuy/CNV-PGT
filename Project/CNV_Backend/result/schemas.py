@@ -51,6 +51,7 @@ class AberrationSegmentInfo(BaseModel):
     aberration_code: str
     assessment: str
     annotation_for_segment: Optional[str] = None
+    man_change: Optional[bool] = None
 
 
 class AberrationInfo(BaseModel):

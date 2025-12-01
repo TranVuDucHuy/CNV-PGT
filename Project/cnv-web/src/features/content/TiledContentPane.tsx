@@ -33,8 +33,8 @@ const defaultHeights = {
 };
 
 export default function TiledContentPane() {
-  const { checked } = useViewHandle();
-  const { selectedResultDto } = useResultHandle();
+  const { checked, setChecked } = useViewHandle();
+  const { selectedResultDto, selectedResultIds } = useResultHandle();
 
   const [bins, setBins] = useState<SampleBin[]>([]);
   const [segments, setSegments] = useState<SampleSegment[]>([]);
@@ -65,19 +65,25 @@ export default function TiledContentPane() {
     setSegments(copySegments);
 
     if (!selectedResultDto) {
-      console.log("Clearing report state as report view is unchecked");
       setResultReport(null);
       setReportError(null);
       setReportLoading(false);
+      return;
+    }
 
+    loadReport(selectedResultDto.id);
+  }, [selectedResultDto]);
+
+  useEffect(() => {
+    if (selectedResultIds.length === 0) {
       setCycleReport(null);
       setCycleReportError(null);
       setCycleReportLoading(false);
       return;
     }
 
-    Promise.all([loadReport(), loadCycleReport()]);
-  }, [selectedResultDto]);
+    loadCycleReport(selectedResultIds);
+  }, [selectedResultIds]);
 
   // helper for structured clone fallback
   function structuredCloneSafe<T>(v: T): T {
@@ -89,12 +95,11 @@ export default function TiledContentPane() {
     }
   }
 
-  const loadReport = () => {
-    if (!selectedResultDto) return;
+  const loadReport = (resultId: string) => {
     setReportLoading(true);
     setReportError(null);
     resultAPI
-      .getReport(selectedResultDto.id)
+      .getReport(resultId)
       .then((report) => {
         console.log("Fetched report successfully");
         setResultReport(report);
@@ -108,14 +113,12 @@ export default function TiledContentPane() {
       });
   };
 
-  const loadCycleReport = () => {
-    if (!selectedResultDto) return;
-
+  const loadCycleReport = (resultIds: string[]) => {
     setCycleReportLoading(true);
     setCycleReportError(null);
 
     resultAPI
-      .getCycleReport([selectedResultDto.id])
+      .getCycleReport(resultIds)
       .then((report) => {
         console.log("Fetched cycle report successfully: ", report);
         setCycleReport(report);
@@ -137,6 +140,7 @@ export default function TiledContentPane() {
         title: `Sample Bins ${selectedResultDto?.sample_name} - ${selectedResultDto?.algorithm_name}`,
         initialHeight: defaultHeights.bin,
         content: <SampleBinTable data={bins} dense fullHeight />,
+        onClose: () => setChecked({ ...checked, bin: false }),
       });
     }
     if (checked.segment) {
@@ -145,6 +149,7 @@ export default function TiledContentPane() {
         title: `Sample Segments ${selectedResultDto?.sample_name} - ${selectedResultDto?.algorithm_name}`,
         initialHeight: defaultHeights.segment,
         content: <SampleSegmentTable data={segments} dense fullHeight />,
+        onClose: () => setChecked({ ...checked, segment: false }),
       });
     }
     if (checked.table) {
@@ -155,6 +160,8 @@ export default function TiledContentPane() {
         content: (
           <CNVChart bins={bins} segments={segments} sx={{ height: "100%" }} />
         ),
+
+        onClose: () => setChecked({ ...checked, table: false }),
       });
     }
 
@@ -174,6 +181,7 @@ export default function TiledContentPane() {
             sx={{ height: "100%" }}
           />
         ),
+        onClose: () => setChecked({ ...checked, report: false }),
       });
     }
 
@@ -193,6 +201,7 @@ export default function TiledContentPane() {
             sx={{ height: "100%" }}
           />
         ),
+        onClose: () => setChecked({ ...checked, cycleReport: false }),
       });
     }
 

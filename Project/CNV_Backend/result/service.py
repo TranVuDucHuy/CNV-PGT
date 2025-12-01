@@ -403,6 +403,7 @@ class ResultService:
                         aberration_code=segment.aberration_code,
                         assessment=segment.assessment.value,
                         annotation_for_segment=segment.annotation_for_segment,
+                        man_change=segment.man_change,
                     )
                 )
 

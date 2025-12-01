@@ -112,6 +112,7 @@ export const ResultReport: React.FC<ResultReport> = ({
               direction="row"
               alignItems="center"
               justifyContent={"space-between"}
+              marginBottom={3}
             >
               <Typography variant="h5" gutterBottom>
                 Result Report
@@ -197,9 +198,6 @@ export const ResultReport: React.FC<ResultReport> = ({
                 </Menu>
               </Box>
             </Stack>
-            <Typography variant="subtitle1" color="text.secondary" gutterBottom>
-              ID: {report.result_id}
-            </Typography>{" "}
           </Box>
 
           {/* Sample Information */}
@@ -376,9 +374,10 @@ export const ResultReport: React.FC<ResultReport> = ({
                         <TableCell>Copy Number</TableCell>
                         <TableCell>Type</TableCell>
                         <TableCell>Mosaicism</TableCell>
-                        <TableCell>Code</TableCell>
+                        <TableCell>Aberration Code</TableCell>
                         <TableCell>Assessment</TableCell>
                         <TableCell>Annotation</TableCell>
+                        <TableCell>Man Change</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -421,6 +420,9 @@ export const ResultReport: React.FC<ResultReport> = ({
                             <TableCell>{segment.assessment}</TableCell>
                             <TableCell>
                               {segment.annotation_for_segment || "-"}
+                            </TableCell>
+                            <TableCell>
+                              {segment.man_change ? "Yes" : "No"}
                             </TableCell>
                           </TableRow>
                         )
