@@ -515,15 +515,20 @@ class ResultService:
             abberations_summary = []
             if aberration:
                 for segment in aberration.aberration_segments:
+                    annotations = segment.annotation_for_segment
                     abberations_summary.append(
                         AberrationSummary(
                             code=segment.aberration_code,
                             mosaic=segment.mosaicism,
                             size=segment.size / 1_000_000,  # Convert to Mbp
-                            diseases=[
-                                f"{ann['OMIM_phenotype']} ({ann['OMIM_ID']})"
-                                for ann in segment.annotation_for_segment
-                            ],
+                            diseases=(
+                                [
+                                    f"{ann['OMIM_phenotype']} ({ann['OMIM_ID']})"
+                                    for ann in annotations
+                                ]
+                                if annotations and len(annotations) > 0
+                                else None
+                            ),
                             assessment=segment.assessment.value,
                         )
                     )
