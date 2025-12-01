@@ -11,13 +11,15 @@ from fastapi import (
 )
 import time
 
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import StreamingResponse, JSONResponse, BackgroundTask
 from typing import List
 from sqlalchemy.orm import Session
 from database import get_db
 from .service import ResultService
 from .schemas import ResultSummary, ResultDto, ResultReportResponse, CycleReportRequest
 from common.schemas import BasicResponse
+from database import SessionLocal
+from aberration.service import AberrationService
 import logging
 
 logger = logging.getLogger(__name__)
