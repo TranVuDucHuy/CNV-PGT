@@ -7,8 +7,8 @@ import SamplePane from "@/features/sample/SamplePane";
 import AlgorithmPane from "@/features/algorithm/AlgorithmPane";
 import ResultPane from "@/features/result/ResultPane";
 import ViewPane from "@/features/view/ViewPane";
-import ContentPane from "@/features/content/ContentPane";
-import { ViewProvider } from "@/features/view/viewHandle";
+// import ContentPane from "@/features/content/ContentPane";
+// import { ViewProvider } from "@/features/view/viewHandle";
 import { ResultProvider } from "@/features/result/resultHandle";
 import ReferencePane from "@/features/reference/ReferencePane";
 import useSampleHandle from "@/features/sample/sampleHandle";
@@ -124,11 +124,10 @@ const DashboardView: React.FC = () => {
       {/* Split Pane */}
       <div ref={containerRef} className="flex flex-1" style={{ minHeight: 0 }}>
         <Provider store={store}>
-          <ViewProvider>
             <ResultProvider>
               {/* Left Pane - resizable */}
               <div
-                className=" border-gray-300 p-2.5 max-h-[100vh] overflow-y-scroll space-y-3"
+                className=" border-gray-300 p-2.5 max-h-screen overflow-y-scroll space-y-3"
                 style={{
                   width: leftWidth,
                   minWidth: MIN_LEFT_WIDTH,
@@ -187,7 +186,6 @@ const DashboardView: React.FC = () => {
                 </div>
               </div>
             </ResultProvider>
-          </ViewProvider>
         </Provider>
       </div>
     </div>
