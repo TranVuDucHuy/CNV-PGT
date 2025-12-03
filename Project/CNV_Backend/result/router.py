@@ -11,7 +11,7 @@ from fastapi import (
 )
 import time
 
-from fastapi.responses import StreamingResponse, JSONResponse, BackgroundTask
+from fastapi.responses import StreamingResponse, JSONResponse
 from typing import List
 from sqlalchemy.orm import Session
 from database import get_db
