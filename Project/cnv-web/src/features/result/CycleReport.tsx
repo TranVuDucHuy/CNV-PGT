@@ -113,7 +113,6 @@ export const CycleReport: React.FC<CycleReportProps> = ({
               direction="row"
               alignItems="center"
               justifyContent={"space-between"}
-              marginBottom={3}
             >
               <Typography variant="h5" gutterBottom>
                 Cycle Report
@@ -267,9 +266,9 @@ export const CycleReport: React.FC<CycleReportProps> = ({
                             label={embryo.call}
                             size="small"
                             color={
-                              embryo.call === "Normal"
+                              embryo.call.toLowerCase().includes("normal")
                                 ? "success"
-                                : embryo.call === "Abnormal"
+                                : embryo.call.toLowerCase().includes("abnormal")
                                 ? "error"
                                 : "warning"
                             }

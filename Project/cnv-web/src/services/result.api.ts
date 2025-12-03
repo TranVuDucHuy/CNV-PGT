@@ -86,11 +86,13 @@ export const resultAPI = {
    */
   async getCycleReport(reportIds: string[]): Promise<CycleReportResponse> {
     const request: CycleReportRequest = { report_ids: reportIds };
-    const res = await fetchAPI<CycleReportResponse>(`/results/cycle-report`, {
+    const response = await fetchAPI<{
+      message: string;
+      data: CycleReportResponse;
+    }>("/results/cycle-report", {
       method: "POST",
       body: JSON.stringify(request),
     });
-    console.log("Cycle report response: ", res);
-    return res;
+    return response.data;
   },
 };
