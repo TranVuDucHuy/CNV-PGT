@@ -110,7 +110,6 @@ export default function TiledContentPane() {
     resultAPI
       .getReport(resultId)
       .then((report) => {
-        console.log("Fetched report successfully");
         setResultReport(report);
       })
       .catch((err: any) => {
@@ -118,7 +117,6 @@ export default function TiledContentPane() {
       })
       .finally(() => {
         setReportLoading(false);
-        console.log("Finished fetching report");
       });
   };
 
@@ -129,11 +127,9 @@ export default function TiledContentPane() {
     resultAPI
       .getCycleReport(resultIds)
       .then((report) => {
-        console.log("Fetched cycle report successfully: ", report);
         setCycleReport(report);
       })
       .catch((err: any) => {
-        console.error("Error fetching cycle report: ", err);
         setCycleReportError(err.message || "Failed to fetch cycle report");
       })
       .finally(() => {
