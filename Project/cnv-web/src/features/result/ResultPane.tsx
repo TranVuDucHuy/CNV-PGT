@@ -3,7 +3,7 @@
 
 import React, { ChangeEvent, useEffect, useMemo, useState } from "react";
 import { useSelector, useDispatch } from "react-redux"; // Redux hooks
-import { Plus, Minus, Edit3 } from "lucide-react";
+import { Plus, Minus, Edit3, ChevronRight } from "lucide-react"; // Added ChevronRight
 import useResultHandle from "./resultHandle";
 import { useAlgorithms } from "../algorithm/useAlgorithms";
 import CenterDialog from "@/components/CenterDialog";
@@ -14,9 +14,9 @@ import MUIAccordionPane from "@/components/MUIAccordionPane";
 import { useRouter } from "next/navigation";
 
 // --- Imports mới cho Type và Redux ---
-import { ResultSummary } from "@/types/result"; // Import type chính xác để sửa lỗi 'any'
-import { RootState } from "@/utils/store"; // Đường dẫn tới store của bạn
-import { toggleResultSelection, setSelectedResults, clearSelection } from "@/utils/appSlice"; // Đường dẫn tới slice của bạn
+import { ResultSummary } from "@/types/result";
+import { RootState } from "@/utils/store";
+import { toggleResultSelection, setSelectedResults, clearSelection } from "@/utils/appSlice";
 
 export default function ResultPane() {
   const dispatch = useDispatch();
@@ -79,7 +79,7 @@ export default function ResultPane() {
       Map<
         string,
         Array<{
-          result: ResultSummary; // <--- SỬA TẠI ĐÂY: Dùng type chuẩn thay vì any
+          result: ResultSummary;
           parsed: ReturnType<typeof parseSampleNameToParts>;
         }>
       >
@@ -97,13 +97,12 @@ export default function ResultPane() {
     }
 
     // sort for stable UI
-    // Cũng cần định nghĩa lại type cho sortedMap giống map ở trên
     const sortedMap = new Map<
       string,
       Map<
         string,
         Array<{
-          result: ResultSummary; // <--- SỬA TẠI ĐÂY
+          result: ResultSummary;
           parsed: ReturnType<typeof parseSampleNameToParts>;
         }>
       >
@@ -113,7 +112,7 @@ export default function ResultPane() {
       .sort()
       .forEach((flow) => {
         const cycles = map.get(flow)!;
-        const sortedCycles = new Map(); // TS tự suy luận được từ sortedMap
+        const sortedCycles = new Map();
         Array.from(cycles.keys())
           .sort()
           .forEach((c) => {
@@ -140,7 +139,64 @@ export default function ResultPane() {
     return result;
   }, [grouped]);
 
-  // 4. Các hàm xử lý chọn bằng Redux Actions
+  // --- Helper Functions to retrieve IDs for Groups ---
+  const allResultIdsUnderFlowcell = (flowcell: string) => {
+    const cycleMap = grouped.get(flowcell);
+    if (!cycleMap) return [];
+    const ids: string[] = [];
+    for (const arr of cycleMap.values()) {
+      for (const item of arr) {
+        if (item.result.id) ids.push(item.result.id);
+      }
+    }
+    return ids;
+  };
+
+  const allResultIdsUnderCycle = (flowcell: string, cycle: string) => {
+    const cycleMap = grouped.get(flowcell);
+    if (!cycleMap) return [];
+    const arr = cycleMap.get(cycle) ?? [];
+    const ids: string[] = [];
+    for (const item of arr) {
+      if (item.result.id) ids.push(item.result.id);
+    }
+    return ids;
+  };
+
+  // --- Toggle Logic for Groups ---
+  const toggleFlowcellSelection = (flowcell: string) => {
+    const ids = allResultIdsUnderFlowcell(flowcell);
+    if (ids.length === 0) return;
+    const allSelected = ids.every((id) => selectedIdsSet.has(id));
+
+    let newIds: string[];
+    if (allSelected) {
+      // Deselect all
+      newIds = selectedResultIds.filter((id) => !ids.includes(id));
+    } else {
+      // Select all (merge existing with new ones, verify uniqueness)
+      const toAdd = ids.filter((id) => !selectedIdsSet.has(id));
+      newIds = [...selectedResultIds, ...toAdd];
+    }
+    dispatch(setSelectedResults(newIds));
+  };
+
+  const toggleCycleSelection = (flowcell: string, cycle: string) => {
+    const ids = allResultIdsUnderCycle(flowcell, cycle);
+    if (ids.length === 0) return;
+    const allSelected = ids.every((id) => selectedIdsSet.has(id));
+
+    let newIds: string[];
+    if (allSelected) {
+      newIds = selectedResultIds.filter((id) => !ids.includes(id));
+    } else {
+      const toAdd = ids.filter((id) => !selectedIdsSet.has(id));
+      newIds = [...selectedResultIds, ...toAdd];
+    }
+    dispatch(setSelectedResults(newIds));
+  };
+
+  // 4. Các hàm xử lý chọn item lẻ bằng Redux Actions
   const toggleSelect = (id?: string, event?: React.MouseEvent) => {
     if (!id) return;
 
@@ -253,7 +309,7 @@ export default function ResultPane() {
           bgcolor: "transparent",
           color: "#DC2626",
           "& svg": { color: "#DC2626" },
-          "&:hover": { bgcolor: "#DC2626", "& svg": { color: "#fff" },},
+          "&:hover": { bgcolor: "#DC2626", "& svg": { color: "#fff" } },
         }}
       >
         <Minus size={16} />
@@ -261,17 +317,17 @@ export default function ResultPane() {
 
       <Button
         onClick={(e) => e.stopPropagation()}
-        title="Edit" 
-        size="small" 
-        sx={{ 
-                    minWidth: 0,
+        title="Edit"
+        size="small"
+        sx={{
+          minWidth: 0,
           p: 0.5,
           border: 2,
           borderColor: "#3B82F6",
           bgcolor: "transparent",
           color: "#3B82F6",
           "& svg": { color: "#3B82F6" },
-          "&:hover": { bgcolor: "#3B82F6", "& svg": { color: "#fff" },},
+          "&:hover": { bgcolor: "#3B82F6", "& svg": { color: "#fff" } },
         }}
       >
         <Edit3 size={16} />
@@ -291,9 +347,7 @@ export default function ResultPane() {
           </Box>
         ) : results.length === 0 ? (
           <Box sx={{ textAlign: "center", py: 3 }}>
-            <Typography variant="body1">
-              No results yet. Click Add to add one.
-            </Typography>
+            <Typography variant="body1">No results yet. Click Add to add one.</Typography>
           </Box>
         ) : (
           <Box sx={{ maxHeight: "40vh", overflowY: "scroll", pr: 1, scrollbarGutter: "stable" }}>
@@ -302,57 +356,124 @@ export default function ResultPane() {
                 const isOpenFlow = openFlowcells.has(flowcell);
                 const totalCount = Array.from(cycleMap.values()).flat().length;
 
+                // Check Flowcell Selection Status
+                const flowcellIds = allResultIdsUnderFlowcell(flowcell);
+                const isFlowcellSelected = flowcellIds.length > 0 && flowcellIds.every((id) => selectedIdsSet.has(id));
+
                 return (
                   <Box key={flowcell} sx={{ bgcolor: "#fff", p: 1, borderRadius: 1, border: 1, borderColor: "grey.200" }}>
-                    <Box
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                      }}
-                    >
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                        <Button onClick={() => toggleOpenFlowcell(flowcell)} sx={{ textTransform: "none", p: 0, minWidth: 0 }}>
-                          <Typography variant="body2">{flowcell}</Typography>
-                          <Typography variant="body1" sx={{ ml: 1 }}>
-                            [{totalCount}]
-                          </Typography>
-                        </Button>
+                    {/* Flowcell Header */}
+                    <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
+                      {/* Button mở/đóng cây */}
+                      <IconButton
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleOpenFlowcell(flowcell);
+                        }}
+                        sx={{ mr: 1, p: 0.5 }}
+                      >
+                        <ChevronRight
+                          size={20}
+                          style={{
+                            transform: isOpenFlow ? "rotate(90deg)" : "rotate(0deg)",
+                            transition: "transform 0.2s ease-in-out",
+                          }}
+                        />
+                      </IconButton>
+
+                      {/* Title click để chọn con */}
+                      <Box
+                        onClick={() => toggleFlowcellSelection(flowcell)}
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          cursor: "pointer",
+                          flex: 1,
+                          userSelect: "none",
+                          borderRadius: 1,
+                          px: 1,
+                          py: 0.5,
+                          // Highlight parent logic
+                          border: isFlowcellSelected ? "1px solid" : "1px solid transparent",
+                          borderColor: isFlowcellSelected ? "primary.main" : "transparent",
+                          bgcolor: isFlowcellSelected ? "#DBEAFE" : "transparent",
+                          color: isFlowcellSelected ? "primary.main" : "text.primary",
+                          "&:hover": {
+                            bgcolor: isFlowcellSelected ? "#DBEAFE" : "grey.100",
+                          },
+                          transition: "background-color 0.12s, border-color 0.12s",
+                        }}
+                      >
+                        <Typography variant="body2" fontWeight="bold">
+                          {flowcell}
+                        </Typography>
+                        <Typography variant="body2" sx={{ ml: 1, color: isFlowcellSelected ? "primary.main" : "text.secondary" }}>
+                          [{totalCount}]
+                        </Typography>
                       </Box>
                     </Box>
 
                     <Collapse in={isOpenFlow} unmountOnExit>
-                      <Box sx={{ pl: 1, pt: 1 }}>
+                      <Box sx={{ pl: 2, pt: 1 }}>
                         <Stack spacing={1}>
                           {Array.from(cycleMap.entries()).map(([cycle, arr]) => {
                             const cycleKey = `${flowcell}|${cycle}`;
                             const isOpenCycle = openCycles.has(cycleKey);
 
+                            // Check Cycle Selection Status
+                            const cycleIds = allResultIdsUnderCycle(flowcell, cycle);
+                            const isCycleSelected = cycleIds.length > 0 && cycleIds.every((id) => selectedIdsSet.has(id));
+
                             return (
-                              <Box key={cycle} sx={{ borderRadius: 1, p: 1, pr: 0 }}>
-                                <Box
-                                  sx={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "space-between",
-                                  }}
-                                >
+                              <Box key={cycle} sx={{ borderRadius: 1, p: 0 }}>
+                                {/* Cycle Header */}
+                                <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
+                                  {/* Button mở/đóng cây con */}
+                                  <IconButton
+                                    size="small"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleOpenCycle(flowcell, cycle);
+                                    }}
+                                    sx={{ mr: 1, p: 0.5 }}
+                                  >
+                                    <ChevronRight
+                                      size={18}
+                                      style={{
+                                        transform: isOpenCycle ? "rotate(90deg)" : "rotate(0deg)",
+                                        transition: "transform 0.2s ease-in-out",
+                                      }}
+                                    />
+                                  </IconButton>
+
+                                  {/* Title click để chọn con */}
                                   <Box
+                                    onClick={() => toggleCycleSelection(flowcell, cycle)}
                                     sx={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: 1,
+                                      cursor: "pointer",
+                                      flex: 1,
+                                      userSelect: "none",
+                                      borderRadius: 1,
+                                      px: 1,
+                                      py: 0.5,
+                                      // Highlight parent logic
+                                      border: isCycleSelected ? "1px solid" : "1px solid transparent",
+                                      borderColor: isCycleSelected ? "primary.main" : "transparent",
+                                      bgcolor: isCycleSelected ? "#DBEAFE" : "transparent",
+                                      color: isCycleSelected ? "primary.main" : "text.primary",
+                                      "&:hover": {
+                                        bgcolor: isCycleSelected ? "#DBEAFE" : "grey.100",
+                                      },
+                                      transition: "background-color 0.12s, border-color 0.12s",
                                     }}
                                   >
-                                    <Button onClick={() => toggleOpenCycle(flowcell, cycle)} sx={{ textTransform: "none", p: 0, minWidth: 0 }}>
-                                      <Typography variant="body2">{cycle}</Typography>
-                                      {/* <Typography variant="body2" sx={{ ml: 1}}>[{arr.length}]</Typography> */}
-                                    </Button>
+                                    <Typography variant="body2">{cycle}</Typography>
                                   </Box>
                                 </Box>
 
                                 <Collapse in={isOpenCycle} unmountOnExit>
-                                  <Box sx={{ pl: 1, pt: 1 }}>
+                                  <Box sx={{ pl: 3.5, pt: 1 }}>
                                     <Stack spacing={1}>
                                       {arr.map(({ result, parsed }) => {
                                         const isSelected = result.id !== undefined && selectedIdsSet.has(result.id);
@@ -474,9 +595,7 @@ export default function ResultPane() {
 
             {algorithms.length === 0 ? (
               <Box sx={{ textAlign: "center", py: 2 }}>
-                <Typography variant="body1">
-                  No algorithms yet. You need to add an algorithm first.
-                </Typography>
+                <Typography variant="body1">No algorithms yet. You need to add an algorithm first.</Typography>
               </Box>
             ) : (
               <Box sx={{ maxHeight: 160, overflowY: "scroll" }}>

@@ -15,7 +15,7 @@ const initialState: AppState = {
     bin: false,
     segment: false,
     report: false,
-    table: false,
+    chart: false,
     cycleReport: false,
   },
   selectedResults: [],
@@ -73,6 +73,18 @@ const appSlice = createSlice({
       state.selectedResults = action.payload;
     },
 
+    addSelectedResult: (state, action: PayloadAction<string>) => {
+      state.selectedResults.push(action.payload);
+    },
+
+    removeSelectedResult: (state, action: PayloadAction<string>) => {
+      state.selectedResults.forEach( (item, index) => {
+        if(item === action.payload) {
+          state.selectedResults.splice(index,1);
+        }
+      });
+    },
+
     // 3. Clear toàn bộ selection (tiện ích nhanh)
     clearSelection: (state) => {
       state.selectedResults = [];
@@ -88,6 +100,8 @@ export const {
   resetViewChecked,
   toggleResultSelection,
   setSelectedResults,
+  addSelectedResult,
+  removeSelectedResult,
   clearSelection,
 } = appSlice.actions;
 export default appSlice.reducer;
