@@ -23,10 +23,9 @@
    docker-compose up -d
    ```
 
-3. Go to the project directory and install required packages:
+3. Install required packages:
 
    ```bash
-   cd sandbox
    pip install -r requirements.txt
    ```
 
