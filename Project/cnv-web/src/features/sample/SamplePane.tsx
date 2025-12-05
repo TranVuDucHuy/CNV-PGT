@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Plus, Minus, Edit3 } from "lucide-react";
+import { Plus, Minus, Edit3, ChevronRight } from "lucide-react";
 import useSampleHandle from "./sampleHandle";
 import CenterDialog from "@/components/CenterDialog";
 import OperatingDialog from "@/components/OperatingDialog";
@@ -322,25 +322,31 @@ export default function SamplePane() {
           bgcolor: "transparent",
           color: "#DC2626",
           "& svg": { color: "#DC2626" },
-          "&:hover": { bgcolor: "#DC2626", "& svg": { color: "#fff" },},
+          "&:hover": {
+            bgcolor: "#DC2626",
+            "& svg": { color: "#fff" },
+          },
         }}
       >
         <Minus size={16} />
       </Button>
 
-      <Button 
-        onClick={(e) => e.stopPropagation()} 
-        title="Edit" 
-        size="small" 
-        sx={{ 
-                    minWidth: 0,
+      <Button
+        onClick={(e) => e.stopPropagation()}
+        title="Edit"
+        size="small"
+        sx={{
+          minWidth: 0,
           p: 0.5,
           border: 2,
           borderColor: "#3B82F6",
           bgcolor: "transparent",
           color: "#3B82F6",
           "& svg": { color: "#3B82F6" },
-          "&:hover": { bgcolor: "#3B82F6", "& svg": { color: "#fff" },},
+          "&:hover": {
+            bgcolor: "#3B82F6",
+            "& svg": { color: "#fff" },
+          },
         }}
       >
         <Edit3 size={16} />
@@ -368,38 +374,125 @@ export default function SamplePane() {
               {Array.from(grouped.entries()).map(([flowcell, cycleMap]) => {
                 const isOpenFlow = openFlowcells.has(flowcell);
                 const totalCount = Array.from(cycleMap.values()).flat().length;
+
+                // Check if all children in this flowcell are selected
+                const flowcellIds = allSampleIdsUnderFlowcell(flowcell);
+                const isFlowcellSelected = flowcellIds.length > 0 && flowcellIds.every((id) => selectedIds.has(id));
+
                 return (
                   <Box key={flowcell} sx={{ bgcolor: "#fff", p: 1, borderRadius: 1, border: 1, borderColor: "grey.200" }}>
-                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <Box>
-                        <Button onClick={() => toggleOpenFlowcell(flowcell)} sx={{ textTransform: "none", p: 0, minWidth: 0 }}>
-                          <Typography variant="body2">{flowcell}</Typography>
-                          <Typography variant="body1" sx={{ ml: 1 }}>
-                            [{totalCount}]
-                          </Typography>
-                        </Button>
+                    {/* Flowcell Header */}
+                    <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
+                      {/* Button mở/đóng cây */}
+                      <IconButton
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleOpenFlowcell(flowcell);
+                        }}
+                        sx={{ mr: 1, p: 0.5 }}
+                      >
+                        <ChevronRight
+                          size={20}
+                          style={{
+                            transform: isOpenFlow ? "rotate(90deg)" : "rotate(0deg)",
+                            transition: "transform 0.2s ease-in-out",
+                          }}
+                        />
+                      </IconButton>
+
+                      {/* Title click để chọn con */}
+                      <Box
+                        onClick={() => toggleFlowcell(flowcell)}
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          cursor: "pointer",
+                          flex: 1,
+                          userSelect: "none",
+                          borderRadius: 1,
+                          px: 1,
+                          py: 0.5,
+                          // Highlight parent logic (Border + Background + Text)
+                          border: isFlowcellSelected ? "1px solid" : "1px solid transparent",
+                          borderColor: isFlowcellSelected ? "primary.main" : "transparent",
+                          bgcolor: isFlowcellSelected ? "#DBEAFE" : "transparent",
+                          color: isFlowcellSelected ? "primary.main" : "text.primary",
+                          "&:hover": {
+                            bgcolor: isFlowcellSelected ? "#DBEAFE" : "grey.100",
+                          },
+                          transition: "background-color 0.12s, border-color 0.12s",
+                        }}
+                      >
+                        <Typography variant="body2" fontWeight="bold">
+                          {flowcell}
+                        </Typography>
+                        <Typography variant="body2" sx={{ ml: 1, color: isFlowcellSelected ? "primary.main" : "text.secondary" }}>
+                          [{totalCount}]
+                        </Typography>
                       </Box>
                     </Box>
 
                     <Collapse in={isOpenFlow} unmountOnExit>
-                      <Box sx={{ pl: 1, pt: 1 }}>
+                      <Box sx={{ pl: 2, pt: 1 }}>
                         <Stack spacing={1}>
                           {Array.from(cycleMap.entries()).map(([cycle, arr]) => {
                             const cycleKey = `${flowcell}|${cycle}`;
                             const isOpenCycle = openCycles.has(cycleKey);
+
+                            // Check if all children in this cycle are selected
+                            const cycleIds = allSampleIdsUnderCycle(flowcell, cycle);
+                            const isCycleSelected = cycleIds.length > 0 && cycleIds.every((id) => selectedIds.has(id));
+
                             return (
-                              <Box key={cycle} sx={{ borderRadius: 1, p: 1, pr: 0 }}>
-                                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                  <Box>
-                                    <Button onClick={() => toggleOpenCycle(flowcell, cycle)} sx={{ textTransform: "none", p: 0, minWidth: 0 }}>
-                                      <Typography variant="body2">{cycle}</Typography>
-                                      {/* <Typography variant="body2" sx={{ ml: 1}}>[{arr.length}]</Typography> */}
-                                    </Button>
+                              <Box key={cycle} sx={{ borderRadius: 1, p: 0 }}>
+                                {/* Cycle Header */}
+                                <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
+                                  {/* Button mở/đóng cây con */}
+                                  <IconButton
+                                    size="small"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleOpenCycle(flowcell, cycle);
+                                    }}
+                                    sx={{ mr: 1, p: 0.5 }}
+                                  >
+                                    <ChevronRight
+                                      size={18}
+                                      style={{
+                                        transform: isOpenCycle ? "rotate(90deg)" : "rotate(0deg)",
+                                        transition: "transform 0.2s ease-in-out",
+                                      }}
+                                    />
+                                  </IconButton>
+
+                                  {/* Title click để chọn con */}
+                                  <Box
+                                    onClick={() => toggleCycle(flowcell, cycle)}
+                                    sx={{
+                                      cursor: "pointer",
+                                      flex: 1,
+                                      userSelect: "none",
+                                      borderRadius: 1,
+                                      px: 1,
+                                      py: 0.5,
+                                      // Highlight parent logic (Border + Background + Text)
+                                      border: isCycleSelected ? "1px solid" : "1px solid transparent",
+                                      borderColor: isCycleSelected ? "primary.main" : "transparent",
+                                      bgcolor: isCycleSelected ? "#DBEAFE" : "transparent",
+                                      color: isCycleSelected ? "primary.main" : "text.primary",
+                                      "&:hover": {
+                                        bgcolor: isCycleSelected ? "#DBEAFE" : "grey.100",
+                                      },
+                                      transition: "background-color 0.12s, border-color 0.12s",
+                                    }}
+                                  >
+                                    <Typography variant="body2">{cycle}</Typography>
                                   </Box>
                                 </Box>
 
                                 <Collapse in={isOpenCycle} unmountOnExit>
-                                  <Box sx={{ pl: 1, pt: 1 }}>
+                                  <Box sx={{ pl: 3.5, pt: 1 }}>
                                     <Stack spacing={1}>
                                       {arr.map(({ sample, parsed }: any) => {
                                         const isSelected = sample.id !== undefined && selectedIds.has(sample.id);
@@ -463,7 +556,15 @@ export default function SamplePane() {
             <Typography variant="body2" sx={{ mb: 0.5 }}>
               Select File
             </Typography>
-            <input type="file" accept=".bam" onChange={(e) => setFile(Array.from(e.target.files ?? []))} style={{ display: "block", width: "100%", padding: 8, borderRadius: 6, border: "1px solid rgba(0,0,0,0.23)" }} required multiple title="" />
+            <input
+              type="file"
+              accept=".bam"
+              onChange={(e) => setFile(Array.from(e.target.files ?? []))}
+              style={{ display: "block", width: "100%", padding: 8, borderRadius: 6, border: "1px solid rgba(0,0,0,0.23)" }}
+              required
+              multiple
+              title=""
+            />
             <style>{`
               input[type="file"]::file-selector-button {
                 display: none;
@@ -475,7 +576,12 @@ export default function SamplePane() {
             <Typography variant="body2" sx={{ mb: 0.5 }}>
               Reference Genome
             </Typography>
-            <select value={referenceGenome} onChange={(e) => setReferenceGenome(e.target.value as ReferenceGenome)} style={{ display: "block", width: "100%", padding: 8, borderRadius: 6, border: "1px solid rgba(0,0,0,0.23)" }} required>
+            <select
+              value={referenceGenome}
+              onChange={(e) => setReferenceGenome(e.target.value as ReferenceGenome)}
+              style={{ display: "block", width: "100%", padding: 8, borderRadius: 6, border: "1px solid rgba(0,0,0,0.23)" }}
+              required
+            >
               <option value={ReferenceGenome.HG19}>HG19</option>
               <option value={ReferenceGenome.HG38}>HG38</option>
             </select>
@@ -485,7 +591,12 @@ export default function SamplePane() {
             <Typography variant="body2" sx={{ mb: 0.5 }}>
               Cell Type
             </Typography>
-            <select value={cellType} onChange={(e) => setCellType(e.target.value)} style={{ display: "block", width: "100%", padding: 8, borderRadius: 6, border: "1px solid rgba(0,0,0,0.23)" }} required>
+            <select
+              value={cellType}
+              onChange={(e) => setCellType(e.target.value)}
+              style={{ display: "block", width: "100%", padding: 8, borderRadius: 6, border: "1px solid rgba(0,0,0,0.23)" }}
+              required
+            >
               <option value={CellType.POLAR_BODY_1}>Polar body 1</option>
               <option value={CellType.POLAR_BODY_2}>Polar body 2</option>
               <option value={CellType.BLASTOMERE}>Blastomere</option>
@@ -499,7 +610,13 @@ export default function SamplePane() {
             <Typography variant="body2" sx={{ mb: 0.5 }}>
               Date
             </Typography>
-            <input type="date" value={uploadDate} onChange={(e) => setUploadDate(e.target.value)} style={{ display: "block", width: "100%", padding: 8, borderRadius: 6, border: "1px solid rgba(0,0,0,0.23)" }} required />
+            <input
+              type="date"
+              value={uploadDate}
+              onChange={(e) => setUploadDate(e.target.value)}
+              style={{ display: "block", width: "100%", padding: 8, borderRadius: 6, border: "1px solid rgba(0,0,0,0.23)" }}
+              required
+            />
           </Box>
         </Stack>
       </CenterDialog>

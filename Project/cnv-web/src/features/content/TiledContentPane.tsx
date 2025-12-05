@@ -7,6 +7,7 @@ import SampleBinTable from "./viewpanes/SampleBinTable";
 import SampleSegmentTable from "./viewpanes/SampleSegmentTable";
 import {
   CycleReportResponse,
+  ResultDto,
   ResultReportResponse,
   SampleBin,
   SampleSegment,
@@ -24,6 +25,10 @@ import {
   exportCycleReportToPdf,
 } from "@/utils/documentExporter";
 import { CycleReport } from "../result/CycleReport";
+import { useSelector, useDispatch } from "react-redux";
+import { RootState } from "@/utils/store";
+import { setViewOption, removeSelectedResult } from "@/utils/appSlice";
+import { parseSampleNameToParts } from "../sample/sampleUtils";
 
 const defaultHeights = {
   bin: 400,
@@ -33,8 +38,12 @@ const defaultHeights = {
 };
 
 export default function TiledContentPane() {
-  const { checked, setChecked } = useViewHandle();
-  const { selectedResultDto, selectedResultIds } = useResultHandle();
+  const checked = useSelector((state: RootState) => state.app.viewChecked);
+  const selectedResultIds = useSelector((state: RootState) => state.app.selectedResults);
+  const dispatch = useDispatch()
+  
+  // 1. Lấy thêm resultDtos từ hook
+  const { selectedResultDto, resultDtos } = useResultHandle();
 
   const [bins, setBins] = useState<SampleBin[]>([]);
   const [segments, setSegments] = useState<SampleSegment[]>([]);
@@ -130,13 +139,14 @@ export default function TiledContentPane() {
 
   const items = useMemo(() => {
     const res = [];
+    // Các phần Table và Report giữ nguyên (hiển thị cho selectedResultDto hoặc logic cũ)
     if (checked.bin) {
       res.push({
         id: "bin",
         title: `Sample Bins ${selectedResultDto?.sample_name} - ${selectedResultDto?.algorithm_name}`,
         initialHeight: defaultHeights.bin,
         content: <SampleBinTable data={bins} dense fullHeight />,
-        onClose: () => setChecked({ ...checked, bin: false }),
+        onClose: () => dispatch(setViewOption({key: "bin", value: false}))
       });
     }
     if (checked.segment) {
@@ -145,20 +155,74 @@ export default function TiledContentPane() {
         title: `Sample Segments ${selectedResultDto?.sample_name} - ${selectedResultDto?.algorithm_name}`,
         initialHeight: defaultHeights.segment,
         content: <SampleSegmentTable data={segments} dense fullHeight />,
-        onClose: () => setChecked({ ...checked, segment: false }),
+        onClose: () => dispatch(setViewOption({key: "segment", value: false}))
       });
     }
-    if (checked.table) {
-      res.push({
-        id: "table",
-        title: `Sample Table ${selectedResultDto?.sample_name} - ${selectedResultDto?.algorithm_name}`,
-        initialHeight: defaultHeights.table,
-        content: (
-          <CNVChart bins={bins} segments={segments} sx={{ height: "100%" }} />
-        ),
 
-        onClose: () => setChecked({ ...checked, table: false }),
-      });
+    // 2. Logic hiển thị Chart: Lặp qua resultDtos để tạo nhiều chart xếp chồng
+    if (checked.chart) {
+      // Ưu tiên dùng resultDtos (danh sách chọn), nếu không có thì fallback về selectedResultDto (chọn đơn)
+      const chartTargets: ResultDto[] = []
+
+      for (let i = 0; i < selectedResultIds.length; i++) {
+        for (let j = 0; j < resultDtos.length; j++) {
+          if (resultDtos[j].id == selectedResultIds[i]) {
+            
+            chartTargets.push(resultDtos[j])
+          }
+        }
+      }
+
+      let cycle = null
+      let canShow = true
+      for (let i = 0; i < chartTargets.length; i++) {
+        const parts = parseSampleNameToParts(chartTargets[i].sample_name)
+        if (!cycle) {
+          cycle = parts.cycle
+        }
+        else {
+          if (cycle !== parts.cycle) {
+            canShow = false
+            break
+          }
+        }
+      }
+
+      if (canShow) {
+        chartTargets.forEach((dto) => {
+          res.push({
+            id: `chart-${dto.id}`, // Tạo ID duy nhất cho mỗi chart pane
+            title: `Sample Chart ${dto.sample_name} - ${dto.algorithm_name}`,
+            initialHeight: defaultHeights.table,
+            content: (
+              <CNVChart 
+                bins={dto.bins ?? []} 
+                segments={dto.segments ?? []} 
+                sx={{ height: "100%" }} 
+              />
+            ),
+            // Khi tắt chart, ta tắt cờ 'chart' trong view handle (ẩn tất cả chart)
+            onClose: () => {
+              dispatch(removeSelectedResult(dto.id))
+              if (selectedResultIds.length == 1) {
+                dispatch(setViewOption({key: "chart", value: false}))
+              }
+            }
+          });
+        });
+      }
+      else {
+        res.push({
+          id: `chart-none`,
+            title: `Sample Chart None`,
+            initialHeight: defaultHeights.table,
+            content: (
+              <div>
+                Results have to have same cycle
+              </div>
+            )
+        })
+      }
     }
 
     if (checked.report) {
@@ -177,7 +241,7 @@ export default function TiledContentPane() {
             sx={{ height: "100%" }}
           />
         ),
-        onClose: () => setChecked({ ...checked, report: false }),
+        onClose: () => dispatch(setViewOption({key: "report", value: false}))
       });
     }
 
@@ -197,7 +261,7 @@ export default function TiledContentPane() {
             sx={{ height: "100%" }}
           />
         ),
-        onClose: () => setChecked({ ...checked, cycleReport: false }),
+        onClose: () => dispatch(setViewOption({key: "cycleReport", value: false}))
       });
     }
 
@@ -205,6 +269,7 @@ export default function TiledContentPane() {
   }, [
     checked,
     selectedResultDto,
+    resultDtos, // Thêm dependency này
     bins,
     segments,
     reportLoading,
@@ -214,8 +279,6 @@ export default function TiledContentPane() {
     cycleReportError,
     cycleReport,
   ]);
-
-  // useEffect(() => {}, [bins, segments]);
 
   return (
     <DynamicStack

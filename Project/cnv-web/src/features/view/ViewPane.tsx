@@ -14,9 +14,13 @@ import { Edit3 } from "lucide-react";
 import { useViewHandle } from "./viewHandle";
 import MUIAccordionPane from "@/components/MUIAccordionPane";
 
-export default function ViewPane() {
-  const { checked, toggle } = useViewHandle();
+import { useSelector, useDispatch } from "react-redux";
+import { RootState } from "@/utils/store";
+import { setViewOption } from "@/utils/appSlice";
 
+export default function ViewPane() {
+  const checked = useSelector((state: RootState) => state.app.viewChecked);
+  const dispatch = useDispatch()
   const headerRight = (
     <Button
       onClick={(e) => e.stopPropagation()}
@@ -49,7 +53,10 @@ export default function ViewPane() {
               <Box key={key} sx={{ display: "flex", alignItems: "center" }}>
                 <Checkbox
                   checked={checked[key]}
-                  onChange={() => toggle(key)}
+                  onChange={(event, check) => {
+                      dispatch(setViewOption({key: key, value: check}))
+                    }
+                  }
                   size="small"
                 />
                 <Typography variant="body2">{label}</Typography>
