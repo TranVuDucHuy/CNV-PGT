@@ -1,23 +1,10 @@
 // SampleBinTable.tsx
 import React from "react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  TableSortLabel,
-  SxProps,
-  Theme,
-  Button,
-  Box,
-} from "@mui/material";
+import { Paper, SxProps, Theme, Button, Box } from "@mui/material";
+import { DataGrid, GridColDef, GridRowsProp } from "@mui/x-data-grid";
 
 import { SampleBin } from "@/types/result";
-
-type Order = "asc" | "desc";
+import { CHROMOSOME_ORDER, sortByChromosome } from "@/utils/chromosomeSort";
 
 type Props = {
   data: SampleBin[];
@@ -27,85 +14,108 @@ type Props = {
   sx?: SxProps<Theme>;
 };
 
-// ... (Giữ nguyên các hàm comparator không đổi)
-function descendingComparator<T>(a: T, b: T, orderBy: keyof T) {
-  const va = (a as any)[orderBy];
-  const vb = (b as any)[orderBy];
+export default function SampleBinTable({ data, dense = false, onRowClick, fullHeight = false, sx }: Props) {
+  // Define columns for DataGrid
+  const columns: GridColDef[] = React.useMemo(
+    () => [
+      {
+        field: "chromosome",
+        headerName: "Chromosome",
+        width: 140,
+        minWidth: 80,
+        resizable: true,
+        align: "left",
+        headerAlign: "left",
+        sortComparator: (a, b) => {
+          const orderA = CHROMOSOME_ORDER[a] ?? 999;
+          const orderB = CHROMOSOME_ORDER[b] ?? 999;
+          return orderA - orderB;
+        },
+      },
+      {
+        field: "start",
+        headerName: "Start",
+        type: "number",
+        width: 110,
+        minWidth: 80,
+        resizable: true,
+        align: "left",
+        headerAlign: "left",
+      },
+      {
+        field: "end",
+        headerName: "End",
+        type: "number",
+        width: 110,
+        minWidth: 80,
+        resizable: true,
+        align: "left",
+        headerAlign: "left",
+      },
+      {
+        field: "copy_number",
+        headerName: "Copy Number",
+        type: "number",
+        width: 130,
+        minWidth: 90,
+        resizable: true,
+        align: "left",
+        headerAlign: "left",
+      },
+      {
+        field: "read_count",
+        headerName: "Read Count",
+        type: "number",
+        width: 130,
+        minWidth: 90,
+        resizable: true,
+        align: "left",
+        headerAlign: "left",
+      },
+      {
+        field: "gc_content_percent",
+        headerName: "GC-content",
+        type: "number",
+        width: 100,
+        minWidth: 80,
+        resizable: true,
+        align: "left",
+        headerAlign: "left",
+        valueFormatter: (value) => {
+          return value != null ? Number(value).toFixed(2) + "%" : "-";
+        },
+      },
+    ],
+    []
+  );
 
-  if (va == null && vb == null) return 0;
-  if (va == null) return 1;
-  if (vb == null) return -1;
+  // Transform data to rows with unique IDs
+  const rows: GridRowsProp = React.useMemo(() => {
+    // Sort by chromosome first, then by start position
+    const sortedData = sortByChromosome(data);
 
-  if (typeof va === "number" && typeof vb === "number") {
-    return vb - va;
-  }
-  if (typeof va === "boolean" && typeof vb === "boolean") {
-    return Number(vb) - Number(va);
-  }
-  return String(vb).localeCompare(String(va), undefined, { numeric: true });
-}
-
-function getComparator<Key extends keyof any>(
-  order: Order,
-  orderBy: Key
-): (a: { [key in Key]: any }, b: { [key in Key]: any }) => number {
-  return order === "desc"
-    ? (a, b) => descendingComparator(a, b, orderBy)
-    : (a, b) => -descendingComparator(a, b, orderBy);
-}
-
-function stableSort<T>(array: T[], comparator: (a: T, b: T) => number) {
-  const stabilized = array.map((el, index) => [el, index] as [T, number]);
-  stabilized.sort((a, b) => {
-    const order = comparator(a[0], b[0]);
-    if (order !== 0) return order;
-    return a[1] - b[1];
-  });
-  return stabilized.map((el) => el[0]);
-}
-
-export default function SampleBinTable({
-  data,
-  dense = false,
-  onRowClick,
-  fullHeight = false,
-  sx,
-}: Props) {
-  const [order, setOrder] = React.useState<Order>("asc");
-  const [orderBy, setOrderBy] = React.useState<
-    keyof SampleBin | "gc_content_percent" | "result_name"
-  >("chromosome");
-
-  const handleRequestSort = (property: typeof orderBy) => {
-    const isAsc = orderBy === property && order === "asc";
-    setOrder(isAsc ? "desc" : "asc");
-    setOrderBy(property);
-  };
-
-  const rows = React.useMemo(() => {
-    return data.map((r) => ({
-      ...r,
-      gc_content_percent: r.gc_content != null ? r.gc_content * 100 : null,
-      result_name: r.result?.reference_genome ?? "",
+    return sortedData.map((row, index) => ({
+      id: row.id ?? `row-${index}`,
+      chromosome: typeof row.chromosome === "string" ? row.chromosome : JSON.stringify(row.chromosome),
+      start: row.start,
+      end: row.end,
+      copy_number: row.copy_number,
+      read_count: row.read_count,
+      gc_content_percent: row.gc_content != null ? row.gc_content * 100 : null,
+      _original: row, // Store original data for onRowClick
     }));
   }, [data]);
 
-  const sortedRows = stableSort(rows, getComparator(order, orderBy as any));
-
+  // --- CSV Export Logic ---
   const handleExportCSV = () => {
     const headers = ["Chromosome", "Start", "End", "Copy #", "Read Count", "GC %"];
-    const csvContent = sortedRows.map((row) => {
-      return [
-        row.chromosome,
-        row.start,
-        row.end,
-        row.copy_number,
-        row.read_count,
-        row.gc_content != null ? (row.gc_content * 100).toFixed(2) : "",
-      ].join(",");
+    const csvContent = rows.map((row) => {
+      return [row.chromosome, row.start, row.end, row.copy_number, row.read_count, row.gc_content_percent != null ? Number(row.gc_content_percent).toFixed(2) : ""].join(",");
     });
     const csvString = [headers.join(","), ...csvContent].join("\n");
-    const blob = new Blob(["\uFEFF" + csvString], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob(["\uFEFF" + csvString], {
+      type: "text/csv;charset=utf-8;",
+    });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -117,135 +127,74 @@ export default function SampleBinTable({
 
   return (
     <Paper
-      className={`space-y-3 ${fullHeight ? "w-full h-full" : "max-h-[120vh]"}`}
-      style={
-        fullHeight ? { display: "flex", flexDirection: "column" } : undefined
-      }
-      sx={{ overflow: "hidden", ...sx }}
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        height: fullHeight ? "100%" : "auto",
+        maxHeight: fullHeight ? undefined : "120vh",
+        overflow: "hidden",
+        ...sx,
+      }}
     >
-      {/* --- CẬP NHẬT TOOLBAR VỚI NÚT BÉ HƠN --- */}
-      <Box sx={{ p: 1, pr: 2, display: 'flex', justifyContent: 'flex-end', borderBottom: '1px solid #e0e0e0' }}>
-        <Button 
-          variant="outlined"  // Đổi sang outlined cho nhẹ
-          size="small"        // Size nhỏ của MUI
+      {/* --- TOOLBAR --- */}
+      <Box
+        sx={{
+          p: 1,
+          pr: 2,
+          display: "flex",
+          justifyContent: "flex-end",
+          borderBottom: "1px solid #e0e0e0",
+          flexShrink: 0,
+        }}
+      >
+        <Button
+          variant="outlined"
+          size="small"
           onClick={handleExportCSV}
           sx={{
-            fontSize: '0.75rem', // Giảm cỡ chữ
-            padding: '2px 8px',  // Giảm padding
-            minWidth: 'auto',    // Bỏ chiều rộng tối thiểu mặc định
-            height: '28px',      // Set chiều cao cố định nhỏ
-            textTransform: 'none' // Bỏ viết hoa toàn bộ để trông gọn hơn
+            fontSize: "0.75rem",
+            padding: "2px 8px",
+            minWidth: "auto",
+            height: "28px",
+            textTransform: "none",
           }}
         >
           Export CSV
         </Button>
       </Box>
 
-      <TableContainer 
-        style={fullHeight ? { height: "100%", overflow: 'auto' } : { maxHeight: '120vh', overflow: 'auto' }}
-      >
-        <Table size={dense ? "small" : "medium"} stickyHeader>
-          <TableHead>
-            <TableRow>
-              <TableCell
-                sortDirection={orderBy === "chromosome" ? order : false}
-              >
-                <TableSortLabel
-                  active={orderBy === "chromosome"}
-                  direction={orderBy === "chromosome" ? order : "asc"}
-                  onClick={() => handleRequestSort("chromosome")}
-                >
-                  Chromosome
-                </TableSortLabel>
-              </TableCell>
-
-              <TableCell align="right" sortDirection={orderBy === "start" ? order : false}>
-                <TableSortLabel
-                  active={orderBy === "start"}
-                  direction={orderBy === "start" ? order : "asc"}
-                  onClick={() => handleRequestSort("start")}
-                >
-                  Start
-                </TableSortLabel>
-              </TableCell>
-
-              <TableCell align="right" sortDirection={orderBy === "end" ? order : false}>
-                <TableSortLabel
-                  active={orderBy === "end"}
-                  direction={orderBy === "end" ? order : "asc"}
-                  onClick={() => handleRequestSort("end")}
-                >
-                  End
-                </TableSortLabel>
-              </TableCell>
-
-              <TableCell align="right" sortDirection={orderBy === "copy_number" ? order : false}>
-                <TableSortLabel
-                  active={orderBy === "copy_number"}
-                  direction={orderBy === "copy_number" ? order : "asc"}
-                  onClick={() => handleRequestSort("copy_number")}
-                >
-                  Copy #
-                </TableSortLabel>
-              </TableCell>
-
-              <TableCell align="right" sortDirection={orderBy === "read_count" ? order : false}>
-                <TableSortLabel
-                  active={orderBy === "read_count"}
-                  direction={orderBy === "read_count" ? order : "asc"}
-                  onClick={() => handleRequestSort("read_count")}
-                >
-                  Read Count
-                </TableSortLabel>
-              </TableCell>
-
-              <TableCell align="right" sortDirection={orderBy === "gc_content_percent" ? order : false}>
-                <TableSortLabel
-                  active={orderBy === "gc_content_percent"}
-                  direction={orderBy === "gc_content_percent" ? order : "asc"}
-                  onClick={() => handleRequestSort("gc_content_percent")}
-                >
-                  GC %
-                </TableSortLabel>
-              </TableCell>
-            </TableRow>
-          </TableHead>
-
-          <TableBody>
-            {sortedRows.length === 0 && (
-              <TableRow key="empty">
-                <TableCell colSpan={9} align="center">
-                  Không có dữ liệu
-                </TableCell>
-              </TableRow>
-            )}
-
-            {sortedRows.map((r, index) => (
-              <TableRow
-                key={r.id ?? `row-${index}`}
-                hover
-                onClick={() => onRowClick?.(r)}
-                style={{ cursor: onRowClick ? "pointer" : "default" }}
-              >
-                <TableCell>
-                  {typeof r.chromosome === "string"
-                    ? r.chromosome
-                    : JSON.stringify(r.chromosome)}
-                </TableCell>
-                <TableCell align="right">{r.start}</TableCell>
-                <TableCell align="right">{r.end}</TableCell>
-                <TableCell align="right">{r.copy_number}</TableCell>
-                <TableCell align="right">{r.read_count}</TableCell>
-                <TableCell align="right">
-                  {r.gc_content != null
-                    ? (r.gc_content * 100).toFixed(2) + "%"
-                    : "-"}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      {/* DataGrid */}
+      <Box sx={{ flexGrow: 1, width: "100%", height: fullHeight ? "100%" : 600 }}>
+        <DataGrid
+          rows={rows}
+          columns={columns}
+          density={dense ? "compact" : "standard"}
+          disableRowSelectionOnClick
+          onRowClick={(params) => {
+            if (onRowClick) {
+              onRowClick(params.row._original);
+            }
+          }}
+          sx={{
+            border: "none",
+            "& .MuiDataGrid-columnHeader": {
+              fontSize: "15px",
+              lineHeight: 1.5,
+              color: "#2F5EA3",
+            },
+            "& .MuiDataGrid-columnHeaderTitle": {
+              fontWeight: "600 !important",
+            },
+            "& .MuiDataGrid-cell": {
+              fontSize: "14px",
+              fontWeight: "500 !important",
+            },
+            "& .MuiDataGrid-cell:hover": {
+              cursor: onRowClick ? "pointer" : "default",
+            },
+          }}
+        />
+      </Box>
     </Paper>
   );
 }
