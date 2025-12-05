@@ -132,6 +132,10 @@ export const DynamicStack = <T,>({
             flexDirection: "column",
             transform: scale !== 1 ? `scale(${scale})` : undefined,
             transformOrigin: "top left",
+            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+            borderRadius: 1,
+            border: "1px solid",
+            borderColor: "grey.300",
           }}
         >
           <Box
@@ -140,10 +144,7 @@ export const DynamicStack = <T,>({
               alignItems: "center",
               flexDirection: "row",
               bgcolor: "primary1.light",
-              borderTopLeftRadius: 6,
-              borderTopRightRadius: 6,
-              borderBottomLeftRadius: 0,
-              borderBottomRightRadius: 0,
+              p: 0.5,
             }}
           >
             <Box
@@ -155,15 +156,14 @@ export const DynamicStack = <T,>({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                px: 1,
+                px: 1.25,
                 py: 0.5,
-
                 userSelect: "none",
                 flexGrow: 1,
               }}
             >
               <Typography
-                variant="subtitle2"
+                variant="h4"
                 noWrap
                 sx={{ flex: 1, minWidth: 0 }}
               >
@@ -177,12 +177,9 @@ export const DynamicStack = <T,>({
 
           <Box
             sx={{
-              borderTopLeftRadius: 0,
-              borderTopRightRadius: 0,
-              borderBottomLeftRadius: 6,
-              borderBottomRightRadius: 6,
               overflow: "auto",
               flexGrow: 1,
+              minHeight: 0,
             }}
           >
             {item.content}

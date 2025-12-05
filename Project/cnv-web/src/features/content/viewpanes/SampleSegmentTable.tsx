@@ -134,6 +134,7 @@ export default function SampleSegmentTable({ data, dense = false, onRowClick, fu
         maxHeight: fullHeight ? undefined : "120vh",
         overflow: "hidden",
         ...sx,
+        bgcolor: "#FAFAFA",
       }}
     >
       {/* --- TOOLBAR --- */}
@@ -143,7 +144,6 @@ export default function SampleSegmentTable({ data, dense = false, onRowClick, fu
           pr: 2,
           display: "flex",
           justifyContent: "flex-end",
-          borderBottom: "1px solid #e0e0e0",
           flexShrink: 0,
         }}
       >
@@ -164,19 +164,22 @@ export default function SampleSegmentTable({ data, dense = false, onRowClick, fu
       </Box>
 
       {/* DataGrid */}
-      <Box sx={{ flexGrow: 1, width: "100%", height: fullHeight ? "100%" : 600 }}>
+      <Box sx={{ flexGrow: 1, width: "100%", minHeight: 0, overflow: "hidden", p: 2, pb: 4 }}>
         <DataGrid
           rows={rows}
           columns={columns}
           density={dense ? "compact" : "standard"}
           disableRowSelectionOnClick
+          hideFooterPagination
+          hideFooter
           onRowClick={(params) => {
             if (onRowClick) {
               onRowClick(params.row._original);
             }
           }}
           sx={{
-            border: "none",
+            height: "100%",
+            border: `1px solid #D1D5DB`,
             "& .MuiDataGrid-columnHeader": {
               fontSize: "15px",
               lineHeight: 1.5,

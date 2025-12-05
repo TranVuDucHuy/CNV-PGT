@@ -1,29 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Typography } from "@mui/material";
 import { useViewHandle } from "../view/viewHandle";
 import useResultHandle from "../result/resultHandle";
 import SampleBinTable from "./viewpanes/SampleBinTable";
 import SampleSegmentTable from "./viewpanes/SampleSegmentTable";
-import {
-  CycleReportResponse,
-  ResultDto,
-  ResultReportResponse,
-  SampleBin,
-  SampleSegment,
-} from "@/types/result";
+import { CycleReportResponse, ResultDto, ResultReportResponse, SampleBin, SampleSegment } from "@/types/result";
 import CNVChart from "./viewpanes/CNVChart";
 import DynamicStack from "@/components/DynamicStack";
 import { ResultReport } from "../result/ResultReport";
 import { resultAPI } from "@/services";
-import {
-  exportToXlsx,
-  exportToDocx,
-  exportToPdf,
-  exportCycleReportToDocx,
-  exportCycleReportToXlsx,
-  exportCycleReportToPdf,
-} from "@/utils/documentExporter";
+import { exportToXlsx, exportToDocx, exportToPdf, exportCycleReportToDocx, exportCycleReportToXlsx, exportCycleReportToPdf } from "@/utils/documentExporter";
 import { CycleReport } from "../result/CycleReport";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "@/utils/store";
@@ -40,24 +28,20 @@ const defaultHeights = {
 export default function TiledContentPane() {
   const checked = useSelector((state: RootState) => state.app.viewChecked);
   const selectedResultIds = useSelector((state: RootState) => state.app.selectedResults);
-  const dispatch = useDispatch()
-  
+  const dispatch = useDispatch();
+
   // 1. Lấy thêm resultDtos từ hook
   const { selectedResultDto, resultDtos } = useResultHandle();
 
   const [bins, setBins] = useState<SampleBin[]>([]);
   const [segments, setSegments] = useState<SampleSegment[]>([]);
 
-  const [resultReport, setResultReport] = useState<ResultReportResponse | null>(
-    null
-  );
+  const [resultReport, setResultReport] = useState<ResultReportResponse | null>(null);
 
   const [reportLoading, setReportLoading] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
 
-  const [cycleReport, setCycleReport] = useState<CycleReportResponse | null>(
-    null
-  );
+  const [cycleReport, setCycleReport] = useState<CycleReportResponse | null>(null);
   const [cycleReportLoading, setCycleReportLoading] = useState(false);
   const [cycleReportError, setCycleReportError] = useState<string | null>(null);
 
@@ -66,9 +50,7 @@ export default function TiledContentPane() {
     const srcSegments = selectedResultDto?.segments ?? [];
 
     const copyBins = Array.isArray(srcBins) ? structuredCloneSafe(srcBins) : [];
-    const copySegments = Array.isArray(srcSegments)
-      ? structuredCloneSafe(srcSegments)
-      : [];
+    const copySegments = Array.isArray(srcSegments) ? structuredCloneSafe(srcSegments) : [];
 
     setBins(copyBins);
     setSegments(copySegments);
@@ -146,7 +128,7 @@ export default function TiledContentPane() {
         title: `Sample Bins ${selectedResultDto?.sample_name} - ${selectedResultDto?.algorithm_name}`,
         initialHeight: defaultHeights.bin,
         content: <SampleBinTable data={bins} dense fullHeight />,
-        onClose: () => dispatch(setViewOption({key: "bin", value: false}))
+        onClose: () => dispatch(setViewOption({ key: "bin", value: false })),
       });
     }
     if (checked.segment) {
@@ -155,35 +137,33 @@ export default function TiledContentPane() {
         title: `Sample Segments ${selectedResultDto?.sample_name} - ${selectedResultDto?.algorithm_name}`,
         initialHeight: defaultHeights.segment,
         content: <SampleSegmentTable data={segments} dense fullHeight />,
-        onClose: () => dispatch(setViewOption({key: "segment", value: false}))
+        onClose: () => dispatch(setViewOption({ key: "segment", value: false })),
       });
     }
 
     // 2. Logic hiển thị Chart: Lặp qua resultDtos để tạo nhiều chart xếp chồng
     if (checked.chart) {
       // Ưu tiên dùng resultDtos (danh sách chọn), nếu không có thì fallback về selectedResultDto (chọn đơn)
-      const chartTargets: ResultDto[] = []
+      const chartTargets: ResultDto[] = [];
 
       for (let i = 0; i < selectedResultIds.length; i++) {
         for (let j = 0; j < resultDtos.length; j++) {
           if (resultDtos[j].id == selectedResultIds[i]) {
-            
-            chartTargets.push(resultDtos[j])
+            chartTargets.push(resultDtos[j]);
           }
         }
       }
 
-      let cycle = null
-      let canShow = true
+      let cycle = null;
+      let canShow = true;
       for (let i = 0; i < chartTargets.length; i++) {
-        const parts = parseSampleNameToParts(chartTargets[i].sample_name)
+        const parts = parseSampleNameToParts(chartTargets[i].sample_name);
         if (!cycle) {
-          cycle = parts.cycle
-        }
-        else {
+          cycle = parts.cycle;
+        } else {
           if (cycle !== parts.cycle) {
-            canShow = false
-            break
+            canShow = false;
+            break;
           }
         }
       }
@@ -194,34 +174,23 @@ export default function TiledContentPane() {
             id: `chart-${dto.id}`, // Tạo ID duy nhất cho mỗi chart pane
             title: `Sample Chart ${dto.sample_name} - ${dto.algorithm_name}`,
             initialHeight: defaultHeights.table,
-            content: (
-              <CNVChart 
-                bins={dto.bins ?? []} 
-                segments={dto.segments ?? []} 
-                sx={{ height: "100%" }} 
-              />
-            ),
+            content: <CNVChart bins={dto.bins ?? []} segments={dto.segments ?? []} sx={{ height: "100%" }} />,
             // Khi tắt chart, ta tắt cờ 'chart' trong view handle (ẩn tất cả chart)
             onClose: () => {
-              dispatch(removeSelectedResult(dto.id))
+              dispatch(removeSelectedResult(dto.id));
               if (selectedResultIds.length == 1) {
-                dispatch(setViewOption({key: "chart", value: false}))
+                dispatch(setViewOption({ key: "chart", value: false }));
               }
-            }
+            },
           });
         });
-      }
-      else {
+      } else {
         res.push({
           id: `chart-none`,
-            title: `Sample Chart None`,
-            initialHeight: defaultHeights.table,
-            content: (
-              <div>
-                Results have to have same cycle
-              </div>
-            )
-        })
+          title: `Sample Chart None`,
+          initialHeight: defaultHeights.table,
+          content: <div>Results have to have same cycle</div>,
+        });
       }
     }
 
@@ -230,18 +199,8 @@ export default function TiledContentPane() {
         id: "report",
         title: `Sample Report ${selectedResultDto?.sample_name} - ${selectedResultDto?.algorithm_name}`,
         initialHeight: defaultHeights.report,
-        content: (
-          <ResultReport
-            loading={reportLoading}
-            error={reportError}
-            report={resultReport}
-            exportToDocx={exportToDocx}
-            exportToXlsx={exportToXlsx}
-            exportToPdf={exportToPdf}
-            sx={{ height: "100%" }}
-          />
-        ),
-        onClose: () => dispatch(setViewOption({key: "report", value: false}))
+        content: <ResultReport loading={reportLoading} error={reportError} report={resultReport} exportToDocx={exportToDocx} exportToXlsx={exportToXlsx} exportToPdf={exportToPdf} sx={{ height: "100%" }} />,
+        onClose: () => dispatch(setViewOption({ key: "report", value: false })),
       });
     }
 
@@ -250,18 +209,8 @@ export default function TiledContentPane() {
         id: "cycleReport",
         title: `Cycle Report ${selectedResultDto?.sample_name} - ${selectedResultDto?.algorithm_name}`,
         initialHeight: defaultHeights.report,
-        content: (
-          <CycleReport
-            loading={cycleReportLoading}
-            error={cycleReportError}
-            report={cycleReport}
-            exportToDocx={exportCycleReportToDocx}
-            exportToXlsx={exportCycleReportToXlsx}
-            exportToPdf={exportCycleReportToPdf}
-            sx={{ height: "100%" }}
-          />
-        ),
-        onClose: () => dispatch(setViewOption({key: "cycleReport", value: false}))
+        content: <CycleReport loading={cycleReportLoading} error={cycleReportError} report={cycleReport} exportToDocx={exportCycleReportToDocx} exportToXlsx={exportCycleReportToXlsx} exportToPdf={exportCycleReportToPdf} sx={{ height: "100%" }} />,
+        onClose: () => dispatch(setViewOption({ key: "cycleReport", value: false })),
       });
     }
 
@@ -284,7 +233,7 @@ export default function TiledContentPane() {
     <DynamicStack
       sx={{
         width: "100%",
-        padding: 2,
+        padding: 1.25,
       }}
       items={items}
     />

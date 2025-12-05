@@ -9,6 +9,10 @@ const theme = createTheme({
       light: colors.primary1Light,
       contrastText: colors.neutralWhite,
     },
+    secondary: {
+      main: colors.primary2,
+      light: colors.primary2Light,
+    },
     error: {
       main: colors.error,
     },
@@ -24,28 +28,29 @@ const theme = createTheme({
     h1: {
       fontSize: "22px",
       fontWeight: 700,
-      lineHeight: 1.25,
-      letterSpacing: "-0.5px",
+      lineHeight: 1.5,
       color: colors.neutralBlack,
     },
     // Style 2: Pane Titles (Heading 2)
     h2: {
       fontSize: "18px",
       fontWeight: 600,
-      lineHeight: 1.3,
-      letterSpacing: "-0.25px",
+      lineHeight: 1.5,
       color: colors.neutralBlack,
     },
     // Style 3: Dialog Bar Titles (Heading 3)
     h3: {
       fontSize: "22px",
       fontWeight: 600,
-      lineHeight: 1.4,
+      lineHeight: 1.5,
       color: colors.neutralBlack,
     },
     // Style 4: View Bar Titles (Heading 4)
     h4: {
-      fontSize: "15px",
+      fontSize: "16px",
+      fontWeight: 600,
+      lineHeight: 1.5,
+      color: colors.neutralBlack,
     },
     // Defaults for Labels, placeholders
     body1: {
