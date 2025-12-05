@@ -211,10 +211,10 @@ export default function AlgorithmPane() {
               minWidth: 0,
               p: 0.5,
               border: 2,
-              borderColor: canRun ? '#3B82F6' : '#9CA3AF',
+              borderColor: canRun ? '#3B82F6' : 'grey.400',
               bgcolor: "transparent",
-              '&:hover': { bgcolor: canRun ? '#3B82F6' : '#9CA3AF', "& svg": { color: "#fff" }},
-              '&:disabled': { bgcolor: '#9CA3AF', cursor: 'not-allowed' },
+              '&:hover': { bgcolor: '#3B82F6', "& svg": { color: "#fff" }},
+              '&:disabled': { cursor: 'not-allowed' },
             }}
           >
             <StepForward size={16} />
@@ -249,11 +249,12 @@ export default function AlgorithmPane() {
                     onClick={() => toggleSelect(algo.id)}
                     aria-pressed={isSelected}
                     sx={{
-                      p: 1,
+                      p: 1.25,
+                      pl: 2,
                       borderRadius: 1,
                       border: '1px solid',
                       borderColor: isSelected ? 'primary.main' : 'rgba(0,0,0,0.12)',
-                      bgcolor: isSelected ? '#DBEAFE' : '#fff',
+                      bgcolor: isSelected ? '#DBEAFE' : 'transparent',
                       cursor: 'pointer',
                       transition: 'all 0.12s',
                       display: 'flex',
@@ -262,7 +263,6 @@ export default function AlgorithmPane() {
                       userSelect: 'none',
                       '&:hover': {
                         bgcolor: isSelected ? '#DBEAFE' : '#F9FAFB',
-                        borderColor: isSelected ? 'primary.main' : '#D1D5DB',
                       },
                     }}
                   >

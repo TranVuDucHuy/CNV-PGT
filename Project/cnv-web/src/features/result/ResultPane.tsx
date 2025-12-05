@@ -361,7 +361,21 @@ export default function ResultPane() {
                 const isFlowcellSelected = flowcellIds.length > 0 && flowcellIds.every((id) => selectedIdsSet.has(id));
 
                 return (
-                  <Box key={flowcell} sx={{ bgcolor: "#fff", p: 1, borderRadius: 1, border: 1, borderColor: "grey.200" }}>
+                  <Box
+                    key={flowcell}
+                    sx={{
+                      p: 1.25,
+                      borderRadius: 1,
+                      border: "1px solid",
+                      borderColor: isFlowcellSelected ? "primary.main" : "rgba(0,0,0,0.12)",
+                      bgcolor: isFlowcellSelected ? "#DBEAFE" : "transparent",
+                      color: isFlowcellSelected ? "primary.main" : "text.primary",
+                      "&:hover": {
+                        bgcolor: isFlowcellSelected ? "#DBEAFE" : "#F9FAFB",
+                      },
+                      transition: "all 0.12s",
+                    }}
+                  >
                     {/* Flowcell Header */}
                     <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
                       {/* Button mở/đóng cây */}
@@ -371,10 +385,10 @@ export default function ResultPane() {
                           e.stopPropagation();
                           toggleOpenFlowcell(flowcell);
                         }}
-                        sx={{ mr: 1, p: 0.5 }}
+                        sx={{ mr: 0.5, p: 0.5 }}
                       >
                         <ChevronRight
-                          size={20}
+                          size={16}
                           style={{
                             transform: isOpenFlow ? "rotate(90deg)" : "rotate(0deg)",
                             transition: "transform 0.2s ease-in-out",
@@ -391,32 +405,18 @@ export default function ResultPane() {
                           cursor: "pointer",
                           flex: 1,
                           userSelect: "none",
-                          borderRadius: 1,
-                          px: 1,
-                          py: 0.5,
-                          // Highlight parent logic
-                          border: isFlowcellSelected ? "1px solid" : "1px solid transparent",
-                          borderColor: isFlowcellSelected ? "primary.main" : "transparent",
-                          bgcolor: isFlowcellSelected ? "#DBEAFE" : "transparent",
-                          color: isFlowcellSelected ? "primary.main" : "text.primary",
-                          "&:hover": {
-                            bgcolor: isFlowcellSelected ? "#DBEAFE" : "grey.100",
-                          },
-                          transition: "background-color 0.12s, border-color 0.12s",
                         }}
                       >
-                        <Typography variant="body2" fontWeight="bold">
-                          {flowcell}
-                        </Typography>
-                        <Typography variant="body2" sx={{ ml: 1, color: isFlowcellSelected ? "primary.main" : "text.secondary" }}>
+                        <Typography variant="body2">{flowcell}</Typography>
+                        <Typography variant="body1" sx={{ ml: 1 }}>
                           [{totalCount}]
                         </Typography>
                       </Box>
                     </Box>
 
                     <Collapse in={isOpenFlow} unmountOnExit>
-                      <Box sx={{ pl: 2, pt: 1 }}>
-                        <Stack spacing={1}>
+                      <Box sx={{ p: 1 }}>
+                        <Stack spacing={0}>
                           {Array.from(cycleMap.entries()).map(([cycle, arr]) => {
                             const cycleKey = `${flowcell}|${cycle}`;
                             const isOpenCycle = openCycles.has(cycleKey);
@@ -426,7 +426,20 @@ export default function ResultPane() {
                             const isCycleSelected = cycleIds.length > 0 && cycleIds.every((id) => selectedIdsSet.has(id));
 
                             return (
-                              <Box key={cycle} sx={{ borderRadius: 1, p: 0 }}>
+                              <Box
+                                key={cycle}
+                                sx={{
+                                  py: 1,
+                                  borderRadius: 1,
+                                  borderColor: isCycleSelected ? "primary.main" : "transparent",
+                                  bgcolor: isCycleSelected ? "#DBEAFE" : "transparent",
+                                  color: isCycleSelected ? "primary.main" : "text.primary",
+                                  "&:hover": {
+                                    bgcolor: isCycleSelected ? "#DBEAFE" : "#F9FAFB",
+                                  },
+                                  transition: "all 0.12s",
+                                }}
+                              >
                                 {/* Cycle Header */}
                                 <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
                                   {/* Button mở/đóng cây con */}
@@ -436,10 +449,10 @@ export default function ResultPane() {
                                       e.stopPropagation();
                                       toggleOpenCycle(flowcell, cycle);
                                     }}
-                                    sx={{ mr: 1, p: 0.5 }}
+                                    sx={{ mr: 0.5, p: 0.5 }}
                                   >
                                     <ChevronRight
-                                      size={18}
+                                      size={16}
                                       style={{
                                         transform: isOpenCycle ? "rotate(90deg)" : "rotate(0deg)",
                                         transition: "transform 0.2s ease-in-out",
@@ -454,18 +467,6 @@ export default function ResultPane() {
                                       cursor: "pointer",
                                       flex: 1,
                                       userSelect: "none",
-                                      borderRadius: 1,
-                                      px: 1,
-                                      py: 0.5,
-                                      // Highlight parent logic
-                                      border: isCycleSelected ? "1px solid" : "1px solid transparent",
-                                      borderColor: isCycleSelected ? "primary.main" : "transparent",
-                                      bgcolor: isCycleSelected ? "#DBEAFE" : "transparent",
-                                      color: isCycleSelected ? "primary.main" : "text.primary",
-                                      "&:hover": {
-                                        bgcolor: isCycleSelected ? "#DBEAFE" : "grey.100",
-                                      },
-                                      transition: "background-color 0.12s, border-color 0.12s",
                                     }}
                                   >
                                     <Typography variant="body2">{cycle}</Typography>
@@ -485,13 +486,11 @@ export default function ResultPane() {
                                             aria-pressed={isSelected}
                                             sx={{
                                               p: 1,
-                                              pr: 3,
                                               borderRadius: 1,
                                               cursor: "pointer",
-                                              border: isSelected ? "1px solid" : "1px solid transparent",
                                               borderColor: isSelected ? "primary.main" : "transparent",
-                                              bgcolor: isSelected ? "#DBEAFE" : "#fff",
-                                              transition: "background-color 0.12s",
+                                              bgcolor: isSelected ? "#DBEAFE" : "transparent",
+                                              transition: "all 0.12s",
                                               display: "flex",
                                               alignItems: "center",
                                               justifyContent: "space-between",
@@ -499,7 +498,7 @@ export default function ResultPane() {
                                             }}
                                           >
                                             <Typography variant="body1">{parsed.embryo ?? result.id}</Typography>
-                                            <Typography variant="caption">{result.algorithm_name ?? "-"}</Typography>
+                                            <Typography variant="caption" sx={{ pr: 2 }}>{result.algorithm_name ?? "-"}</Typography>
                                           </Box>
                                         );
                                       })}
