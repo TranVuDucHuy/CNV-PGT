@@ -52,6 +52,12 @@ const theme = createTheme({
       lineHeight: 1.5,
       color: colors.neutralBlack,
     },
+    h6: {
+      fontSize: "20px",
+      fontWeight: 600,
+      lineHeight: 1.5,
+      color: colors.neutralBlack,
+    },
     // Defaults for Labels, placeholders
     body1: {
       fontSize: "14px",
