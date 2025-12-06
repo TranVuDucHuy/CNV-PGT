@@ -11,13 +11,7 @@
    conda activate cnv_sandbox
    ```
 
-2. Install required packages:
-
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. Start a Redis server (can be run by docker):
+2. Start a Redis server (can be run by docker):
 
    ```bash
    docker run -d -p 6379:6379 redis
@@ -27,6 +21,12 @@
 
    ```bash
    docker-compose up -d
+   ```
+
+3. Install required packages:
+
+   ```bash
+   pip install -r requirements.txt
    ```
 
 4. Run the sandbox server:
