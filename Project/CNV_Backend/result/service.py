@@ -60,6 +60,12 @@ def _map_chromosome(value: str) -> Chromosome:
     """Map chromosome với các trường hợp (normalize & thử nhiều format)."""
     v = value.strip().removeprefix("chr").removeprefix("CHR")
 
+    # Xử lý trường hợp đặc biệt: 23 → X, 24 → Y
+    if v == "23":
+        return Chromosome.CHR_X
+    if v == "24":
+        return Chromosome.CHR_Y
+
     for resolver in (
         lambda: Chromosome(v),  # value-based
         lambda: Chromosome[v.upper()],  # name-based

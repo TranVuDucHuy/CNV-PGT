@@ -33,16 +33,18 @@ class AberrationService:
         sample = db.query(Sample).filter(Sample.id == result.sample_id).first()
 
         chromosome_counts = Counter(segment.chromosome for segment in segments)
+        inferred_sex = AberrationService._infer_sex_from_segments(segments)
         aberration_segments = []
 
         for segment in segments:
-            delta = abs(segment.copy_number - 2.0)
+            expected_cn = AberrationService._expected_copy_number(segment.chromosome, inferred_sex)
+            delta = abs(segment.copy_number - expected_cn)
             rounded_mosaicism = round(delta, 1)
-            if rounded_mosaicism < DEFAULT_MOSAICISM_THRESHOLD or segment.copy_number == 2.0:
+            if rounded_mosaicism < DEFAULT_MOSAICISM_THRESHOLD:
                 continue
 
             # Determine type
-            if segment.copy_number > 2.0:
+            if segment.copy_number > expected_cn:
                 aberration_type = AberrationType.GAIN
                 type_symbol = "+"
             else:
@@ -88,6 +90,47 @@ class AberrationService:
         db.commit()
         
         return aberration
+
+    @staticmethod
+    def _weighted_average_copy_number(segments: List[SampleSegment]) -> float | None:
+        total_length = 0
+        weighted_sum = 0.0
+
+        for segment in segments:
+            length = max(segment.end - segment.start, 1)
+            weighted_sum += segment.copy_number * length
+            total_length += length
+
+        if total_length == 0:
+            return None
+
+        return weighted_sum / total_length
+
+    @staticmethod
+    def _infer_sex_from_segments(segments: List[SampleSegment]) -> str:
+        y_segments = [segment for segment in segments if segment.chromosome == Chromosome.CHR_Y]
+        avg_y = AberrationService._weighted_average_copy_number(y_segments)
+
+        if avg_y is None:
+            return "unknown"
+
+        if avg_y < DEFAULT_MOSAICISM_THRESHOLD:
+            return "female"
+
+        return "male"
+
+    @staticmethod
+    def _expected_copy_number(chromosome: Chromosome, inferred_sex: str) -> float:
+        if inferred_sex == "female":
+            if chromosome == Chromosome.CHR_X:
+                return 2.0
+            if chromosome == Chromosome.CHR_Y:
+                return 0.0
+        elif inferred_sex == "male":
+            if chromosome in (Chromosome.CHR_X, Chromosome.CHR_Y):
+                return 1.0
+
+        return 2.0
 
     @staticmethod
     def annotate_result(result_id: str, db: Session) -> Aberration:
