@@ -3,22 +3,8 @@
  * Hiển thị trạng thái đang chạy algorithm
  */
 
-import React from 'react';
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  Box,
-  Stack,
-  Typography,
-  Table,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
-  Paper,
-  CircularProgress,
-} from '@mui/material';
+import React from "react";
+import { Dialog, DialogTitle, DialogContent, Box, Stack, Typography, Table, TableHead, TableBody, TableRow, TableCell, CircularProgress, Button, Divider, TableContainer } from "@mui/material";
 
 interface Props {
   open: boolean;
@@ -28,80 +14,79 @@ interface Props {
   parameters: Record<string, any>;
 }
 
-export default function RunningAlgorithmDialog({
-  open,
-  sampleName,
-  algorithmName,
-  algorithmVersion,
-  parameters,
-}: Props) {
+export default function RunningAlgorithmDialog({ open, sampleName, algorithmName, algorithmVersion, parameters }: Props) {
   const paramEntries = Object.entries(parameters || {});
 
   return (
     <Dialog open={open} maxWidth="sm" fullWidth disableEscapeKeyDown>
-      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, fontWeight: 600 }}>
-        <CircularProgress size={24} />
-        Running Algorithm
+      <DialogTitle sx={{ fontWeight: 600, pb: 0 }}>
+        <Typography variant="h3" sx={{ fontWeight: 600 }}>
+          Running Algorithm...
+        </Typography>
       </DialogTitle>
+      <Divider sx={{ mt: 2, mx: 3 }} />
 
-      <DialogContent sx={{ pt: 3 }}>
+      <DialogContent sx={{ pb: 4 }}>
         <Stack spacing={2.5}>
           <Box>
-            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-              Sample:
-            </Typography>
-            <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
-              {sampleName}
-            </Typography>
+            <Typography variant="body2">Sample</Typography>
+            <Typography variant="body1">{sampleName}</Typography>
           </Box>
 
-          <Box>
-            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-              Algorithm:
-            </Typography>
-            <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
-              {algorithmName}{' '}
-              <Typography component="span" variant="caption" color="text.secondary">
-                v{algorithmVersion}
-              </Typography>
-            </Typography>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 2,
+              mb: 2,
+            }}
+          >
+            <Box>
+              <Typography variant="body2">Name</Typography>
+              <Typography variant="body1">{algorithmName}</Typography>
+            </Box>
+            <Box>
+              <Typography variant="body2">Version</Typography>
+              <Typography variant="body1">{algorithmVersion}</Typography>
+            </Box>
           </Box>
 
           {paramEntries.length > 0 && (
-            <Box>
-              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block', mb: 1 }}>
-                Parameters:
-              </Typography>
-              <Paper variant="outlined">
-                <Table size="small">
-                  <TableHead sx={{ bgcolor: '#F3F4F6' }}>
-                    <TableRow>
-                      <TableCell sx={{ fontWeight: 600 }}>Name</TableCell>
-                      <TableCell sx={{ fontWeight: 600 }}>Value</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {paramEntries.map(([key, paramData]) => {
-                      const displayValue = typeof paramData === 'object' && paramData !== null && 'value' in paramData
-                        ? String(paramData.value ?? paramData.default ?? '')
-                        : String(paramData ?? '');
+            <TableContainer>
+              <Table size="small" sx={{ tableLayout: "fixed" }}>
+                <colgroup>
+                  <col style={{ width: "50%" }} />
+                  <col style={{ width: "50%" }} />
+                </colgroup>
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ pl: 0, pr: 1 }}>
+                      <Typography variant="body2">Parameter</Typography>
+                    </TableCell>
+                    <TableCell sx={{ pl: 1, pr: 0 }}>
+                      <Typography variant="body2">Value</Typography>
+                    </TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {paramEntries.map(([key, paramData]) => {
+                    const displayValue = typeof paramData === "object" && paramData !== null && "value" in paramData ? String(paramData.value ?? paramData.default ?? "") : String(paramData ?? "");
 
-                      return (
-                        <TableRow key={key}>
-                          <TableCell sx={{ fontWeight: 500 }}>{key}</TableCell>
-                          <TableCell>{displayValue}</TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </Paper>
-            </Box>
+                    return (
+                      <TableRow key={key}>
+                        <TableCell sx={{ pl: 0, pr: 1 }}>
+                          <Typography variant="body1">{key}</Typography>
+                        </TableCell>
+                        <TableCell sx={{ pl: 1, pr: 0 }}>
+                          <Typography variant="body1">{displayValue}</Typography>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
           )}
-
-          <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center', display: 'block', pt: 1 }}>
-            Please wait while the algorithm is running...
-          </Typography>
         </Stack>
       </DialogContent>
     </Dialog>

@@ -5,26 +5,20 @@
 
 "use client";
 
-import React, { useMemo, useState } from 'react';
-import { Plus, Minus, StepForward, Edit3 } from 'lucide-react';
-import {
-  Box,
-  Button,
-  Stack,
-  Typography,
-  CircularProgress,
-  Tooltip,
-} from '@mui/material';
-import MUIAccordionPane from '@/components/MUIAccordionPane';
-import { useAlgorithms } from './useAlgorithms';
-import AlgorithmDetail from '@/features/algorithm/AlgorithmDetail';
-import { useSelectionStore, setSelectedAlgorithm } from '@/features/selection/selectionStore';
-import { useReferencesStore } from '@/features/reference/useReferences';
-import { algorithmAPI } from '@/services';
-import RunAlgorithmWarningDialog from './RunAlgorithmWarningDialog';
-import RunningAlgorithmDialog from './RunningAlgorithmDialog';
-import RunAlgorithmErrorDialog from './RunAlgorithmErrorDialog';
-import useResultHandle from '@/features/result/resultHandle';
+import React, { useMemo, useState } from "react";
+import { Plus, Minus, StepForward, Edit3 } from "lucide-react";
+import { Box, Button, Stack, Typography, CircularProgress, Tooltip } from "@mui/material";
+import MUIAccordionPane from "@/components/MUIAccordionPane";
+import { useAlgorithms } from "./useAlgorithms";
+import AlgorithmDetail from "@/features/algorithm/AlgorithmDetail";
+import { useSelectionStore, setSelectedAlgorithm } from "@/features/selection/selectionStore";
+import { useReferencesStore } from "@/features/reference/useReferences";
+import { algorithmAPI } from "@/services";
+import RunAlgorithmWarningDialog from "./RunAlgorithmWarningDialog";
+import RunningAlgorithmDialog from "./RunningAlgorithmDialog";
+import RunAlgorithmErrorDialog from "./RunAlgorithmErrorDialog";
+import AlgorithmSuccessDialog from "./AlgorithmSuccessDialog";
+import useResultHandle from "@/features/result/resultHandle";
 
 export default function AlgorithmPane() {
   const { algorithms, loading, deleteAlgorithm, loadAlgorithms, lastValues, recordLastValues } = useAlgorithms();
@@ -41,9 +35,10 @@ export default function AlgorithmPane() {
   // Warning & Running dialogs
   const [warningOpen, setWarningOpen] = useState(false);
   const [runningOpen, setRunningOpen] = useState(false);
+  const [successOpen, setSuccessOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const editTarget = useMemo(() => algorithms.find(a => a.id === editTargetId), [algorithms, editTargetId]);
+  const editTarget = useMemo(() => algorithms.find((a) => a.id === editTargetId), [algorithms, editTargetId]);
 
   const handleAdd = () => {
     setDialogOpen(true);
@@ -96,7 +91,7 @@ export default function AlgorithmPane() {
   const handleRun = async () => {
     // Kiểm tra điều kiện: đúng 1 sample và 1 algorithm
     if (!selectedSample || !selectedAlgoFromStore) {
-      alert('Please select exactly 1 sample and 1 algorithm to run.');
+      alert("Please select exactly 1 sample and 1 algorithm to run.");
       return;
     }
 
@@ -106,7 +101,7 @@ export default function AlgorithmPane() {
 
     // Kiểm tra exe_class và số references
     if (!algo.exe_class || currentReferenceCount < referencesRequired) {
-      console.log('Cannot run algorithm, missing conditions:', {
+      console.log("Cannot run algorithm, missing conditions:", {
         exe_class: algo.exe_class,
         referencesRequired,
         currentReferenceCount,
@@ -124,7 +119,7 @@ export default function AlgorithmPane() {
       // Thành công -> refresh results
       setRunningOpen(false);
       await refreshResults();
-      alert('Algorithm completed successfully! Check Results pane.');
+      setSuccessOpen(true);
     } catch (err) {
       setRunningOpen(false);
       const message = err instanceof Error ? err.message : String(err);
@@ -144,9 +139,7 @@ export default function AlgorithmPane() {
   // Lấy parameters để hiển thị trong Running dialog
   const currentParams = React.useMemo(() => {
     if (!selectedAlgoFromStore?.last_parameter_id) return {};
-    const paramSet = selectedAlgoFromStore.parameters?.find(
-      (p) => p.id === selectedAlgoFromStore.last_parameter_id
-    );
+    const paramSet = selectedAlgoFromStore.parameters?.find((p) => p.id === selectedAlgoFromStore.last_parameter_id);
     return paramSet?.value || {};
   }, [selectedAlgoFromStore]);
 
@@ -191,14 +184,14 @@ export default function AlgorithmPane() {
             bgcolor: "transparent",
             color: "#DC2626",
             "& svg": { color: "#DC2626" },
-            "&:hover": { bgcolor: "#DC2626", "& svg": { color: "#fff" },},
+            "&:hover": { bgcolor: "#DC2626", "& svg": { color: "#fff" } },
           }}
         >
           <Minus size={16} />
         </Button>
       </Tooltip>
 
-      <Tooltip title={canRun ? 'Run Algorithm' : 'Select exactly 1 sample and 1 algorithm to run'}>
+      <Tooltip title={canRun ? "Run Algorithm" : "Select exactly 1 sample and 1 algorithm to run"}>
         <span>
           <Button
             onClick={(e) => {
@@ -211,10 +204,10 @@ export default function AlgorithmPane() {
               minWidth: 0,
               p: 0.5,
               border: 2,
-              borderColor: canRun ? '#3B82F6' : 'grey.400',
+              borderColor: canRun ? "#3B82F6" : "grey.400",
               bgcolor: "transparent",
-              '&:hover': { bgcolor: '#3B82F6', "& svg": { color: "#fff" }},
-              '&:disabled': { cursor: 'not-allowed' },
+              "&:hover": { bgcolor: "#3B82F6", "& svg": { color: "#fff" } },
+              "&:disabled": { cursor: "not-allowed" },
             }}
           >
             <StepForward size={16} />
@@ -227,16 +220,14 @@ export default function AlgorithmPane() {
   return (
     <>
       <MUIAccordionPane title="Algorithm" defaultExpanded headerRight={headerRight}>
-        <Box sx={{ maxHeight: '20vh', overflowY: 'auto', pr: 1, scrollbarGutter: 'stable' }}>
+        <Box sx={{ maxHeight: "20vh", overflowY: "auto", pr: 1, scrollbarGutter: "stable" }}>
           {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+            <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
               <CircularProgress size={32} />
             </Box>
           ) : algorithms.length === 0 ? (
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-              <Typography variant="body1">
-                No algorithms yet. Click Add to add one.
-              </Typography>
+            <Box sx={{ textAlign: "center", py: 4 }}>
+              <Typography variant="body1">No algorithms yet. Click Add to add one.</Typography>
             </Box>
           ) : (
             <Stack spacing={1}>
@@ -252,23 +243,23 @@ export default function AlgorithmPane() {
                       p: 1.25,
                       pl: 2,
                       borderRadius: 1,
-                      border: '1px solid',
-                      borderColor: isSelected ? 'primary.main' : 'rgba(0,0,0,0.12)',
-                      bgcolor: isSelected ? '#DBEAFE' : 'transparent',
-                      cursor: 'pointer',
-                      transition: 'all 0.12s',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      userSelect: 'none',
-                      '&:hover': {
-                        bgcolor: isSelected ? '#DBEAFE' : '#F9FAFB',
+                      border: "1px solid",
+                      borderColor: isSelected ? "primary.main" : "rgba(0,0,0,0.12)",
+                      bgcolor: isSelected ? "#DBEAFE" : "transparent",
+                      cursor: "pointer",
+                      transition: "all 0.12s",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      userSelect: "none",
+                      "&:hover": {
+                        bgcolor: isSelected ? "#DBEAFE" : "#F9FAFB",
                       },
                     }}
                   >
                     <Box>
                       <Typography variant="body2">
-                        {algo.name}{' '}
+                        {algo.name}{" "}
                         <Typography component="span" variant="caption">
                           v{algo.version}
                         </Typography>
@@ -286,7 +277,7 @@ export default function AlgorithmPane() {
                           minWidth: 0,
                           p: 0.5,
                           color: "#3B82F6",
-                          '&:hover': { bgcolor: '#F3F4F6' },
+                          "&:hover": { bgcolor: "#F3F4F6" },
                         }}
                       >
                         <Edit3 size={16} />
@@ -344,18 +335,15 @@ export default function AlgorithmPane() {
       />
 
       {/* Running Dialog */}
-      <RunningAlgorithmDialog
-        open={runningOpen}
-        sampleName={selectedSample?.name || ''}
-        algorithmName={selectedAlgoFromStore?.name || ''}
-        algorithmVersion={selectedAlgoFromStore?.version || ''}
-        parameters={currentParams}
-      />
+      <RunningAlgorithmDialog open={runningOpen} sampleName={selectedSample?.name || ""} algorithmName={selectedAlgoFromStore?.name || ""} algorithmVersion={selectedAlgoFromStore?.version || ""} parameters={currentParams} />
+
+      {/* Success Dialog */}
+      <AlgorithmSuccessDialog open={successOpen} sampleName={selectedSample?.name || ""} algorithmName={selectedAlgoFromStore?.name || ""} onClose={() => setSuccessOpen(false)} />
 
       {/* Error Dialog */}
       <RunAlgorithmErrorDialog
         open={!!errorMessage}
-        errorMessage={errorMessage || ''}
+        errorMessage={errorMessage || ""}
         onClose={() => setErrorMessage(null)}
         onRetry={() => {
           setErrorMessage(null);
