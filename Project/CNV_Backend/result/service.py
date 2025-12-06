@@ -1,5 +1,6 @@
 import io
 import csv
+import logging
 from typing import Iterator, Tuple, Optional
 from datetime import datetime
 from sqlalchemy import select
@@ -31,6 +32,9 @@ from sample.models import Sample
 
 SEGMENT_EXPECTED = {"chromosome", "start", "end", "copy_number", "confidence"}
 BIN_EXPECTED = {"chromosome", "start", "end", "copy_number", "read_count", "gc_content"}
+
+
+logger = logging.getLogger(__name__)
 
 
 def _parse_tsv_bytes(
@@ -508,19 +512,44 @@ class ResultService:
 
             sample_map[sample.id] = sample
 
-        aberrations = (
-            db.execute(
-                select(Aberration)
-                .where(Aberration.result_id.in_(report_ids))
-                .options(selectinload(Aberration.aberration_segments))
+        def _load_aberrations() -> list[Aberration]:
+            return (
+                db.execute(
+                    select(Aberration)
+                    .where(Aberration.result_id.in_(report_ids))
+                    .options(selectinload(Aberration.aberration_segments))
+                )
+                .scalars()
+                .all()
             )
-            .scalars()
-            .all()
-        )
 
-        aberration_result_map = {}
-        for ab in aberrations:
-            aberration_result_map[ab.result_id] = ab
+        aberrations = _load_aberrations()
+        aberration_result_map = {ab.result_id: ab for ab in aberrations}
+
+        from aberration.service import AberrationService
+
+        for result in results:
+            ab = aberration_result_map.get(result.id)
+            needs_annotation = False
+
+            if ab is None or not ab.aberration_segments:
+                needs_annotation = True
+            else:
+                needs_annotation = any(
+                    segment.annotation_for_segment is None
+                    for segment in ab.aberration_segments
+                )
+
+            if not needs_annotation:
+                continue
+
+            try:
+                AberrationService.annotate_result(result.id, db)
+            except Exception as exc:
+                logger.warning("Failed to annotate result %s: %s", result.id, exc)
+
+        aberrations = _load_aberrations()
+        aberration_result_map = {ab.result_id: ab for ab in aberrations}
 
         embryos = []
         for result in results:
