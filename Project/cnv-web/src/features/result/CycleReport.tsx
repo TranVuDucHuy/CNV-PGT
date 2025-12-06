@@ -81,36 +81,32 @@ export const CycleReport: React.FC<CycleReportProps> = ({ loading, error, report
                       <Typography variant="body2">Call</Typography>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2">Aberration Codes</Typography>
+                      <Typography variant="body2">Aberration Summary</Typography>
                     </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {report.embryos.map((embryo, index) => {
-                    const aberrationCodes = embryo.abberations.map((a) => a.code).join(", ");
-                    return (
-                      <TableRow key={index}>
-                        <TableCell sx={{ pl: 0, pr: 1 }}>
-                          <Typography variant="body1">{embryo.embryo_id}</Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body1">{embryo.cell_type}</Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Chip label={embryo.call} size="small" color={embryo.call.toLowerCase() === "normal" ? "success" : embryo.call.toLowerCase() === "abnormal" ? "error" : "warning"} variant="outlined" sx={{ fontWeight: "normal" }} />
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body1">
-                            {aberrationCodes || (
-                              <Typography variant="body2" color="text.secondary">
-                                None
-                              </Typography>
-                            )}
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                  {[...report.embryos]
+                    .sort((a, b) => a.embryo_id.localeCompare(b.embryo_id))
+                    .map((embryo, index) => {
+                      const aberrationCodes = embryo.abberations.map((a) => a.code).join(", ");
+                      return (
+                        <TableRow key={index}>
+                          <TableCell sx={{ pl: 0, pr: 1 }}>
+                            <Typography variant="body1">{embryo.embryo_id}</Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body1">{embryo.cell_type}</Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Chip label={embryo.call} size="small" color={embryo.call.toLowerCase() === "normal" ? "success" : embryo.call.toLowerCase() === "abnormal" ? "error" : "warning"} variant="outlined" sx={{ fontWeight: "normal" }} />
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body1">{aberrationCodes || <Typography variant="body1">None</Typography>}</Typography>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                 </TableBody>
               </Table>
             </TableContainer>
@@ -153,40 +149,42 @@ export const CycleReport: React.FC<CycleReportProps> = ({ loading, error, report
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {report.embryos.flatMap((embryo) =>
-                      embryo.abberations.map((aberration, aberrationIndex) => (
-                        <TableRow key={`${embryo.embryo_id}-${aberrationIndex}`}>
-                          <TableCell sx={{ pl: 0, pr: 1 }}>
-                            <Typography variant="body1">{embryo.embryo_id}</Typography>
-                          </TableCell>
-                          <TableCell>
-                            <Chip label={aberration.code} size="small" variant="outlined" sx={{ fontWeight: "normal" }} />
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant="body1">{(aberration.mosaic * 100).toFixed(0)}%</Typography>
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant="body1">{aberration.size != null ? aberration.size.toFixed(1) : "N/A"}</Typography>
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant="body1">{aberration.assessment || "Unknown"}</Typography>
-                          </TableCell>
-                          <TableCell>
-                            {aberration.diseases && aberration.diseases.length > 0 ? (
-                              <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-                                {aberration.diseases.map((disease, idx) => (
-                                  <Typography key={idx} variant="body1">
-                                    {disease};
-                                  </Typography>
-                                ))}
-                              </Box>
-                            ) : (
-                              <Typography variant="body1">No related disease detected</Typography>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
+                    {[...report.embryos]
+                      .sort((a, b) => a.embryo_id.localeCompare(b.embryo_id))
+                      .flatMap((embryo) =>
+                        embryo.abberations.map((aberration, aberrationIndex) => (
+                          <TableRow key={`${embryo.embryo_id}-${aberrationIndex}`}>
+                            <TableCell sx={{ pl: 0, pr: 1 }}>
+                              <Typography variant="body1">{embryo.embryo_id}</Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Chip label={aberration.code} size="small" variant="outlined" sx={{ fontWeight: "normal" }} />
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body1">{(aberration.mosaic * 100).toFixed(0)}%</Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body1">{aberration.size != null ? aberration.size.toFixed(1) : "N/A"}</Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body1">{aberration.assessment || "Unknown"}</Typography>
+                            </TableCell>
+                            <TableCell>
+                              {aberration.diseases && aberration.diseases.length > 0 ? (
+                                <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                                  {aberration.diseases.map((disease, idx) => (
+                                    <Typography key={idx} variant="body1">
+                                      {disease};
+                                    </Typography>
+                                  ))}
+                                </Box>
+                              ) : (
+                                <Typography variant="body1">No related disease detected</Typography>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
                   </TableBody>
                 </Table>
               </TableContainer>

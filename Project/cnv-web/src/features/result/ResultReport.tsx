@@ -1,5 +1,6 @@
 import { Box, Alert, Skeleton, Typography, Paper, Chip, Divider, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, SxProps, Theme } from "@mui/material";
 import { ResultReportResponse } from "@/types/result";
+import { sortByChromosome } from "@/utils/chromosomeSort";
 
 interface ResultReport {
   loading: boolean;
@@ -210,7 +211,7 @@ export const ResultReport: React.FC<ResultReport> = ({ loading, error, report, e
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {report.aberration.aberration_segments.map((segment, index) => (
+                      {sortByChromosome(report.aberration.aberration_segments).map((segment, index) => (
                         <TableRow key={index}>
                           <TableCell sx={{ pl: 0 }}>
                             <Typography variant="body1">{segment.chromosome}</Typography>

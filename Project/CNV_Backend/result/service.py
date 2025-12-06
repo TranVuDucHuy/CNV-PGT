@@ -26,6 +26,8 @@ from .schemas import (
     AberrationSummary,
     EmbryoInfo,
     CycleReportResponse,
+    SampleSegment as SampleSegmentSchema,
+    SampleBin as SampleBinSchema,
 )
 from common.models import Chromosome
 from sample.models import Sample
@@ -580,7 +582,7 @@ class ResultService:
                 EmbryoInfo(
                     embryo_id=sample.embryo_id,
                     cell_type=sample.cell_type.value,
-                    call="Abnormal" if aberration else "Normal",
+                    call="Abnormal" if abberations_summary else "Normal",
                     abberations=abberations_summary,
                 )
             )
@@ -617,6 +619,7 @@ class ResultService:
                 SampleSegment.end,
                 SampleSegment.copy_number,
                 SampleSegment.confidence,
+                SampleSegment.man_change,
             )
             .filter(SampleSegment.result_id == result_id)
             .all()
@@ -635,8 +638,8 @@ class ResultService:
         )
 
         result_dict["segments"] = [
-            AlgoSampleSegment(**s._asdict()) for s in segment_rows
+            SampleSegmentSchema(**s._asdict()) for s in segment_rows
         ]
-        result_dict["bins"] = [AlgoSampleBin(**b._asdict()) for b in bin_rows]
+        result_dict["bins"] = [SampleBinSchema(**b._asdict()) for b in bin_rows]
 
         return ResultDto(**result_dict)

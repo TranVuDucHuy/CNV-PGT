@@ -1,7 +1,24 @@
 from pydantic import BaseModel
 from typing import List, Optional, Any
 from datetime import datetime, date
-from algorithm.plugin import SampleSegment, SampleBin
+
+
+class SampleSegment(BaseModel):
+    chromosome: str
+    start: int
+    end: int
+    copy_number: float
+    confidence: Optional[float] = None
+    man_change: bool = False
+
+
+class SampleBin(BaseModel):
+    chromosome: str
+    start: int
+    end: int
+    copy_number: float
+    read_count: int
+    gc_content: float
 
 
 class ResultSummary(BaseModel):
