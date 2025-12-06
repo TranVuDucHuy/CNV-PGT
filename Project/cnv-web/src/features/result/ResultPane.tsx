@@ -623,11 +623,11 @@ export default function ResultPane() {
                               </Typography>
                             </Typography>
                           </Box>
-                          {isSelected && (
+                          {/* {isSelected && (
                             <Typography variant="caption" color="primary">
                               (selected)
                             </Typography>
-                          )}
+                          )} */}
                         </Stack>
                       </Box>
                     );
