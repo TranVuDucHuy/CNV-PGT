@@ -106,25 +106,6 @@ export default function SampleSegmentTable({ data, dense = false, onRowClick, fu
     }));
   }, [data]);
 
-  // --- CSV Export Logic ---
-  const handleExportCSV = () => {
-    const headers = ["Chromosome", "Start", "End", "Copy #", "Confidence", "Manual Change"];
-    const csvContent = rows.map((row) => {
-      return [row.chromosome, row.start, row.end, row.copy_number, row.confidence != null ? Number(row.confidence).toFixed(4) : "", row.man_change ? "Yes" : "No"].join(",");
-    });
-    const csvString = [headers.join(","), ...csvContent].join("\n");
-    const blob = new Blob(["\uFEFF" + csvString], {
-      type: "text/csv;charset=utf-8;",
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", `sample_segment_export_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   return (
     <Paper
       sx={{
@@ -137,32 +118,6 @@ export default function SampleSegmentTable({ data, dense = false, onRowClick, fu
         bgcolor: "#FAFAFA",
       }}
     >
-      {/* --- TOOLBAR --- */}
-      <Box
-        sx={{
-          p: 1,
-          pr: 2,
-          display: "flex",
-          justifyContent: "flex-end",
-          flexShrink: 0,
-        }}
-      >
-        <Button
-          variant="outlined"
-          size="small"
-          onClick={handleExportCSV}
-          sx={{
-            fontSize: "0.75rem",
-            padding: "2px 8px",
-            minWidth: "auto",
-            height: "28px",
-            textTransform: "none",
-          }}
-        >
-          Export CSV
-        </Button>
-      </Box>
-
       {/* DataGrid */}
       <Box sx={{ flexGrow: 1, width: "100%", minHeight: 0, overflow: "hidden", p: 2, pb: 4 }}>
         <DataGrid

@@ -27,6 +27,13 @@ export const CHROMOSOME_ORDER: Record<string, number> = {
   MT: 25,
 };
 
+// Chromosome array for iteration
+export const CHROMOSOME_ARRAY = [
+  "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
+  "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
+  "21", "22", "X", "Y",
+] as const;
+
 // Type for data with chromosome and start fields
 export type ChromosomeData = {
   chromosome: string | number;

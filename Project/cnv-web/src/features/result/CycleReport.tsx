@@ -1,10 +1,5 @@
-import { Box, Alert, Skeleton, Typography, Paper, Chip, Divider, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Stack, Button, Menu, MenuItem, ListItemIcon, ListItemText, SxProps, Theme } from "@mui/material";
-import IosShareIcon from "@mui/icons-material/IosShare";
-import DescriptionIcon from "@mui/icons-material/Description";
-import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
-import GridOnIcon from "@mui/icons-material/GridOn";
+import { Box, Alert, Skeleton, Typography, Paper, Chip, Divider, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, SxProps, Theme } from "@mui/material";
 import { CycleReportResponse } from "@/types/result";
-import { useState } from "react";
 
 interface CycleReportProps {
   loading: boolean;
@@ -17,39 +12,6 @@ interface CycleReportProps {
 }
 
 export const CycleReport: React.FC<CycleReportProps> = ({ loading, error, report, exportToDocx, exportToXlsx, exportToPdf, sx }) => {
-  const [exportAnchorEl, setExportAnchorEl] = useState<null | HTMLElement>(null);
-
-  const handleExportClick = (event: React.MouseEvent<HTMLElement>) => {
-    setExportAnchorEl(event.currentTarget);
-  };
-
-  const handleExportClose = () => {
-    setExportAnchorEl(null);
-  };
-
-  const handleExportExcel = () => {
-    if (report) {
-      exportToXlsx(report);
-    }
-    handleExportClose();
-  };
-
-  const handleExportWord = async () => {
-    if (report) {
-      await exportToDocx(report);
-    }
-    handleExportClose();
-  };
-
-  const handleExportPDF = async () => {
-    if (report) {
-      await exportToPdf(report);
-    }
-    handleExportClose();
-  };
-
-  const exportMenuOpen = Boolean(exportAnchorEl);
-
   return (
     <Box
       sx={{
@@ -76,88 +38,6 @@ export const CycleReport: React.FC<CycleReportProps> = ({ loading, error, report
 
       {!loading && !error && report && (
         <Box>
-          <Box sx={{ ml: 1 }}>
-            <Stack direction="row" alignItems="center" justifyContent={"flex-end"} marginBottom={3}>
-              {/* <Typography variant="h5" gutterBottom>
-                Cycle Report
-              </Typography> */}
-              <Box>
-                <Button
-                  variant="contained"
-                  sx={{
-                    ml: 2,
-                    backgroundColor: "green",
-                    "&:hover": { backgroundColor: "darkgreen" },
-                    fontWeight: "bold",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                  onClick={handleExportClick}
-                >
-                  <IosShareIcon sx={{ mr: 1 }} />
-                  Export
-                </Button>
-                <Menu
-                  anchorEl={exportAnchorEl}
-                  open={exportMenuOpen}
-                  onClose={handleExportClose}
-                  anchorOrigin={{
-                    vertical: "bottom",
-                    horizontal: "right",
-                  }}
-                  transformOrigin={{
-                    vertical: "top",
-                    horizontal: "right",
-                  }}
-                  slotProps={{
-                    paper: {
-                      elevation: 3,
-                      sx: {
-                        minWidth: 200,
-                        mt: 0.5,
-                        borderRadius: 2,
-                      },
-                    },
-                  }}
-                >
-                  <MenuItem onClick={handleExportExcel}>
-                    <ListItemIcon>
-                      <GridOnIcon sx={{ color: "#1D6F42" }} />
-                    </ListItemIcon>
-                    <ListItemText>
-                      <Typography sx={{ fontWeight: 500 }}>Export to Excel</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        .xlsx file
-                      </Typography>
-                    </ListItemText>
-                  </MenuItem>
-                  <MenuItem onClick={handleExportWord}>
-                    <ListItemIcon>
-                      <DescriptionIcon sx={{ color: "#2B579A" }} />
-                    </ListItemIcon>
-                    <ListItemText>
-                      <Typography sx={{ fontWeight: 500 }}>Export to Word</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        .docx file
-                      </Typography>
-                    </ListItemText>
-                  </MenuItem>
-                  <MenuItem onClick={handleExportPDF}>
-                    <ListItemIcon>
-                      <PictureAsPdfIcon sx={{ color: "#D32F2F" }} />
-                    </ListItemIcon>
-                    <ListItemText>
-                      <Typography sx={{ fontWeight: 500 }}>Export to PDF</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        .pdf file
-                      </Typography>
-                    </ListItemText>
-                  </MenuItem>
-                </Menu>
-              </Box>
-            </Stack>
-          </Box>
-
           {/* Cycle Information */}
           <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
             <Typography variant="h6" gutterBottom>
