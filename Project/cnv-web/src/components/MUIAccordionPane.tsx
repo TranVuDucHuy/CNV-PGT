@@ -52,7 +52,7 @@ export default function MUIAccordionPane({
           "& .MuiAccordionSummary-content": {
             my: 0.5,
           },
-          bgcolor: "primary1.light",
+          bgcolor: "primary.light",
           py: 1,
           px: 1.5,
           cursor: "pointer",
@@ -60,11 +60,7 @@ export default function MUIAccordionPane({
         }}
       >
         <Stack direction="row" alignItems="center" spacing={1} sx={{ flex: 1 }}>
-          <Typography
-            variant="h2"
-          >
-            {title}
-          </Typography>
+          <Typography variant="h2">{title}</Typography>
         </Stack>
 
         {headerRight && (

@@ -139,7 +139,7 @@ export const DynamicStack = <T,>({
               display: "flex",
               alignItems: "center",
               flexDirection: "row",
-              bgcolor: "primary1.light",
+              bgcolor: "primary.light",
               borderTopLeftRadius: 6,
               borderTopRightRadius: 6,
               borderBottomLeftRadius: 0,

@@ -440,7 +440,7 @@ export default function AlgorithmDetail({ open, onClose, onSuccess, mode = "crea
 
             <Paper variant="outlined">
               <Table size="small">
-                <TableHead sx={{ bgcolor: "primary1.light", position: "sticky", top: 0 }}>
+                <TableHead sx={{ bgcolor: "primary.light", position: "sticky", top: 0 }}>
                   <TableRow>
                     <TableCell align="center">
                       <Typography variant="body2" align="center">

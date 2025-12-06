@@ -3,7 +3,7 @@ import colors from "./colors";
 
 const theme = createTheme({
   palette: {
-    primary1: {
+    primary: {
       main: colors.primary1,
       dark: colors.primary1Dark,
       light: colors.primary1Light,
