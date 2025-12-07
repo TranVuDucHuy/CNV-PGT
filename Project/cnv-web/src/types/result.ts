@@ -145,6 +145,7 @@ export interface AberrationSegmentInfo {
   aberration_code: string;
   assessment: string;
   annotation_for_segment?: string | null;
+  man_change?: boolean | null;
 }
 
 /** Tương ứng với lớp `AberrationInfo` trong backend */

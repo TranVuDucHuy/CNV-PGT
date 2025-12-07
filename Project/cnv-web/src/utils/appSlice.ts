@@ -14,8 +14,8 @@ const initialState: AppState = {
   viewChecked: {
     bin: false,
     segment: false,
-    report: false,
     chart: false,
+    report: false,
     cycleReport: false,
   },
   selectedResults: [],

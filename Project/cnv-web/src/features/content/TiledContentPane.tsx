@@ -1,63 +1,53 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Typography } from "@mui/material";
 import { useViewHandle } from "../view/viewHandle";
 import useResultHandle from "../result/resultHandle";
 import SampleBinTable from "./viewpanes/SampleBinTable";
 import SampleSegmentTable from "./viewpanes/SampleSegmentTable";
-import {
-  CycleReportResponse,
-  ResultDto,
-  ResultReportResponse,
-  SampleBin,
-  SampleSegment,
-} from "@/types/result";
+import { CycleReportResponse, ResultDto, ResultReportResponse, SampleBin, SampleSegment } from "@/types/result";
 import CNVChart from "./viewpanes/CNVChart";
 import DynamicStack from "@/components/DynamicStack";
 import { ResultReport } from "../result/ResultReport";
 import { resultAPI } from "@/services";
-import {
-  exportToXlsx,
-  exportToDocx,
-  exportToPdf,
-  exportCycleReportToDocx,
-  exportCycleReportToXlsx,
-  exportCycleReportToPdf,
-} from "@/utils/documentExporter";
+import { exportToXlsx, exportToDocx, exportToPdf, exportCycleReportToDocx, exportCycleReportToXlsx, exportCycleReportToPdf } from "@/utils/documentExporter";
 import { CycleReport } from "../result/CycleReport";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "@/utils/store";
 import { setViewOption, removeSelectedResult } from "@/utils/appSlice";
 import { parseSampleNameToParts } from "../sample/sampleUtils";
+import { ExportAction } from "@/components/ExportMenuButton";
+import GridOnIcon from "@mui/icons-material/GridOn";
+import ImageIcon from "@mui/icons-material/Image";
+import DescriptionIcon from "@mui/icons-material/Description";
+import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
+import { exportBinsToCSV, exportSegmentsToCSV, exportChartToPNG } from "@/utils/exportHelpers";
 
 const defaultHeights = {
   bin: 400,
   segment: 400,
-  table: 500,
+  chart: 550,
   report: 600,
 };
 
 export default function TiledContentPane() {
   const checked = useSelector((state: RootState) => state.app.viewChecked);
   const selectedResultIds = useSelector((state: RootState) => state.app.selectedResults);
-  const dispatch = useDispatch()
-  
+  const dispatch = useDispatch();
+
   // 1. Lấy thêm resultDtos từ hook
   const { selectedResultDto, resultDtos } = useResultHandle();
 
   const [bins, setBins] = useState<SampleBin[]>([]);
   const [segments, setSegments] = useState<SampleSegment[]>([]);
 
-  const [resultReport, setResultReport] = useState<ResultReportResponse | null>(
-    null
-  );
+  const [resultReport, setResultReport] = useState<ResultReportResponse | null>(null);
 
   const [reportLoading, setReportLoading] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
 
-  const [cycleReport, setCycleReport] = useState<CycleReportResponse | null>(
-    null
-  );
+  const [cycleReport, setCycleReport] = useState<CycleReportResponse | null>(null);
   const [cycleReportLoading, setCycleReportLoading] = useState(false);
   const [cycleReportError, setCycleReportError] = useState<string | null>(null);
 
@@ -66,9 +56,7 @@ export default function TiledContentPane() {
     const srcSegments = selectedResultDto?.segments ?? [];
 
     const copyBins = Array.isArray(srcBins) ? structuredCloneSafe(srcBins) : [];
-    const copySegments = Array.isArray(srcSegments)
-      ? structuredCloneSafe(srcSegments)
-      : [];
+    const copySegments = Array.isArray(srcSegments) ? structuredCloneSafe(srcSegments) : [];
 
     setBins(copyBins);
     setSegments(copySegments);
@@ -141,127 +129,188 @@ export default function TiledContentPane() {
     const res = [];
     // Các phần Table và Report giữ nguyên (hiển thị cho selectedResultDto hoặc logic cũ)
     if (checked.bin) {
+      const binExportOptions: ExportAction[] = [
+        {
+          id: "csv",
+          label: "Export to CSV",
+          subLabel: ".csv file",
+          icon: <GridOnIcon sx={{ color: "#1D6F42" }} />,
+          onClick: () => {
+            const fileName = `sample_bin_${selectedResultDto?.sample_name}_${new Date().toISOString().slice(0, 10)}.csv`;
+            exportBinsToCSV(bins, fileName);
+          },
+        },
+      ];
       res.push({
         id: "bin",
         title: `Sample Bins ${selectedResultDto?.sample_name} - ${selectedResultDto?.algorithm_name}`,
         initialHeight: defaultHeights.bin,
         content: <SampleBinTable data={bins} dense fullHeight />,
-        onClose: () => dispatch(setViewOption({key: "bin", value: false}))
+        exportOptions: binExportOptions,
+        onClose: () => dispatch(setViewOption({ key: "bin", value: false })),
       });
     }
     if (checked.segment) {
+      const segmentExportOptions: ExportAction[] = [
+        {
+          id: "csv",
+          label: "Export to CSV",
+          subLabel: ".csv file",
+          icon: <GridOnIcon sx={{ color: "#1D6F42" }} />,
+          onClick: () => {
+            const fileName = `sample_segment_${selectedResultDto?.sample_name}_${new Date().toISOString().slice(0, 10)}.csv`;
+            exportSegmentsToCSV(segments, fileName);
+          },
+        },
+      ];
       res.push({
         id: "segment",
         title: `Sample Segments ${selectedResultDto?.sample_name} - ${selectedResultDto?.algorithm_name}`,
         initialHeight: defaultHeights.segment,
         content: <SampleSegmentTable data={segments} dense fullHeight />,
-        onClose: () => dispatch(setViewOption({key: "segment", value: false}))
+        exportOptions: segmentExportOptions,
+        onClose: () => dispatch(setViewOption({ key: "segment", value: false })),
       });
     }
 
     // 2. Logic hiển thị Chart: Lặp qua resultDtos để tạo nhiều chart xếp chồng
     if (checked.chart) {
       // Ưu tiên dùng resultDtos (danh sách chọn), nếu không có thì fallback về selectedResultDto (chọn đơn)
-      const chartTargets: ResultDto[] = []
+      const chartTargets: ResultDto[] = [];
 
       for (let i = 0; i < selectedResultIds.length; i++) {
         for (let j = 0; j < resultDtos.length; j++) {
           if (resultDtos[j].id == selectedResultIds[i]) {
-            
-            chartTargets.push(resultDtos[j])
+            chartTargets.push(resultDtos[j]);
           }
         }
       }
 
-      let cycle = null
-      let canShow = true
+      let cycle = null;
+      let canShow = true;
       for (let i = 0; i < chartTargets.length; i++) {
-        const parts = parseSampleNameToParts(chartTargets[i].sample_name)
+        const parts = parseSampleNameToParts(chartTargets[i].sample_name);
         if (!cycle) {
-          cycle = parts.cycle
-        }
-        else {
+          cycle = parts.cycle;
+        } else {
           if (cycle !== parts.cycle) {
-            canShow = false
-            break
+            canShow = false;
+            break;
           }
         }
       }
 
       if (canShow) {
         chartTargets.forEach((dto) => {
+          const chartElementId = `cnv-chart-${dto.id}`;
+          const chartExportOptions: ExportAction[] = [
+            {
+              id: "png",
+              label: "Export to PNG",
+              subLabel: ".png file",
+              icon: <ImageIcon sx={{ color: "#1976d2" }} />,
+              onClick: () => {
+                const fileName = `chart_${dto.sample_name}_${new Date().toISOString().slice(0, 10)}.png`;
+                exportChartToPNG(chartElementId, fileName);
+              },
+            },
+          ];
           res.push({
             id: `chart-${dto.id}`, // Tạo ID duy nhất cho mỗi chart pane
             title: `Sample Chart ${dto.sample_name} - ${dto.algorithm_name}`,
-            initialHeight: defaultHeights.table,
-            content: (
-              <CNVChart 
-                bins={dto.bins ?? []} 
-                segments={dto.segments ?? []} 
-                sx={{ height: "100%" }} 
-              />
-            ),
+            initialHeight: defaultHeights.chart,
+            content: <CNVChart chartId={chartElementId} bins={dto.bins ?? []} segments={dto.segments ?? []} sx={{ height: "100%" }} />,
+            exportOptions: chartExportOptions,
             // Khi tắt chart, ta tắt cờ 'chart' trong view handle (ẩn tất cả chart)
             onClose: () => {
-              dispatch(removeSelectedResult(dto.id))
+              dispatch(removeSelectedResult(dto.id));
               if (selectedResultIds.length == 1) {
-                dispatch(setViewOption({key: "chart", value: false}))
+                dispatch(setViewOption({ key: "chart", value: false }));
               }
-            }
+            },
           });
         });
-      }
-      else {
+      } else {
         res.push({
           id: `chart-none`,
-            title: `Sample Chart None`,
-            initialHeight: defaultHeights.table,
-            content: (
-              <div>
-                Results have to have same cycle
-              </div>
-            )
-        })
+          title: `Sample Chart None`,
+          initialHeight: defaultHeights.chart,
+          content: <div>Results have to have same cycle</div>,
+        });
       }
     }
 
     if (checked.report) {
+      const reportExportOptions: ExportAction[] = [];
+      if (resultReport) {
+        reportExportOptions.push(
+          {
+            id: "xlsx",
+            label: "Export to Excel",
+            subLabel: ".xlsx file",
+            icon: <GridOnIcon sx={{ color: "#1D6F42" }} />,
+            onClick: () => exportToXlsx(resultReport),
+          },
+          {
+            id: "docx",
+            label: "Export to Word",
+            subLabel: ".docx file",
+            icon: <DescriptionIcon sx={{ color: "#2B579A" }} />,
+            onClick: () => exportToDocx(resultReport),
+          },
+          {
+            id: "pdf",
+            label: "Export to PDF",
+            subLabel: ".pdf file",
+            icon: <PictureAsPdfIcon sx={{ color: "#D32F2F" }} />,
+            onClick: () => exportToPdf(resultReport),
+          }
+        );
+      }
       res.push({
         id: "report",
-        title: `Sample Report ${selectedResultDto?.sample_name} - ${selectedResultDto?.algorithm_name}`,
+        title: `Sample Report`,
         initialHeight: defaultHeights.report,
-        content: (
-          <ResultReport
-            loading={reportLoading}
-            error={reportError}
-            report={resultReport}
-            exportToDocx={exportToDocx}
-            exportToXlsx={exportToXlsx}
-            exportToPdf={exportToPdf}
-            sx={{ height: "100%" }}
-          />
-        ),
-        onClose: () => dispatch(setViewOption({key: "report", value: false}))
+        content: <ResultReport loading={reportLoading} error={reportError} report={resultReport} exportToDocx={exportToDocx} exportToXlsx={exportToXlsx} exportToPdf={exportToPdf} sx={{ height: "100%" }} />,
+        exportOptions: reportExportOptions,
+        onClose: () => dispatch(setViewOption({ key: "report", value: false })),
       });
     }
 
     if (checked.cycleReport) {
+      const cycleReportExportOptions: ExportAction[] = [];
+      if (cycleReport) {
+        cycleReportExportOptions.push(
+          {
+            id: "xlsx",
+            label: "Export to Excel",
+            subLabel: ".xlsx file",
+            icon: <GridOnIcon sx={{ color: "#1D6F42" }} />,
+            onClick: () => exportCycleReportToXlsx(cycleReport),
+          },
+          {
+            id: "docx",
+            label: "Export to Word",
+            subLabel: ".docx file",
+            icon: <DescriptionIcon sx={{ color: "#2B579A" }} />,
+            onClick: () => exportCycleReportToDocx(cycleReport),
+          },
+          {
+            id: "pdf",
+            label: "Export to PDF",
+            subLabel: ".pdf file",
+            icon: <PictureAsPdfIcon sx={{ color: "#D32F2F" }} />,
+            onClick: () => exportCycleReportToPdf(cycleReport),
+          }
+        );
+      }
       res.push({
         id: "cycleReport",
-        title: `Cycle Report ${selectedResultDto?.sample_name} - ${selectedResultDto?.algorithm_name}`,
+        title: `Cycle Report`,
         initialHeight: defaultHeights.report,
-        content: (
-          <CycleReport
-            loading={cycleReportLoading}
-            error={cycleReportError}
-            report={cycleReport}
-            exportToDocx={exportCycleReportToDocx}
-            exportToXlsx={exportCycleReportToXlsx}
-            exportToPdf={exportCycleReportToPdf}
-            sx={{ height: "100%" }}
-          />
-        ),
-        onClose: () => dispatch(setViewOption({key: "cycleReport", value: false}))
+        content: <CycleReport loading={cycleReportLoading} error={cycleReportError} report={cycleReport} exportToDocx={exportCycleReportToDocx} exportToXlsx={exportCycleReportToXlsx} exportToPdf={exportCycleReportToPdf} sx={{ height: "100%" }} />,
+        exportOptions: cycleReportExportOptions,
+        onClose: () => dispatch(setViewOption({ key: "cycleReport", value: false })),
       });
     }
 
@@ -284,7 +333,7 @@ export default function TiledContentPane() {
     <DynamicStack
       sx={{
         width: "100%",
-        padding: 2,
+        padding: 1.25,
       }}
       items={items}
     />

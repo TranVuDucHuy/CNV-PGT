@@ -39,7 +39,7 @@ export default function MUIAccordionPane({
       }}
     >
       <AccordionSummary
-        expandIcon={<ChevronRight size={17} />}
+        expandIcon={<ChevronRight size={18} />}
         sx={{
           "& .MuiAccordionSummary-expandIconWrapper": {
             order: -1, // icon về bên trái

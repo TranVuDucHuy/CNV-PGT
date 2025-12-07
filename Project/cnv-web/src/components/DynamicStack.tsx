@@ -1,14 +1,8 @@
-import {
-  Box,
-  IconButton,
-  Stack,
-  SxProps,
-  Theme,
-  Typography,
-} from "@mui/material";
+import { Box, IconButton, Stack, SxProps, Theme, Typography } from "@mui/material";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { Resizable } from "re-resizable";
 import CloseIcon from "@mui/icons-material/Close";
+import { ExportMenuButton, ExportAction } from "./ExportMenuButton";
 
 export type DynamicStackDirection = "row" | "column";
 
@@ -20,6 +14,7 @@ export interface DynamicStackItem<T = unknown> {
   minHeight?: string | number;
   maxHeight?: string | number;
   onClose?: () => void;
+  exportOptions?: ExportAction[];
 }
 
 export interface DynamicStackProps<T = unknown> {
@@ -36,24 +31,13 @@ const getMainAxis = (direction: DynamicStackDirection, rect: DOMRect) => {
   return { start: rect.top, end: rect.bottom, size: rect.height };
 };
 
-export const DynamicStack = <T,>({
-  items,
-  direction = "column",
-  sx,
-  onOrderChange,
-}: DynamicStackProps<T>) => {
+export const DynamicStack = <T,>({ items, direction = "column", sx, onOrderChange }: DynamicStackProps<T>) => {
   const [internalItems, setInternalItems] = useState(items);
   const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(
-    null
-  );
-  const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(
-    null
-  );
+  const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(null);
+  const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
-  const [itemDimensions, setItemDimensions] = useState<
-    Record<string, { width: number; height: number }>
-  >({});
+  const [itemDimensions, setItemDimensions] = useState<Record<string, { width: number; height: number }>>({});
   const [itemHeights, setItemHeights] = useState<Record<string, number>>({});
 
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -73,29 +57,26 @@ export const DynamicStack = <T,>({
     }
   }, [draggingId]);
 
-  const registerItemRef = useCallback(
-    (id: string, el: HTMLDivElement | null) => {
-      itemRefs.current[id] = el;
-      // Store dimensions when ref is registered, but only if they've changed
-      if (el) {
-        const width = el.offsetWidth;
-        const height = el.offsetHeight;
+  const registerItemRef = useCallback((id: string, el: HTMLDivElement | null) => {
+    itemRefs.current[id] = el;
+    // Store dimensions when ref is registered, but only if they've changed
+    if (el) {
+      const width = el.offsetWidth;
+      const height = el.offsetHeight;
 
-        setItemDimensions((prev) => {
-          const existing = prev[id];
-          // Only update if dimensions actually changed
-          if (existing?.width === width && existing?.height === height) {
-            return prev;
-          }
-          return {
-            ...prev,
-            [id]: { width, height },
-          };
-        });
-      }
-    },
-    []
-  );
+      setItemDimensions((prev) => {
+        const existing = prev[id];
+        // Only update if dimensions actually changed
+        if (existing?.width === width && existing?.height === height) {
+          return prev;
+        }
+        return {
+          ...prev,
+          [id]: { width, height },
+        };
+      });
+    }
+  }, []);
 
   const isRow = direction === "row";
 
@@ -118,11 +99,7 @@ export const DynamicStack = <T,>({
 
   // Render item content - used for actual items, placeholders, and dragged items
   const renderItemContent = useCallback(
-    (
-      item: DynamicStackItem<T>,
-      scale: number = 1,
-      enableDrag: boolean = false
-    ) => {
+    (item: DynamicStackItem<T>, scale: number = 1, enableDrag: boolean = false) => {
       return (
         <Box
           sx={{
@@ -132,6 +109,10 @@ export const DynamicStack = <T,>({
             flexDirection: "column",
             transform: scale !== 1 ? `scale(${scale})` : undefined,
             transformOrigin: "top left",
+            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+            borderRadius: 1,
+            border: "1px solid",
+            borderColor: "grey.300",
           }}
         >
           <Box
@@ -140,49 +121,39 @@ export const DynamicStack = <T,>({
               alignItems: "center",
               flexDirection: "row",
               bgcolor: "primary1.light",
-              borderTopLeftRadius: 6,
-              borderTopRightRadius: 6,
-              borderBottomLeftRadius: 0,
-              borderBottomRightRadius: 0,
+              p: 0.5,
             }}
           >
             <Box
-              onMouseDown={
-                enableDrag ? (e) => handleMouseDown(e, item.id) : undefined
-              }
+              onMouseDown={enableDrag ? (e) => handleMouseDown(e, item.id) : undefined}
               sx={{
                 cursor: enableDrag ? "move" : "default",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                px: 1,
+                px: 1.25,
                 py: 0.5,
-
                 userSelect: "none",
                 flexGrow: 1,
               }}
             >
-              <Typography
-                variant="subtitle2"
-                noWrap
-                sx={{ flex: 1, minWidth: 0 }}
-              >
+              <Typography variant="h4" noWrap sx={{ flex: 1, minWidth: 0 }}>
                 {item.title}
               </Typography>
             </Box>
-            <IconButton onClick={item.onClose} size="small">
-              <CloseIcon />
-            </IconButton>
+            {item.exportOptions && item.exportOptions.length > 0 && <ExportMenuButton actions={item.exportOptions} size="small" />}
+            {item.onClose && (
+              <IconButton onClick={item.onClose} size="small">
+                <CloseIcon />
+              </IconButton>
+            )}
           </Box>
 
           <Box
             sx={{
-              borderTopLeftRadius: 0,
-              borderTopRightRadius: 0,
-              borderBottomLeftRadius: 6,
-              borderBottomRightRadius: 6,
               overflow: "auto",
               flexGrow: 1,
+              minHeight: 0,
             }}
           >
             {item.content}
@@ -215,10 +186,7 @@ export const DynamicStack = <T,>({
           const intensity = 1 - distanceFromLeft / scrollThreshold;
           scrollSpeed = -intensity * maxScrollSpeed;
           shouldScroll = true;
-        } else if (
-          distanceFromRight < scrollThreshold &&
-          distanceFromRight > 0
-        ) {
+        } else if (distanceFromRight < scrollThreshold && distanceFromRight > 0) {
           // Scroll right
           const intensity = 1 - distanceFromRight / scrollThreshold;
           scrollSpeed = intensity * maxScrollSpeed;
@@ -238,10 +206,7 @@ export const DynamicStack = <T,>({
           const intensity = 1 - distanceFromTop / scrollThreshold;
           scrollSpeed = -intensity * maxScrollSpeed;
           shouldScroll = true;
-        } else if (
-          distanceFromBottom < scrollThreshold &&
-          distanceFromBottom > 0
-        ) {
+        } else if (distanceFromBottom < scrollThreshold && distanceFromBottom > 0) {
           // Scroll down
           const intensity = 1 - distanceFromBottom / scrollThreshold;
           scrollSpeed = intensity * maxScrollSpeed;
@@ -261,9 +226,7 @@ export const DynamicStack = <T,>({
       const pointer = isRow ? clientX : clientY;
 
       // Find the dragged item's current index
-      const draggedIndex = internalItems.findIndex(
-        (item) => item.id === draggedId
-      );
+      const draggedIndex = internalItems.findIndex((item) => item.id === draggedId);
 
       // Build entries including the dragged item (it's a placeholder)
       const entries = internalItems
@@ -356,8 +319,7 @@ export const DynamicStack = <T,>({
     // Check if the drop position is the same as current position
     // When dragging forward: if dropIndex == currentIndex + 1, no change
     // When dragging backward: if dropIndex == currentIndex, no change
-    const isNoChange =
-      dropIndex === currentIndex || dropIndex === currentIndex + 1;
+    const isNoChange = dropIndex === currentIndex || dropIndex === currentIndex + 1;
 
     if (isNoChange) {
       setDraggingId(null);
@@ -398,22 +360,12 @@ export const DynamicStack = <T,>({
     [isRow, sx]
   );
 
-  const draggingItem = draggingId
-    ? internalItems.find((it) => it.id === draggingId)
-    : null;
+  const draggingItem = draggingId ? internalItems.find((it) => it.id === draggingId) : null;
 
   return (
-    <Box
-      ref={containerRef}
-      sx={containerSx}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUpOrLeave}
-      onMouseLeave={handleMouseUpOrLeave}
-    >
+    <Box ref={containerRef} sx={containerSx} onMouseMove={handleMouseMove} onMouseUp={handleMouseUpOrLeave} onMouseLeave={handleMouseUpOrLeave}>
       {internalItems.map((item, index) => {
-        const currentIndex = draggingId
-          ? internalItems.findIndex((i) => i.id === draggingId)
-          : -1;
+        const currentIndex = draggingId ? internalItems.findIndex((i) => i.id === draggingId) : -1;
 
         const showPlaceholder = draggingId !== null && index === currentIndex;
 
@@ -429,9 +381,7 @@ export const DynamicStack = <T,>({
             {showDividerBefore && !showPlaceholder && (
               <Box
                 sx={{
-                  ...(isRow
-                    ? { width: 2, height: "100%" }
-                    : { height: 2, width: "100%" }),
+                  ...(isRow ? { width: 2, height: "100%" } : { height: 2, width: "100%" }),
                   bgcolor: "primary.main",
                   flexShrink: 0,
                 }}
@@ -440,9 +390,7 @@ export const DynamicStack = <T,>({
 
             {showPlaceholder ? (
               <Box
-                ref={(el: HTMLDivElement | null) =>
-                  registerItemRef(item.id, el)
-                }
+                ref={(el: HTMLDivElement | null) => registerItemRef(item.id, el)}
                 sx={{
                   flexShrink: 0,
                   flexGrow: 1,
@@ -482,11 +430,7 @@ export const DynamicStack = <T,>({
                 onResizeStop={(e, direction, ref, d) => {
                   setItemHeights((prev) => ({
                     ...prev,
-                    [item.id]:
-                      (itemHeights[item.id] ||
-                        (typeof item.initialHeight === "number"
-                          ? item.initialHeight
-                          : 200)) + d.height,
+                    [item.id]: (itemHeights[item.id] || (typeof item.initialHeight === "number" ? item.initialHeight : 200)) + d.height,
                   }));
                 }}
                 style={{
@@ -497,9 +441,7 @@ export const DynamicStack = <T,>({
                 }}
               >
                 <Box
-                  ref={(el: HTMLDivElement | null) =>
-                    registerItemRef(item.id, el)
-                  }
+                  ref={(el: HTMLDivElement | null) => registerItemRef(item.id, el)}
                   sx={{
                     height: "100%",
                     width: "100%",
@@ -515,9 +457,7 @@ export const DynamicStack = <T,>({
             {showDividerAfter && (
               <Box
                 sx={{
-                  ...(isRow
-                    ? { width: 2, height: "100%" }
-                    : { height: 2, width: "100%" }),
+                  ...(isRow ? { width: 2, height: "100%" } : { height: 2, width: "100%" }),
                   bgcolor: "primary.main",
                   flexShrink: 0,
                 }}

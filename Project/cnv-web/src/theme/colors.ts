@@ -7,7 +7,7 @@ const colors = {
   primary1Dark: '#2F5EA3',
 
   // Màu chủ đạo 2 - Hồng Hy Vọng
-  primary2Light: '#E9ECEF',
+  primary2Light: '#ffe1ec',
   primary2: '#E86A8D',
   primary2Dark: '#D24B6F',
 
@@ -27,7 +27,7 @@ const colors = {
   cnvNoChange: '#6B7280',      // Xám Trung Tính (No Change) - Dark
 
   // Nền & Khung
-  background1: '#F8F9FA',
+  background1: '#FAFAFA',
   background2: '#FFFFFF',
   border: '#D1D5DB',
 
