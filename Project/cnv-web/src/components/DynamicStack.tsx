@@ -120,7 +120,7 @@ export const DynamicStack = <T,>({ items, direction = "column", sx, onOrderChang
               display: "flex",
               alignItems: "center",
               flexDirection: "row",
-              bgcolor: "primary1.light",
+              bgcolor: "primary.light",
               p: 0.5,
             }}
           >

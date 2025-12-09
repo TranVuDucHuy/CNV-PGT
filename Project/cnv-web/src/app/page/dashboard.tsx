@@ -115,7 +115,7 @@ const DashboardView: React.FC = () => {
         <Typography
           variant="h1"
           component="h1"
-          sx={{ color: "primary1.contrastText" }}
+          sx={{ color: "primary.contrastText" }}
         >
           CNV Analysis Dashboard
         </Typography>
@@ -124,68 +124,68 @@ const DashboardView: React.FC = () => {
       {/* Split Pane */}
       <div ref={containerRef} className="flex flex-1" style={{ minHeight: 0 }}>
         <Provider store={store}>
-            <ResultProvider>
-              {/* Left Pane - resizable */}
-              <div
-                className=" border-gray-300 p-2.5 max-h-screen overflow-y-scroll space-y-3"
-                style={{
-                  width: leftWidth,
-                  minWidth: MIN_LEFT_WIDTH,
-                  maxWidth: MAX_LEFT_WIDTH,
-                  height: "100%",
-                  scrollbarGutter: "stable",
-                  backgroundColor: colors.background1,
-                }}
-              >
-                {/* <ContentPane /> */}
-                <SamplePane />
-                <ReferencePane samples={samples} onRefresh={refresh} />
-                <AlgorithmPane />
-                <ResultPane />
-                <ViewPane />
-              </div>
+          <ResultProvider>
+            {/* Left Pane - resizable */}
+            <div
+              className=" border-gray-300 p-2.5 max-h-screen overflow-y-scroll space-y-3"
+              style={{
+                width: leftWidth,
+                minWidth: MIN_LEFT_WIDTH,
+                maxWidth: MAX_LEFT_WIDTH,
+                height: "100%",
+                scrollbarGutter: "stable",
+                backgroundColor: colors.background1,
+              }}
+            >
+              {/* <ContentPane /> */}
+              <SamplePane />
+              <ReferencePane samples={samples} onRefresh={refresh} />
+              <AlgorithmPane />
+              <ResultPane />
+              <ViewPane />
+            </div>
 
-              {/* Divider / Resizer */}
+            {/* Divider / Resizer */}
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              onPointerDown={onPointerDown}
+              onDoubleClick={onDividerDoubleClick}
+              className="relative"
+              style={{
+                width: 6, // hit area
+                cursor: "col-resize",
+                display: "flex",
+                alignItems: "stretch",
+                justifyContent: "center",
+                userSelect: "none",
+                touchAction: "none",
+                background: "transparent",
+              }}
+              title="Drag to resize left pane (double-click to reset)"
+            >
+              {/* thin visible bar centered in the hit area */}
               <div
-                role="separator"
-                aria-orientation="vertical"
-                onPointerDown={onPointerDown}
-                onDoubleClick={onDividerDoubleClick}
-                className="relative"
                 style={{
-                  width: 6, // hit area
-                  cursor: "col-resize",
-                  display: "flex",
-                  alignItems: "stretch",
-                  justifyContent: "center",
-                  userSelect: "none",
-                  touchAction: "none",
-                  background: "transparent",
+                  width: 2,
+                  background: "rgba(0,0,0,0.08)",
+                  borderRadius: 2,
+                  alignSelf: "stretch",
+                  margin: "6px 0",
                 }}
-                title="Drag to resize left pane (double-click to reset)"
-              >
-                {/* thin visible bar centered in the hit area */}
-                <div
-                  style={{
-                    width: 2,
-                    background: "rgba(0,0,0,0.08)",
-                    borderRadius: 2,
-                    alignSelf: "stretch",
-                    margin: "6px 0",
-                  }}
-                />
-              </div>
+              />
+            </div>
 
-              {/* Right Pane - Content Area */}
-              <div className="flex-1 bg-gray-100 flex min-w-0">
-                <div
-                  id="contentArea"
-                  className="w-full h-full bg-white flex flex-col min-w-0"
-                >
-                  <TiledContentPane />
-                </div>
+            {/* Right Pane - Content Area */}
+            <div className="flex-1 bg-gray-100 flex min-w-0">
+              <div
+                id="contentArea"
+                className="w-full h-full bg-white flex flex-col min-w-0"
+              >
+                <TiledContentPane />
               </div>
-            </ResultProvider>
+            </div>
+          </ResultProvider>
         </Provider>
       </div>
     </div>
