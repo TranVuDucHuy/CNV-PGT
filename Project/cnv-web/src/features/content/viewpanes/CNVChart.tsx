@@ -291,7 +291,7 @@ const CNVChart: React.FC<CNVChartProps> = ({ bins = [], segments = [], title, sx
                     allowDataOverflow
                     interval={0}
                     // Nếu Full view thì font bé lại chút để đỡ chồng chéo
-                    tick={{ fontSize: isFullView ? 12 : 12, fontWeight: 600, fontFamily: theme.typography.fontFamily, fill: theme.palette.primary1.dark }}
+                    tick={{ fontSize: isFullView ? 12 : 12, fontWeight: 600, fontFamily: theme.typography.fontFamily, fill: theme.palette.primary.dark }}
                   />
                   <YAxis dataKey="y" domain={[0, 4]} ticks={[0, 1, 2, 3, 4]} allowDataOverflow={false} tick={{ fontSize: isFullView ? 12 : 12, fontWeight: 600, fontFamily: theme.typography.fontFamily, fill: theme.typography.body2.color }} label={{ value: " ", angle: -90, position: "insideLeft" }} />
                   {xLines.map((xVal, idx) => (
@@ -379,7 +379,7 @@ const CNVChart: React.FC<CNVChartProps> = ({ bins = [], segments = [], title, sx
                     domain={[0, detailChartData.domainMax]}
                     tickFormatter={(val) => (Number(val) === 0 ? "" : `${(Number(val) / 1000000).toFixed(0)} Mbp`)}
                     allowDataOverflow
-                    tick={{ fontSize: 12, fontWeight: 600, fontFamily: theme.typography.fontFamily, fill: theme.palette.primary1.dark }}
+                    tick={{ fontSize: 12, fontWeight: 600, fontFamily: theme.typography.fontFamily, fill: theme.palette.primary.dark }}
                     label={{ value: "", position: "insideBottom", offset: -10 }}
                   />
                   <YAxis dataKey="y" domain={[0, 4]} ticks={[0, 1, 2, 3, 4]} tick={{ fontSize: 12, fontWeight: 600, fontFamily: theme.typography.fontFamily, fill: theme.typography.body2.color }} label={{ value: "", angle: -90, position: "insideLeft" }} />

@@ -39,6 +39,7 @@ export default function MUIAccordionPane({
       }}
     >
       <AccordionSummary
+        component="div"
         expandIcon={<ChevronRight size={18} />}
         sx={{
           "& .MuiAccordionSummary-expandIconWrapper": {
