@@ -63,9 +63,9 @@ export default function ViewPane() {
               </Box>
             );
           })}
-          <Typography variant="caption" color="textSecondary">
+          {/* <Typography variant="caption" color="textSecondary">
             Select which components to display in the content pane.
-          </Typography>
+          </Typography> */}
         </Stack>
       </Box>
     </MUIAccordionPane>

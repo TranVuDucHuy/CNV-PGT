@@ -20,8 +20,8 @@ const plex = IBM_Plex_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "CNV Analysis Dashboard",
-  description: "CNV Analysis Dashboard",
+  title: "Gyne | CNV Analysis Software",
+  description: "Gyne | CNV Analysis Software",
 };
 
 export default function RootLayout({

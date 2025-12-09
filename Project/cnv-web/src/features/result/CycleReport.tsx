@@ -1,32 +1,5 @@
-import {
-  Box,
-  Alert,
-  Skeleton,
-  Typography,
-  Paper,
-  Chip,
-  Divider,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Stack,
-  Button,
-  Menu,
-  MenuItem,
-  ListItemIcon,
-  ListItemText,
-  SxProps,
-  Theme,
-} from "@mui/material";
-import IosShareIcon from "@mui/icons-material/IosShare";
-import DescriptionIcon from "@mui/icons-material/Description";
-import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
-import GridOnIcon from "@mui/icons-material/GridOn";
+import { Box, Alert, Skeleton, Typography, Paper, Chip, Divider, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, SxProps, Theme } from "@mui/material";
 import { CycleReportResponse } from "@/types/result";
-import { useState } from "react";
 
 interface CycleReportProps {
   loading: boolean;
@@ -38,50 +11,7 @@ interface CycleReportProps {
   sx?: SxProps<Theme>;
 }
 
-export const CycleReport: React.FC<CycleReportProps> = ({
-  loading,
-  error,
-  report,
-  exportToDocx,
-  exportToXlsx,
-  exportToPdf,
-  sx,
-}) => {
-  const [exportAnchorEl, setExportAnchorEl] = useState<null | HTMLElement>(
-    null
-  );
-
-  const handleExportClick = (event: React.MouseEvent<HTMLElement>) => {
-    setExportAnchorEl(event.currentTarget);
-  };
-
-  const handleExportClose = () => {
-    setExportAnchorEl(null);
-  };
-
-  const handleExportExcel = () => {
-    if (report) {
-      exportToXlsx(report);
-    }
-    handleExportClose();
-  };
-
-  const handleExportWord = async () => {
-    if (report) {
-      await exportToDocx(report);
-    }
-    handleExportClose();
-  };
-
-  const handleExportPDF = async () => {
-    if (report) {
-      await exportToPdf(report);
-    }
-    handleExportClose();
-  };
-
-  const exportMenuOpen = Boolean(exportAnchorEl);
-
+export const CycleReport: React.FC<CycleReportProps> = ({ loading, error, report, exportToDocx, exportToXlsx, exportToPdf, sx }) => {
   return (
     <Box
       sx={{
@@ -108,102 +38,10 @@ export const CycleReport: React.FC<CycleReportProps> = ({
 
       {!loading && !error && report && (
         <Box>
-          <Box sx={{ ml: 1 }}>
-            <Stack
-              direction="row"
-              alignItems="center"
-              justifyContent={"space-between"}
-            >
-              <Typography variant="h5" gutterBottom>
-                Cycle Report
-              </Typography>
-              <Box>
-                <Button
-                  variant="contained"
-                  sx={{
-                    ml: 2,
-                    backgroundColor: "green",
-                    "&:hover": { backgroundColor: "darkgreen" },
-                    fontWeight: "bold",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                  onClick={handleExportClick}
-                >
-                  <IosShareIcon sx={{ mr: 1 }} />
-                  Export
-                </Button>
-                <Menu
-                  anchorEl={exportAnchorEl}
-                  open={exportMenuOpen}
-                  onClose={handleExportClose}
-                  anchorOrigin={{
-                    vertical: "bottom",
-                    horizontal: "right",
-                  }}
-                  transformOrigin={{
-                    vertical: "top",
-                    horizontal: "right",
-                  }}
-                  slotProps={{
-                    paper: {
-                      elevation: 3,
-                      sx: {
-                        minWidth: 200,
-                        mt: 0.5,
-                        borderRadius: 2,
-                      },
-                    },
-                  }}
-                >
-                  <MenuItem onClick={handleExportExcel}>
-                    <ListItemIcon>
-                      <GridOnIcon sx={{ color: "#1D6F42" }} />
-                    </ListItemIcon>
-                    <ListItemText>
-                      <Typography sx={{ fontWeight: 500 }}>
-                        Export to Excel
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        .xlsx file
-                      </Typography>
-                    </ListItemText>
-                  </MenuItem>
-                  <MenuItem onClick={handleExportWord}>
-                    <ListItemIcon>
-                      <DescriptionIcon sx={{ color: "#2B579A" }} />
-                    </ListItemIcon>
-                    <ListItemText>
-                      <Typography sx={{ fontWeight: 500 }}>
-                        Export to Word
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        .docx file
-                      </Typography>
-                    </ListItemText>
-                  </MenuItem>
-                  <MenuItem onClick={handleExportPDF}>
-                    <ListItemIcon>
-                      <PictureAsPdfIcon sx={{ color: "#D32F2F" }} />
-                    </ListItemIcon>
-                    <ListItemText>
-                      <Typography sx={{ fontWeight: 500 }}>
-                        Export to PDF
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        .pdf file
-                      </Typography>
-                    </ListItemText>
-                  </MenuItem>
-                </Menu>
-              </Box>
-            </Stack>
-          </Box>
-
           {/* Cycle Information */}
           <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
             <Typography variant="h6" gutterBottom>
-              Cycle Information
+              Cycle Details
             </Typography>
             <Divider sx={{ mb: 2 }} />
             <Box
@@ -211,81 +49,73 @@ export const CycleReport: React.FC<CycleReportProps> = ({
                 display: "grid",
                 gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
                 gap: 2,
+                mb: 2,
               }}
             >
               <Box>
-                <Typography variant="caption" color="text.secondary">
-                  Flowcell ID
-                </Typography>
+                <Typography variant="body2">Flowcell ID</Typography>
                 <Typography variant="body1">{report.flowcell_id}</Typography>
               </Box>
               <Box>
-                <Typography variant="caption" color="text.secondary">
-                  Cycle ID
-                </Typography>
+                <Typography variant="body2">Cycle ID</Typography>
                 <Typography variant="body1">{report.cycle_id}</Typography>
               </Box>
             </Box>
-          </Paper>
 
-          {/* Embryo Overview Table */}
-          <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
-            <Typography variant="h6" gutterBottom>
+            {/* <Typography variant="h6" gutterBottom>
               Embryo Overview
-            </Typography>
-            <Divider sx={{ mb: 2 }} />
+            </Typography> */}
+            {/* <Divider sx={{ mb: 2 }} /> */}
+
             <TableContainer>
               <Table size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell>
-                      <strong>Embryo ID</strong>
+                    <TableCell sx={{ pl: 0, pr: 1 }}>
+                      <Typography variant="body2">Embryo ID</Typography>
                     </TableCell>
                     <TableCell>
-                      <strong>Cell Type</strong>
+                      <Typography variant="body2">Cell Type</Typography>
                     </TableCell>
                     <TableCell>
-                      <strong>Call</strong>
+                      <Typography variant="body2">Call</Typography>
                     </TableCell>
                     <TableCell>
-                      <strong>Aberration Codes</strong>
+                      <Typography variant="body2">Aberration Summary</Typography>
                     </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {report.embryos.map((embryo, index) => {
-                    const aberrationCodes = embryo.abberations
-                      .map((a) => a.code)
-                      .join(", ");
-                    return (
-                      <TableRow key={index}>
-                        <TableCell>{embryo.embryo_id}</TableCell>
-                        <TableCell>{embryo.cell_type}</TableCell>
-                        <TableCell>
-                          <Chip
-                            label={embryo.call}
-                            size="small"
-                            color={
-                              embryo.call.toLowerCase().includes("normal")
-                                ? "success"
-                                : embryo.call.toLowerCase().includes("abnormal")
-                                ? "error"
-                                : "warning"
-                            }
-                          />
-                        </TableCell>
-                        <TableCell>
-                          {aberrationCodes || (
-                            <Typography color="text.secondary">None</Typography>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                  {[...report.embryos]
+                    .sort((a, b) => a.embryo_id.localeCompare(b.embryo_id))
+                    .map((embryo, index) => {
+                      const aberrationCodes = embryo.abberations.map((a) => a.code).join(", ");
+                      return (
+                        <TableRow key={index}>
+                          <TableCell sx={{ pl: 0, pr: 1 }}>
+                            <Typography variant="body1">{embryo.embryo_id}</Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body1">{embryo.cell_type}</Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Chip label={embryo.call} size="small" color={embryo.call.toLowerCase() === "normal" ? "success" : embryo.call.toLowerCase() === "abnormal" ? "error" : "warning"} variant="outlined" sx={{ fontWeight: "normal" }} />
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body1">{aberrationCodes || <Typography variant="body1">None</Typography>}</Typography>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                 </TableBody>
               </Table>
             </TableContainer>
           </Paper>
+
+          {/* Embryo Overview Table */}
+          {/* <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}> */}
+
+          {/* </Paper> */}
 
           {/* Aberration Details Table */}
           <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
@@ -298,63 +128,68 @@ export const CycleReport: React.FC<CycleReportProps> = ({
                 <Table size="small">
                   <TableHead>
                     <TableRow>
-                      <TableCell>
-                        <strong>Embryo ID</strong>
+                      <TableCell sx={{ pl: 0, pr: 1 }}>
+                        <Typography variant="body2">Embryo ID</Typography>
                       </TableCell>
                       <TableCell>
-                        <strong>Aberration</strong>
+                        <Typography variant="body2">Aberration</Typography>
                       </TableCell>
                       <TableCell>
-                        <strong>Mosaic</strong>
+                        <Typography variant="body2">Mosaic</Typography>
                       </TableCell>
                       <TableCell>
-                        <strong>Size (Mbp)</strong>
+                        <Typography variant="body2">Size (Mbp)</Typography>
                       </TableCell>
                       <TableCell>
-                        <strong>Diseases</strong>
+                        <Typography variant="body2">Assessment</Typography>
                       </TableCell>
                       <TableCell>
-                        <strong>Assessment</strong>
+                        <Typography variant="body2">Diseases</Typography>
                       </TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {report.embryos.flatMap((embryo) =>
-                      embryo.abberations.map((aberration, aberrationIndex) => (
-                        <TableRow
-                          key={`${embryo.embryo_id}-${aberrationIndex}`}
-                        >
-                          <TableCell>{embryo.embryo_id}</TableCell>
-                          <TableCell>
-                            <Chip label={aberration.code} size="small" />
-                          </TableCell>
-                          <TableCell>
-                            {(aberration.mosaic * 100).toFixed(1)}%
-                          </TableCell>
-                          <TableCell>
-                            {aberration.size != null
-                              ? aberration.size.toFixed(2)
-                              : "N/A"}
-                          </TableCell>
-                          <TableCell>
-                            {aberration.diseases &&
-                            aberration.diseases.length > 0
-                              ? aberration.diseases.join(", ")
-                              : "N/A"}
-                          </TableCell>
-                          <TableCell>
-                            {aberration.assessment || "N/A"}
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
+                    {[...report.embryos]
+                      .sort((a, b) => a.embryo_id.localeCompare(b.embryo_id))
+                      .flatMap((embryo) =>
+                        embryo.abberations.map((aberration, aberrationIndex) => (
+                          <TableRow key={`${embryo.embryo_id}-${aberrationIndex}`}>
+                            <TableCell sx={{ pl: 0, pr: 1 }}>
+                              <Typography variant="body1">{embryo.embryo_id}</Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Chip label={aberration.code} size="small" variant="outlined" sx={{ fontWeight: "normal" }} />
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body1">{(aberration.mosaic * 100).toFixed(0)}%</Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body1">{aberration.size != null ? aberration.size.toFixed(1) : "N/A"}</Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body1">{aberration.assessment || "Unknown"}</Typography>
+                            </TableCell>
+                            <TableCell>
+                              {aberration.diseases && aberration.diseases.length > 0 ? (
+                                <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                                  {aberration.diseases.map((disease, idx) => (
+                                    <Typography key={idx} variant="body1">
+                                      {disease};
+                                    </Typography>
+                                  ))}
+                                </Box>
+                              ) : (
+                                <Typography variant="body1">No related disease detected</Typography>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
                   </TableBody>
                 </Table>
               </TableContainer>
             ) : (
-              <Typography color="text.secondary">
-                No aberrations detected
-              </Typography>
+              <Typography color="text.secondary">No aberrations detected</Typography>
             )}
           </Paper>
         </Box>

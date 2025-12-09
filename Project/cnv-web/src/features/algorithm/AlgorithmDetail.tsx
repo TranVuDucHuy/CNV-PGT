@@ -443,17 +443,17 @@ export default function AlgorithmDetail({ open, onClose, onSuccess, mode = "crea
                 <TableHead sx={{ bgcolor: "primary.light", position: "sticky", top: 0 }}>
                   <TableRow>
                     <TableCell align="center">
-                      <Typography variant="body2" align="center">
+                      <Typography variant="body2" color="#383838" align="center">
                         Name
                       </Typography>
                     </TableCell>
                     <TableCell align="center">
-                      <Typography variant="body2" align="center">
+                      <Typography variant="body2" color="#383838" align="center">
                         Type
                       </Typography>
                     </TableCell>
                     <TableCell align="center">
-                      <Typography variant="body2" align="center">
+                      <Typography variant="body2" color="#383838" align="center">
                         {isEdit ? "Value" : "Default"}
                       </Typography>
                     </TableCell>
