@@ -376,20 +376,85 @@ def create_blacklist(train_dir, combined_filter_file, z_score=3.0, cv_threshold=
         print(f"Blacklist file already exists: {blacklist_file}")
         return str(blacklist_file)
 
-    # 2) Tải dữ liệu tần suất (frequency) của từng mẫu -> gom theo chromosome
-    all_data = {}
-    for frequency_file in frequency_list:
-        data = np.load(frequency_file)
-        for chromosome in data.files:
-            all_data.setdefault(chromosome, []).append(data[chromosome])
+    # 2) Tải dữ liệu tần suất (frequency) của từng mẫu -> gom theo gender
+    autosome_list = [str(i) for i in range(1, 23)]
+    autosome_data = {chromosome: [] for chromosome in autosome_list}
+    female_data = []
+    male_data = []
+    
+    # Export XY_ratio to TSV
+    xy_ratio_file = Path(train_dir).parent / "XY_ratio.tsv"
+    with open(xy_ratio_file, 'w') as f:
+        f.write("Sample\tXY_ratio\tGender\n")
+        
+        for frequency_file in frequency_list:
+            data = np.load(frequency_file, allow_pickle=True)
+            sample_name = Path(frequency_file).stem.replace('_frequency', '')
+            
+            # Check if XY_ratio and gender exist in the file
+            if 'XY_ratio' not in data.files:
+                raise KeyError(
+                    f"Frequency file '{frequency_file}' does not contain 'XY_ratio' and 'gender' fields. "
+                    f"This usually means frequency files were generated with an older version of the code. "
+                    f"Please delete the old frequency files in '{train_dir}' and re-run the pipeline."
+                )
+            
+            xy_ratio = float(data['XY_ratio'])
+            gender = str(data['gender'])
+            
+            f.write(f"{sample_name}\t{xy_ratio:.6f}\t{gender}\n")
+            
+            # Autosomes from all samples
+            for chromosome in autosome_list:
+                autosome_data[chromosome].append(data[chromosome])
+            
+            # X from female samples only
+            if gender == 'female':
+                female_data.append(data['X'])
+            
+            # Y from male samples only
+            if gender == 'male':
+                male_data.append(data['Y'])
+    
+    print(f"Exported XY_ratio to: {xy_ratio_file}")
+    
+    # Check minimum requirements: at least 1 female and 1 male sample
+    if not female_data or not male_data:
+        missing = []
+        if not female_data:
+            missing.append("female")
+        if not male_data:
+            missing.append("male")
+        raise ValueError(
+            f"Cannot create blacklist: Missing {' and '.join(missing)} samples. "
+            f"At least 1 female sample and 1 male sample are required to create gender-aware blacklist. "
+            f"Found {len(female_data)} female and {len(male_data)} male samples."
+        )
 
-    # 3) Tính mean/std/cv như statistics
+    # 3) Tính mean/std/cv theo gender-based data
     mean_dict, std_dict, cv_dict = {}, {}, {}
-    for chromosome, arr_list in all_data.items():
-        stack = np.array(arr_list)  # (n_samples, n_bins)
-        mean_dict[chromosome] = stack.mean(axis=0)
-        std_dict[chromosome] = stack.std(axis=0)
-        cv_dict[chromosome] = np.divide(std_dict[chromosome], mean_dict[chromosome], out=np.zeros_like(std_dict[chromosome]), where=mean_dict[chromosome] != 0)
+    
+    # Autosomes: from all samples
+    for chromosome in autosome_list:
+        if autosome_data[chromosome]:
+            stack = np.array(autosome_data[chromosome])
+            mean_dict[chromosome] = stack.mean(axis=0)
+            std_dict[chromosome] = stack.std(axis=0)
+            cv_dict[chromosome] = np.divide(std_dict[chromosome], mean_dict[chromosome], out=np.zeros_like(std_dict[chromosome]), where=mean_dict[chromosome] != 0)
+    
+    # X: from female samples
+    if female_data:
+        stack = np.array(female_data)
+        mean_dict['X'] = stack.mean(axis=0)
+        std_dict['X'] = stack.std(axis=0)
+        cv_dict['X'] = np.divide(std_dict['X'], mean_dict['X'], out=np.zeros_like(std_dict['X']), where=mean_dict['X'] != 0)
+    
+    # Y: from male samples
+    if male_data:
+        stack = np.array(male_data)
+        mean_dict['Y'] = stack.mean(axis=0)
+        std_dict['Y'] = stack.std(axis=0)
+        cv_dict['Y'] = np.divide(std_dict['Y'], mean_dict['Y'], out=np.zeros_like(std_dict['Y']), where=mean_dict['Y'] != 0)
 
     # 4) Khởi tạo final_mask từ combined_filter và cập nhật dần qua các bước
     combined = np.load(combined_filter_file)

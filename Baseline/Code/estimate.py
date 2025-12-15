@@ -74,7 +74,19 @@ class Estimator:
         for chromosome in self.chromosome_list:
             counts = data[chromosome]
             read_frequency = counts / total_reads
-            frequency_dict[chromosome] = read_frequency * self.bin_size 
+            frequency_dict[chromosome] = read_frequency * self.bin_size
+
+        # Calculate XY_ratio and determine gender
+        sum_freq_X = np.sum(frequency_dict['X'])
+        sum_freq_Y = np.sum(frequency_dict['Y'])
+        num_bins_X = len(frequency_dict['X'])
+        num_bins_Y = len(frequency_dict['Y'])
+        
+        XY_ratio = (sum_freq_Y * num_bins_X) / (sum_freq_X * num_bins_Y) if (sum_freq_X > 0 and num_bins_Y > 0) else 0.0
+        gender = "male" if XY_ratio > 0.5 else "female"
+        
+        frequency_dict['XY_ratio'] = np.array(XY_ratio)
+        frequency_dict['gender'] = np.array(gender)
 
         np.savez_compressed(frequency_file, **frequency_dict)
         print(f"Saved read frequency to: {output_dir}")
@@ -125,6 +137,18 @@ class Estimator:
             read_proportion = (counts / denom * self.bin_size) if denom > 0 else np.zeros_like(counts)
             proportion_dict[chromosome] = read_proportion
 
+        # Calculate XY_ratio and determine gender
+        sum_prop_X = np.sum(proportion_dict['X'])
+        sum_prop_Y = np.sum(proportion_dict['Y'])
+        num_bins_X = len(proportion_dict['X'])
+        num_bins_Y = len(proportion_dict['Y'])
+        
+        XY_ratio = (sum_prop_Y * num_bins_X) / (sum_prop_X * num_bins_Y) if (sum_prop_X > 0 and num_bins_Y > 0) else 0.0
+        gender = "male" if XY_ratio > 0.5 else "female"
+        
+        proportion_dict['XY_ratio'] = np.array(XY_ratio)
+        proportion_dict['gender'] = np.array(gender)
+
         np.savez_compressed(proportion_file, **proportion_dict)
         print(f"Saved read proportion to: {output_dir}")
         return str(proportion_file)
@@ -139,15 +163,41 @@ class Estimator:
             print(f"Reference file already exists: {reference_file}")
             return str(reference_file)
         
-        stacks = {chromosome: [] for chromosome in self.chromosome_list}
+        autosome_list = [str(i) for i in range(1, 23)]
+        autosome_data = {chromosome: [] for chromosome in autosome_list}
+        female_data = []
+        male_data = []
+        
         for proportion_file in proportion_list:
-            data = np.load(proportion_file)
-            for chromosome in self.chromosome_list:
-                stacks[chromosome].append(data[chromosome])
+            data = np.load(proportion_file, allow_pickle=True)
+            gender = str(data['gender'])
+            
+            # Autosomes from all samples
+            for chromosome in autosome_list:
+                autosome_data[chromosome].append(data[chromosome])
+            
+            # X from female samples only
+            if gender == 'female':
+                female_data.append(data['X'])
+            
+            # Y from male samples only
+            if gender == 'male':
+                male_data.append(data['Y'])
 
         reference_dict = {}
-        for chromosome, arrs in stacks.items():
-            reference_dict[chromosome] = np.mean(np.stack(arrs, axis=0), axis=0)
+        
+        # Autosomes: mean from all samples
+        for chromosome in autosome_list:
+            if autosome_data[chromosome]:
+                reference_dict[chromosome] = np.mean(np.stack(autosome_data[chromosome], axis=0), axis=0)
+        
+        # X: mean from female samples
+        if female_data:
+            reference_dict['X'] = np.mean(np.stack(female_data, axis=0), axis=0)
+        
+        # Y: mean from male samples
+        if male_data:
+            reference_dict['Y'] = np.mean(np.stack(male_data, axis=0), axis=0)
 
         np.savez_compressed(reference_file, **reference_dict)
         print(f"Saved reference mean to: {reference_file}")
@@ -192,9 +242,9 @@ class Estimator:
             return str(out_file)
         
         autosome_list = [str(i) for i in range(1, 23)]
-        # 1) Aberration masks from linear ratios; consider only bins with reference>0 when computing fraction
+        # 1) Aberration masks from linear ratios; only for autosomes
         aberration_mask = {}
-        for chromosome in self.chromosome_list:
+        for chromosome in autosome_list:
             valid_bins = reference_data[chromosome] > 0
             aberration_bins = np.abs(ratio_data[chromosome] - 1.0) > aberration_threshold
             if np.count_nonzero(valid_bins) == 0:
@@ -236,7 +286,7 @@ class Estimator:
             denom = total_exclude.get(chromosome, total_normalized)
             proportion_dict[chromosome] = (normalized_data[chromosome] / denom * self.bin_size)
 
-        # 5) Compute log2 ratio against reference; invalid -> -1
+        # 5) Compute log2 ratio against reference; invalid -> -10.0
         ratio_dict = {}
         for chromosome in self.chromosome_list:
             test_proportion = proportion_dict[chromosome]
@@ -244,6 +294,11 @@ class Estimator:
             out = np.full_like(test_proportion, -10.0)
             valid = (test_proportion > 0) & (reference_proportion > 0)
             out[valid] = np.log2(test_proportion[valid] / reference_proportion[valid])
+            
+            # Y chromosome: subtract 1 (equivalent to dividing by 2)
+            if chromosome == 'Y':
+                out[valid] -= 1.0
+            
             ratio_dict[chromosome] = out
 
         np.savez_compressed(out_file, **ratio_dict)

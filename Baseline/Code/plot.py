@@ -65,64 +65,43 @@ class Plotter:
             'max_pos': current_pos
         }
 
-    def _calculate_segment_info(self, segment, chrom_bin_mapping):
+    def _calculate_segment_info(self, segment, chrom_bin_mapping, gender='female'):
         """Tính toán thông tin vị trí và màu sắc cho một segment"""
         chrom = str(segment['chrom_original']) if 'chrom_original' in segment.index else str(segment['chrom'])
-        
         if chrom not in chrom_bin_mapping:
             return None
-        
         chrom_info = chrom_bin_mapping[chrom]
         
         start_maploc = segment['loc.start'] if 'loc.start' in segment.index else 0
         end_maploc = segment['loc.end'] if 'loc.end' in segment.index else self.bin_size
-        
-        start_bin_idx = int(start_maploc // self.bin_size)
-        end_bin_idx = int(end_maploc // self.bin_size)
-        
-        start_offset = max(start_bin_idx, 0)
-        end_offset = min(end_bin_idx, chrom_info['num_bins'] - 1)
-        
-        plot_start = chrom_info['start_bin'] + start_offset
-        plot_end = chrom_info['start_bin'] + end_offset
-        
+        start_bin_idx, end_bin_idx = int(start_maploc // self.bin_size), int(end_maploc // self.bin_size)
+        plot_start = chrom_info['start_bin'] + max(start_bin_idx, 0)
+        plot_end = chrom_info['start_bin'] + min(end_bin_idx, chrom_info['num_bins'] - 1)
         seg_value = float(np.power(2.0, segment['seg.mean'] + 1.0))
         
-        # Xác định màu
-        if seg_value > 2.45:
-            point_color = "#F97E7E"  # Đỏ nhạt cho điểm
-            line_color = '#FF0000'   # Đỏ đậm cho line
-            linewidth = 4
-            alpha = 0.9
-        elif seg_value < 1.55:
-            point_color = "#65C3E3"  # Xanh nhạt cho điểm
-            line_color = '#0000FF'   # Xanh đậm cho line
-            linewidth = 4
-            alpha = 0.9
+        # Thresholds: male X/Y uses 0.55-1.45, others use 1.55-2.45
+        high_thresh, low_thresh = (1.45, 0.55) if (gender == 'male' and chrom in ['X', 'Y']) else (2.45, 1.55)
+        
+        if seg_value > high_thresh:
+            point_color, line_color, linewidth, alpha = "#F97E7E", '#FF0000', 4, 0.9
+        elif seg_value < low_thresh:
+            point_color, line_color, linewidth, alpha = "#65C3E3", '#0000FF', 4, 0.9
         else:
-            point_color = '#888888'  # Xám nhạt cho điểm
-            line_color = '#000000'   # Đen cho line
-            linewidth = 2
-            alpha = 0.7
+            point_color, line_color, linewidth, alpha = '#888888', '#000000', 3, 0.7
         
         return {
-            'plot_start': plot_start,
-            'plot_end': plot_end,
-            'seg_value': seg_value,
-            'point_color': point_color,
-            'line_color': line_color,
-            'linewidth': linewidth,
-            'alpha': alpha
+            'plot_start': plot_start, 'plot_end': plot_end, 'seg_value': seg_value,
+            'point_color': point_color, 'line_color': line_color, 'linewidth': linewidth, 'alpha': alpha
         }
 
-    def _prepare_segment_data(self, segments_df, chrom_bin_mapping):
+    def _prepare_segment_data(self, segments_df, chrom_bin_mapping, gender='female'):
         """Chuẩn bị dữ liệu segment: parse và tính toán vị trí, màu sắc"""
         if segments_df is None:
             return []
         
         segment_infos = []
         for _, segment in segments_df.iterrows():
-            info = self._calculate_segment_info(segment, chrom_bin_mapping)
+            info = self._calculate_segment_info(segment, chrom_bin_mapping, gender)
             if info:
                 segment_infos.append(info)
         
@@ -164,12 +143,24 @@ class Plotter:
         segments_df = pd.read_csv(segments_csv) if segments_csv else None
         ratio_name = Path(log2_ratio_file).stem.replace('_log2Ratio', '')
         
+        # Detect gender from proportion.npz in Temporary/Test
+        gender = 'female'  # default
+        proportion_file = self.output_dir.parent / 'Temporary' / 'Test' / f"{ratio_name}_proportion.npz"
+        if proportion_file.exists():
+            try:
+                prop_data = np.load(proportion_file, allow_pickle=True)
+                if 'gender' in prop_data.files:
+                    gender = str(prop_data['gender'])
+                    print(f"Detected gender: {gender} for {ratio_name}")
+            except Exception as e:
+                print(f"Warning: Could not read gender from {proportion_file}: {e}")
+        
         plot_file = self.output_dir / f"{ratio_name}_scatterChart.png"
 
         fig, ax1 = plt.subplots(1, 1, figsize=(20, 10))
 
         ratio_data_dict = self._prepare_ratio_data(ratio_data)
-        segment_infos = self._prepare_segment_data(segments_df, ratio_data_dict['chrom_bin_mapping'])
+        segment_infos = self._prepare_segment_data(segments_df, ratio_data_dict['chrom_bin_mapping'], gender)
 
         if len(ratio_data_dict['positions']) == 0:
             print("Cảnh báo: Không có dữ liệu hợp lệ để vẽ biểu đồ!")
