@@ -56,7 +56,7 @@ def base_content(pipeline_obj, fasta_file):
 
     return str(gc_file), str(n_file)
 
-def lowess_normalize(raw_data, gc_data, base_filter, min_rd=0.0001, frac=0.1):
+def lowess_normalize(raw_data, gc_data, filter, min_rd=0.0001, frac=0.1):
     """
     Chuẩn hoá read count theo GC bằng LOWESS.
     """
@@ -66,10 +66,10 @@ def lowess_normalize(raw_data, gc_data, base_filter, min_rd=0.0001, frac=0.1):
     # Nối toàn bộ thành mảng 1D lớn để tạo một mask toàn cục rõ ràng
     all_reads = np.concatenate([raw_data[chromosome] for chromosome in chromosome_list])
     all_gc = np.concatenate([gc_data[chromosome] for chromosome in chromosome_list])
-    all_base = np.concatenate([base_filter[chromosome] for chromosome in chromosome_list])
+    all_masked = np.concatenate([filter[chromosome] for chromosome in chromosome_list])
 
     # 2) Tạo mask hợp lệ toàn cục theo đúng quy tắc
-    valid = (all_reads > min_rd) & (~all_base)
+    valid = (all_reads > min_rd) & (~all_masked)
     corrected_full = np.zeros_like(all_reads, dtype=all_reads.dtype)
 
     # 3) Tính LOWESS trên các bin hợp lệ theo thứ tự đã gom (giữ nguyên thứ tự)
@@ -106,8 +106,8 @@ def normalize_readcount(gc_file, raw_file, output_dir, filter_file):
 
     raw_data = np.load(raw_file)
     gc_data = np.load(gc_file)
-    base_filter = np.load(filter_file)
-    chromosome_data = lowess_normalize(raw_data, gc_data, base_filter)
+    filter = np.load(filter_file)
+    chromosome_data = lowess_normalize(raw_data, gc_data, filter)
 
     np.savez_compressed(normalized_file, **chromosome_data)
 
