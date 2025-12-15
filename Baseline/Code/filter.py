@@ -333,12 +333,41 @@ def combine_filters(work_dir):
     return str(out_path)
 
 
-def create_blacklist(train_dir, combined_filter_file, z_score=3.0, cv_threshold=0.2):
+def filter_highest_cv(cv_dict, cv_threshold, final_mask):
+    """
+    Thêm bins có CV cao vào final_mask, xử lý riêng cho NST thường, X, Y
+    """
+    chrom_groups = [[str(i) for i in range(1, 23)], ['X'], ['Y']]
+    
+    for chrom_list in chrom_groups:
+        keep_values_list, idx_map = [], []
+        for chromosome in chrom_list:
+            cv_arr = cv_dict[chromosome]
+            keep_mask = ~final_mask[chromosome]
+            idxs = np.flatnonzero(keep_mask)
+            if idxs.size:
+                keep_values_list.append(cv_arr[idxs])
+                idx_map.append((chromosome, idxs))
+        
+        if keep_values_list:
+            all_cv = np.concatenate(keep_values_list)
+            k = int(np.ceil(cv_threshold * all_cv.size))
+            if k:
+                top_idx = np.argpartition(-all_cv, kth=k-1)[:k]
+                offsets = np.cumsum([0] + [len(v) for v in keep_values_list])
+                for pos in top_idx:
+                    grp = np.searchsorted(offsets, pos, side='right') - 1
+                    chromosome, idxs = idx_map[int(grp)]
+                    final_mask[chromosome][int(idxs[int(pos - offsets[int(grp)])])] = True
+
+
+def create_blacklist(train_dir, combined_filter_file, z_score=3.0, cv_threshold=0.1):
     """
     Tạo Blacklist.npz dựa trên:
     - combined_filter: mặt nạ loại bỏ sẵn
     - outlier theo z-score trên mean frequency của từng chromosome
     - các bin có CV cao nhất (trong phần còn lại)
+    - mở rộng mặt nạ ra 1 bin kề mỗi bên
     """
 
     frequency_list = list(Path(train_dir).glob("*_frequency.npz"))
@@ -362,48 +391,31 @@ def create_blacklist(train_dir, combined_filter_file, z_score=3.0, cv_threshold=
         std_dict[chromosome] = stack.std(axis=0)
         cv_dict[chromosome] = np.divide(std_dict[chromosome], mean_dict[chromosome], out=np.zeros_like(std_dict[chromosome]), where=mean_dict[chromosome] != 0)
 
-    # 4) Tính mean_x, std_x theo chromosome (chỉ trên bin KHÔNG bị combined_filter), rồi đánh dấu outlier
+    # 4) Khởi tạo final_mask từ combined_filter và cập nhật dần qua các bước
     combined = np.load(combined_filter_file)
-    outlier_dict = {}
+    final_mask = {chrom: combined[chrom].astype(bool, copy=True) for chrom in mean_dict.keys()}
+    
+    # 5) Bước 1: Thêm outlier theo z-score trên mean frequency
     for chromosome, mean_arr in mean_dict.items():
-        keep = ~combined[chromosome].astype(bool, copy=False)
+        keep = ~final_mask[chromosome]
         vals = mean_arr[keep]
-        mean_x, std_x = (0.0, 0.0) if vals.size == 0 else (vals.mean(), vals.std())
-        outlier_dict[chromosome] = np.zeros_like(mean_arr, dtype=bool) if std_x <= 0 else (mean_arr - mean_x) > (z_score * std_x)
+        if vals.size > 0:
+            mean_x, std_x = vals.mean(), vals.std()
+            if std_x > 0:
+                z_scores = np.abs((mean_arr - mean_x) / std_x)
+                final_mask[chromosome] |= (z_scores > z_score)
 
-    # 6) Lọc theo CV trong phần còn lại (không thuộc combined_filter hoặc outlier)
-    # Gom các cv của bin được giữ lại để xếp hạng
-    keep_values_list, idx_map = [], []
-    for chromosome, cv_arr in cv_dict.items():
-        keep_mask = (~combined[chromosome].astype(bool, copy=False)) & (~outlier_dict[chromosome])
-        idxs = np.flatnonzero(keep_mask)
-        if idxs.size:
-            keep_values_list.append(cv_arr[idxs])
-            idx_map.append((chromosome, idxs))
+    # 6) Bước 2: Thêm bins có CV cao - xử lý riêng cho NST thường, X, Y
+    filter_highest_cv(cv_dict, cv_threshold, final_mask)
 
-    cv_selected = {chrom: np.zeros_like(cv_arr, dtype=bool) for chrom, cv_arr in cv_dict.items()}
-    if keep_values_list:
-        all_cv = np.concatenate(keep_values_list)
-        k = int(np.ceil(cv_threshold * all_cv.size))
-        if k:
-            top_idx = np.argpartition(-all_cv, kth=k-1)[:k]
-            offsets = np.cumsum([0] + [len(v) for v in keep_values_list])
-            for pos in top_idx:
-                grp = np.searchsorted(offsets, pos, side='right') - 1
-                chromosome, idxs = idx_map[int(grp)]
-                cv_selected[chromosome][int(idxs[int(pos - offsets[int(grp)])])] = True
-
-    # 7) Gộp mask và nới rộng 1 bin kề mỗi bin bị đánh dấu
-    final_mask = {}
-    for chromosome in mean_dict.keys():
-        base_mask = combined[chromosome].astype(bool, copy=False) | outlier_dict[chromosome] | cv_selected[chromosome]
-        if base_mask.size:
-            expanded = base_mask.copy()
-            expanded[:-1] |= base_mask[1:]
-            expanded[1:] |= base_mask[:-1]
+    # 7) Bước 3: Nới rộng mask ra 1 bin kề mỗi bên
+    for chromosome in final_mask.keys():
+        mask = final_mask[chromosome]
+        if mask.size:
+            expanded = mask.copy()
+            expanded[:-1] |= mask[1:]
+            expanded[1:] |= mask[:-1]
             final_mask[chromosome] = expanded
-        else:
-            final_mask[chromosome] = base_mask
 
     # 8) Lưu Blacklist.npz cùng chỗ với combined_filter
     np.savez_compressed(blacklist_file, **final_mask)

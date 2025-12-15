@@ -188,7 +188,6 @@ class Plotter:
 
         # Định dạng trục
         ax1.set_title(f'{ratio_name}', fontsize=14, fontweight='bold')
-        ax1.legend(loc='upper right')
         ax1.grid(True, axis='y', alpha=0.3)
         ax1.xaxis.grid(False)
         ax1.spines['bottom'].set_visible(False)
