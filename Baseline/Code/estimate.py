@@ -83,7 +83,7 @@ class Estimator:
         num_bins_Y = len(frequency_dict['Y'])
         
         XY_ratio = (sum_freq_Y * num_bins_X) / (sum_freq_X * num_bins_Y) if (sum_freq_X > 0 and num_bins_Y > 0) else 0.0
-        gender = "male" if XY_ratio > 0.5 else "female"
+        gender = "male" if XY_ratio > 0.1 else "female"
         
         frequency_dict['XY_ratio'] = np.array(XY_ratio)
         frequency_dict['gender'] = np.array(gender)
@@ -144,7 +144,7 @@ class Estimator:
         num_bins_Y = len(proportion_dict['Y'])
         
         XY_ratio = (sum_prop_Y * num_bins_X) / (sum_prop_X * num_bins_Y) if (sum_prop_X > 0 and num_bins_Y > 0) else 0.0
-        gender = "male" if XY_ratio > 0.5 else "female"
+        gender = "male" if XY_ratio > 0.1 else "female"
         
         proportion_dict['XY_ratio'] = np.array(XY_ratio)
         proportion_dict['gender'] = np.array(gender)

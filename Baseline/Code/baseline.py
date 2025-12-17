@@ -57,6 +57,7 @@ class CNV:
         print("=== START CNV DETECTION PIPELINE ===")
 
         # Precompute base content caches and base filter
+        print("\n0. Precompute base content and filters...")
         gc_file, n_file = base_content(self, self.work_directory / "Input" / "hg19.fa")
         base_filter_file = filter_base(gc_file, n_file)
         _ = filter_import(self.work_directory / "Input" / "consensusBlacklist.bed", self)
