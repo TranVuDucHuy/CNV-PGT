@@ -265,7 +265,7 @@ class ResultService:
         segments = [
             SampleSegment(
                 id=uuid4().hex,
-                chromosome=Chromosome(segment["chromosome"]),
+                chromosome=_map_chromosome(str(segment["chromosome"])),
                 start=segment["start"],
                 end=segment["end"],
                 copy_number=segment["copy_number"],
@@ -276,7 +276,7 @@ class ResultService:
         bins = [
             SampleBin(
                 id=uuid4().hex,
-                chromosome=Chromosome(bin["chromosome"]),
+                chromosome=_map_chromosome(str(bin["chromosome"])),
                 start=bin["start"],
                 end=bin["end"],
                 copy_number=bin["copy_number"],
