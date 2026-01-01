@@ -86,11 +86,3 @@ test1           125.456789
 test2           138.234567
 test3           142.891234
 ```
-
-## Lưu ý quan trọng
-
-1. **File baseline.py bắt buộc**: Script yêu cầu `Code/baseline.py` phải tồn tại
-2. **Dữ liệu được di chuyển**: Files trong `simulate_bam/<test_set>` sẽ được di chuyển tạm thời vào `Run/Input/Test/`, sau đó được khôi phục lại
-3. **Xử lý tuần tự**: Các test set được xử lý lần lượt, không song song
-4. **Thư mục Temporary/Test**: Được xóa trước khi xử lý mỗi test set mới
-5. **Output được di chuyển**: Kết quả từ `Run/Output/` được di chuyển vào `Output/<test_set>/`

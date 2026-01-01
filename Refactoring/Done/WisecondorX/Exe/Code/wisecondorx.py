@@ -27,8 +27,6 @@ def convert_bam_to_npz(bam_dir, output_dir):
         sys.exit(1)
     for bam_file in bam_files:
         sample_id = bam_file.stem
-        if sample_id.endswith("_S93"):
-            sample_id = sample_id[:-4]
         output_npz = output_dir / f"{sample_id}.npz"    # Tạo tên tệp NPZ từ tên tệp BAM (name = stem + suffix)
         if output_npz.exists():
             print(f"   - Tệp {output_npz.name} đã tồn tại, bỏ qua bước convert.")           
