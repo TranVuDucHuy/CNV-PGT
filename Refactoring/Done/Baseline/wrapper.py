@@ -7,6 +7,7 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 import pysam
+import re
 
 # Độ dài chromosome cho GRCh37
 CHROMOSOME_LENGTHS_GRCh37 = {
@@ -94,7 +95,8 @@ def process_sample_outputs(run_output_dir, exp_output_dir):
     """Xử lý output cho từng sample"""
     log2_files = sorted(run_output_dir.glob("*_log2Ratio.npz"))
     for log2_npz in log2_files:
-        sample_name = log2_npz.stem.replace("_log2Ratio", "")
+        sample_name_raw = log2_npz.stem.replace("_log2Ratio", "")
+        sample_name = re.sub(r'_S\d+$', '', sample_name_raw)
         sample_output_dir = exp_output_dir / sample_name
         sample_output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -105,14 +107,14 @@ def process_sample_outputs(run_output_dir, exp_output_dir):
         print(f"    - Ghi {bins_bed}")
 
         # Chuyển đổi segments sang BED
-        segments_csv = run_output_dir / f"{sample_name}_segments.csv"
+        segments_csv = run_output_dir / f"{sample_name_raw}_segments.csv"
         segments_raw = collect_segments(segments_csv)
         segments_bed = sample_output_dir / f"{sample_name}_baseline_segments.bed"
         write_bed(segments_bed, segments_raw, ['chrom', 'chromStart', 'chromEnd', 'copyNumber'])
         print(f"    - Ghi {segments_bed}")
 
         # Đổi tên và di chuyển scatterChart
-        scatter_src = run_output_dir / f"{sample_name}_scatterChart.png"
+        scatter_src = run_output_dir / f"{sample_name_raw}_scatterChart.png"
         scatter_dst = sample_output_dir / f"{sample_name}_baseline_scatterChart.png"
         shutil.move(str(scatter_src), str(scatter_dst))
         print(f"    - Sao chép {scatter_dst}")

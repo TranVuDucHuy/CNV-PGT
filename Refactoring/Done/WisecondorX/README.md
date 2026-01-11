@@ -4,17 +4,17 @@
 
 ```bash
 # Tạo environment mới
-conda create -n wisecondorx-env python=3.10 -y
+conda create -n wisecondorx-env python=3.11 -y
 
-# Cài đặt các gói Python chính
-conda install -n wisecondorx-env -c conda-forge numpy pandas matplotlib scipy scikit-learn=1.4.2 pydantic -y
+# Cài WisecondorX và dependencies từ bioconda và conda-forge
+conda install -n wisecondorx-env -c conda-forge -c bioconda wisecondorx r-base r-jsonlite bioconductor-dnacopy -y
 
-# Cài pysam từ pip
-conda run -n wisecondorx-env pip install pysam
+# Cài scikit-learn 1.4.2 (tương thích với WisecondorX)
+conda install -n wisecondorx-env -c conda-forge "scikit-learn=1.4.2" -y
 
-# Cài WisecondorX và R packages cần thiết
-conda install -n wisecondorx-env -c bioconda wisecondorx=1.4.2 -y
-conda install -n wisecondorx-env -c conda-forge r-base r-jsonlite bioconductor-dnacopy -y
+# Kích hoạt môi trường
+conda activate wisecondorx-env
+
 ```
 
 ## Cấu trúc Thư mục

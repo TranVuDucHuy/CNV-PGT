@@ -1,12 +1,12 @@
 # Tự động chuyển đổi dữ liệu BlueFuse
 
-## Cài đặt môi trường
+## Cài đặt Môi trường
 
 ```bash
 pip install pandas
 ```
 
-## Cấu trúc thư mục
+## Cấu trúc Thư mục
 
 ```
 BlueFuse/
@@ -26,7 +26,7 @@ BlueFuse/
 └── README.md                                         # Tệp này
 ```
 
-## Cách sử dụng
+## Cách Sử dụng
 
 1. Đặt các tệp dữ liệu BlueFuse vào thư mục `Input/` theo cấu trúc trên. Script sẽ tự động tìm tệp dựa trên pattern (không cần tên chính xác, chỉ cần đuôi phù hợp).
 
@@ -38,7 +38,7 @@ python wrapper.py
 
 Script sẽ xử lý tuần tự từng thí nghiệm và mẫu, xuất kết quả vào `Output/`.
 
-## Quy trình thực thi
+## Quy trình Thực thi
 
 ### Bước 1: Quét thư mục đầu vào
 

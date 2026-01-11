@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 import pandas as pd
 import pysam
+import re
 
 def standardize_chromosomes(df, chromosome_col):
     """
@@ -48,23 +49,24 @@ def process_sample_outputs(run_output_dir, output_experiment_dir):
     """Xử lý output cho từng sample"""
     for sample_dir in run_output_dir.iterdir():
         sample_id = sample_dir.name
-        sample_output_dir = output_experiment_dir / sample_id
+        sample_id_clean = re.sub(r'_S\d+$', '', sample_id)
+        sample_output_dir = output_experiment_dir / sample_id_clean
         sample_output_dir.mkdir(parents=True, exist_ok=True)
 
         # Xử lý bins.bed
         bins_raw = sample_dir / f"{sample_id}_bins.bed"
-        bins_bed = sample_output_dir / f"{sample_id}_wisecondorx_bins.bed"
+        bins_bed = sample_output_dir / f"{sample_id_clean}_wisecondorx_bins.bed"
         process_bed_file(bins_raw, bins_bed)
 
         # Xử lý segments.bed
         segments_raw = sample_dir / f"{sample_id}_segments.bed"
-        segments_bed = sample_output_dir / f"{sample_id}_wisecondorx_segments.bed"
+        segments_bed = sample_output_dir / f"{sample_id_clean}_wisecondorx_segments.bed"
         process_bed_file(segments_raw, segments_bed)
 
         # Sao chép ảnh
         plots_dir = sample_dir / f"{sample_id}.plots"
         scatter_src = plots_dir / "genome_wide.png"
-        scatter_dst = sample_output_dir / f"{sample_id}_wisecondorx_scatterChart.png"
+        scatter_dst = sample_output_dir / f"{sample_id_clean}_wisecondorx_scatterChart.png"
         shutil.copy2(scatter_src, scatter_dst)
         print(f"    - Sao chép {scatter_dst}")
 

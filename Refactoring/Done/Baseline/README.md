@@ -15,6 +15,9 @@ conda run -n baseline-env pip install pysam
 # Cài R base + packages cần thiết (optparse, DNAcopy)
 conda install -n baseline-env -c conda-forge r-base r-optparse bioconductor-dnacopy -y
 
+# Kích hoạt môi trường
+conda activate baseline-env
+
 ```
 
 ## Cấu trúc Thư mục

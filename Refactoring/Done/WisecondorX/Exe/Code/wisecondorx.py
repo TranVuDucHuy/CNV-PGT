@@ -100,7 +100,7 @@ def main():
 
         output_prefix = sample_dir / sample_name
 
-        command = ["WisecondorX", "predict", npz_file, reference_file, output_prefix, "--bed", "--plot"]
+        command = ["WisecondorX", "predict", npz_file, reference_file, output_prefix, "--bed", "--plot", "--seed", "42"]
         run_command(command)
         processed_samples += 1
 
