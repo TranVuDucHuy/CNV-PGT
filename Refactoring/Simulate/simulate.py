@@ -32,8 +32,6 @@ def parse_bed_file(bed_path):
             region_id = int(parts[3])  # Region ID: 1, 2, ..., k
             region_type = parts[4].upper()  # G or L
             mosaic = float(parts[5])
-
-            print(f"  - Đọc region: {chrom}:{chromStart}-{chromEnd}, ID={region_id}, Type={region_type}, Mosaic={mosaic}")
             
             regions.append({
                 'chrom': chrom,
@@ -213,10 +211,13 @@ def process_experiment(experiment_name, bed_path):
     
     for i, bam_path in enumerate(bam_files, 1):
         bam_filename = os.path.basename(bam_path)
+        sample_name = bam_filename.replace('.bam', '')
+        if '_' in sample_name:
+            sample_name = sample_name.split('_')[0]
         print(f"\n   Đang xử lý mẫu [{i}/{len(bam_files)}]: {bam_filename}")
         
         sample_stats = simulate_sample(bam_path, regions, keep_probs, experiment_name)
-        all_stats[bam_filename] = sample_stats
+        all_stats[sample_name] = sample_stats
     
     # 5. Xuất metadata
     scale_ratios = calculate_scale_ratios(all_stats)
