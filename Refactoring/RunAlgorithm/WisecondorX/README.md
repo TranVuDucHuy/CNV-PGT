@@ -27,6 +27,7 @@ WisecondorX/
 │       └── {Sample ID}.bam                           # Tệp BAM của mẫu
 │       └── {Sample ID}.bam.bai                       # Chỉ mục BAM của mẫu
 ├── Output/                                           # Thư mục đầu ra (tạo tự động)
+│   ├── run_time.tsv                                 # Tệp chứa thời gian chạy của từng thí nghiệm (tab-separated)
 │   └── {Experiment ID}/                              # Thư mục cho mỗi thí nghiệm
 │       └── {Sample ID}/                              # Thư mục cho mỗi mẫu
 │           ├── {Sample ID}_wisecondorx_bins.bed      # Tệp BED chứa dữ liệu bins
@@ -66,6 +67,7 @@ python wrapper.py
 - **Xuất kết quả**: Chuyển đổi đầu ra phân tích sang định dạng BED lưu tại `Output/{Experiment ID}/{Sample ID}/`.
 - **Khôi phục dữ liệu**: Trả lại tệp BAM và BAI về thư mục thí nghiệm gốc trong `Input/`.
 
-### Bước 3: Dọn dẹp
+### Bước 3: Dọn dẹp và ghi kết quả
 
 - Xóa dữ liệu trong thư mục `Exe/Run/Temporary/Test/` và `Exe/Run/Output/` sau khi hoàn thành xử lý tất cả các mẫu trong thí nghiệm.
+- Ghi tệp `run_time.tsv` chứa thời gian chạy của từng thí nghiệm vào `Output/`.

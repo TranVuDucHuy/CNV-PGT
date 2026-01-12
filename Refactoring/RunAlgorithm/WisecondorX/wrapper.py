@@ -7,6 +7,7 @@ from pathlib import Path
 import pandas as pd
 import pysam
 import re
+import time
 
 def standardize_chromosomes(df, chromosome_col):
     """
@@ -90,9 +91,11 @@ def main():
         print("Không có experiment nào trong Input")
         return
 
+    run_times = []
+
     for i, experiment_dir in enumerate(experiments, 1):
-        experiment_name = experiment_dir.name
-        print(f"\033[1m\n=== XỬ LÝ THÍ NGHIỆM [{i}/{len(experiments)}]: {experiment_name} ===\033[0m")
+        experiment_id = experiment_dir.name
+        print(f"\033[1m\n=== XỬ LÝ THÍ NGHIỆM [{i}/{len(experiments)}]: {experiment_id} ===\033[0m")
 
         # 1. Dọn dẹp thư mục tạm thời và đầu ra
         print("  - Dọn dẹp thư mục run")
@@ -108,21 +111,31 @@ def main():
         move_bam_files(experiment_dir, test_dir)
 
         # 3. Chạy WisecondorX
+        start_time = time.perf_counter()
         cmd = [sys.executable, str(code_dir / "wisecondorx.py"), "-o", str(run_dir)]
         print(f"  - Chạy: {' '.join(cmd)}")
         subprocess.run(cmd, check=True)
+        end_time = time.perf_counter()
+        elapsed_time = end_time - start_time
+        run_times.append((experiment_id, elapsed_time))
 
         # 4. Tạo thư mục đầu ra cho thí nghiệm
-        experiment_output_directory = output_dir / experiment_name
-        experiment_output_directory.mkdir(parents=True, exist_ok=True)
+        experiment_output_dir = output_dir / experiment_id
+        experiment_output_dir.mkdir(parents=True, exist_ok=True)
 
         # 5. Xử lý đầu ra cho mỗi mẫu
         if run_output_dir.exists():
-            process_sample_outputs(run_output_dir, experiment_output_directory)
+            process_sample_outputs(run_output_dir, experiment_output_dir)
 
         # 6. Khôi phục BAM
         print("  - Khôi phục BAM về Input")
         move_bam_files(test_dir, experiment_dir)
+
+    # Ghi thời gian chạy ra file
+    with open(output_dir / "run_time.tsv", "w") as f:
+        f.write("experiment\telapsed_time\n")
+        for exp, time_val in run_times:
+            f.write(f"{exp}\t{time_val}\n")
 
     print("\nHoàn tất!")
 

@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 import pysam
 import re
+import time
 
 # Độ dài chromosome cho GRCh37
 CHROMOSOME_LENGTHS_GRCh37 = {
@@ -135,6 +136,8 @@ def main():
         print("Không có experiment nào trong Input")
         return
 
+    run_times = []
+
     for i, experiment_dir in enumerate(experiments, 1):
         experiment_name = experiment_dir.name
         print(f"\033[1m\n=== XỬ LÝ THÍ NGHIỆM [{i}/{len(experiments)}]: {experiment_name} ===\033[0m")
@@ -153,9 +156,13 @@ def main():
         move_bam_files(experiment_dir, test_dir)
 
         # 3. Chạy Baseline
+        start_time = time.perf_counter()
         cmd = [sys.executable, str(code_dir / "baseline.py"), "-o", str(run_dir)]
         print(f"  - Chạy: {' '.join(cmd)}")
         subprocess.run(cmd, cwd=str(code_dir))
+        end_time = time.perf_counter()
+        elapsed_time = end_time - start_time
+        run_times.append((experiment_name, elapsed_time))
 
         # 4. Tạo thư mục đầu ra cho thí nghiệm
         experiment_output_directory = output_dir / experiment_name
@@ -168,6 +175,12 @@ def main():
         # 6. Khôi phục BAM
         print("  - Khôi phục BAM về Input")
         move_bam_files(test_dir, experiment_dir)
+
+    # Ghi thời gian chạy ra file
+    with open(output_dir / "run_time.tsv", "w") as f:
+        f.write("experiment\telapsed_time\n")
+        for exp, time_val in run_times:
+            f.write(f"{exp}\t{time_val}\n")
 
     print("\nHoàn tất!")
 

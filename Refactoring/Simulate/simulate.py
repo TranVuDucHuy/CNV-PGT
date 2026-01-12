@@ -247,9 +247,6 @@ def main():
             import traceback
             traceback.print_exc()
             continue
-    
-    print("\nHoàn tất!")
-
 
 if __name__ == "__main__":
     main()
